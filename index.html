@@ -369,6 +369,18 @@
     .fb-item { grid-template-columns: 1fr; }
     .fb-btn { right: var(--space-3); bottom: var(--space-3); }
   }
+
+  /* Print (PDF via browserens udskriv) */
+  .print-only { display: none; }
+  @media print {
+    body > *:not(.print-only) { display: none !important; }
+    .print-only { display: block; padding: 12mm; font-size: 11px; line-height: 16px; color: #000; }
+    .print-only h1 { font-size: 16px; margin-bottom: 8px; }
+    .print-only table { width: 100%; border-collapse: collapse; }
+    .print-only th, .print-only td { border-bottom: 1px solid #999; padding: 3px 6px; text-align: left; background: none !important; color: #000; }
+    .print-only .num { text-align: right; }
+    .print-only .tlink, .print-only button { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -421,7 +433,7 @@ window.PROTO_CONFIG = {
 // Demo-data til prototypen. Udtaget og forenklet fra teamets egne Excel-filer.
 // Ingen persondata (telefon/mail) er taget med.
 window.DEMO = {
-  version: 4, // hæv tallet når demo-data ændres, så gemt browser-state nulstilles
+  version: 5, // hæv tallet når demo-data ændres, så gemt browser-state nulstilles
   medarbejdere: [
     { id: "HERA", navn: "Henrik Rasmussen", rolle: "PM", afdeling: "Generel" },
     { id: "BBN",  navn: "Brian Bo Nielsen", rolle: "PM", afdeling: "Generel" },
@@ -438,6 +450,7 @@ window.DEMO = {
 
   // AS400 → Business Central. I dag ligger denne som skjult ark i tre filer.
   bcMapping: [
+    { stedNr: "4472", stedNavn: "NOVO NORDISK NYBROVEJ", costcenter: "432100", costcenterNavn: "Servicecenter Øst", tos: "511", tosNavn: "Remote Services", account: "DK-A-001122", accountNavn: "Novo Nordisk A/S", profitcenter: "217600" },
     { stedNr: "0987", stedNavn: "SBS FRICTION SVENDBORG", costcenter: "261100", costcenterNavn: "Branch Fyn", tos: "251", tosNavn: "Technology Solutions", account: "DK-A-001333", accountNavn: "SBS Friction A/S", profitcenter: "217600" },
     { stedNr: "3201", stedNavn: "TELENOR ADM", costcenter: "432100", costcenterNavn: "Servicecenter Øst", tos: "511", tosNavn: "Remote Services", account: "DK-A-001546", accountNavn: "Telenor A/S", profitcenter: "217600" },
     { stedNr: "3301", stedNavn: "NOVO NORDISK LYNGBY", costcenter: "225100", costcenterNavn: "Branch København", tos: "251", tosNavn: "Technology Solutions", account: "DK-A-001122", accountNavn: "Novo Nordisk A/S", profitcenter: "217600" },
@@ -463,19 +476,24 @@ window.DEMO = {
   // Kunde/site-register (det der i dag er Kundekartotek + kolonner i alle projektark)
   // eftersyn/esMaaned/interval/sidsteEftersyn/casEftersyn: bruges af eftersyn-kalenderen
   sites: [
-    { id: "DK-S-040396", stedNr: "4410", kunde: "Glostrup Kommune", navn: "Søndervangsskolen", adresse: "Florasvej 2B", postnr: "2600", by: "Glostrup", installation: "TVO", anlaeg: "RVS Pro", serviceaftale: "Serviceaftale 2", ul: "CC Installation", kontakt: "Maj Buch Larsson", eftersyn: true, esMaaned: 9, interval: 12, sidsteEftersyn: "2025-09-22", casEftersyn: "" },
+    { id: "DK-S-024527", kode: "GSA", stedNr: "3302", kunde: "Novo Nordisk A/S", navn: "Girostrøget Taastrup, bygning A", adresse: "Girostrøget 1", postnr: "2630", by: "Taastrup", installation: "AIA-ADK", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "Novo FM", eftersyn: true, esMaaned: 4, interval: 12, sidsteEftersyn: "2026-04-08", casEftersyn: "" },
+    { id: "DK-S-024384", kode: "GSH", stedNr: "3302", kunde: "Novo Nordisk A/S", navn: "Girostrøget Taastrup, bygning H", adresse: "Girostrøget 1", postnr: "2630", by: "Taastrup", installation: "AIA-ADK", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "Novo FM", eftersyn: true, esMaaned: 10, interval: 12, sidsteEftersyn: "2025-10-14", casEftersyn: "" },
+    { id: "DK-S-034510", kode: "KFP HUB 1", stedNr: "3301", kunde: "Novo Nordisk A/S", navn: "Kay Fiskers Plads 3", adresse: "Kay Fiskers Plads 3", postnr: "2300", by: "København S", installation: "AIA-ADK", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "Novo FM", eftersyn: true, esMaaned: 9, interval: 12, sidsteEftersyn: "2025-09-20", casEftersyn: "" },
+    { id: "DK-S-037939", kode: "NYE 112", stedNr: "4472", kunde: "Novo Nordisk A/S", navn: "Nybrovej 112", adresse: "Nybrovej 112", postnr: "2800", by: "Kongens Lyngby", installation: "ADK", anlaeg: "SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "Novo FM", eftersyn: false, esMaaned: 0, interval: 12, sidsteEftersyn: "", casEftersyn: "" },
+    { id: "DK-S-031884", kode: "VTE", stedNr: "3301", kunde: "Novo Nordisk A/S", navn: "Østmarken 3A", adresse: "Østmarken 3A", postnr: "2860", by: "Søborg", installation: "AIA", anlaeg: "NOX", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "Novo FM", eftersyn: true, esMaaned: 11, interval: 12, sidsteEftersyn: "2025-11-05", casEftersyn: "" },
+    { id: "DK-S-040396", kode: "SVS", stedNr: "4410", kunde: "Glostrup Kommune", navn: "Søndervangsskolen", adresse: "Florasvej 2B", postnr: "2600", by: "Glostrup", installation: "TVO", anlaeg: "RVS Pro", serviceaftale: "Serviceaftale 2", ul: "CC Installation", kontakt: "Maj Buch Larsson", eftersyn: true, esMaaned: 9, interval: 12, sidsteEftersyn: "2025-09-22", casEftersyn: "" },
     { id: "DK-S-020092", stedNr: "0987", kunde: "SBS Friction A/S", navn: "SBS Friction Svendborg", adresse: "Kuopiovej 11", postnr: "5700", by: "Svendborg", installation: "AIA-ADK", anlaeg: "SPC", serviceaftale: "Serviceaftale 1", ul: "UL", kontakt: "", eftersyn: true, esMaaned: 8, interval: 12, sidsteEftersyn: "2026-08-06", casEftersyn: "" },
-    { id: "DK-S-038357", stedNr: "3301", kunde: "Novo Nordisk A/S", navn: "LH85 Lyngby Hovedgade", adresse: "Lyngby Hovedgade 85", postnr: "2800", by: "Lyngby", installation: "AIA-ADK-TVO", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 3, interval: 6, sidsteEftersyn: "2026-03-14", casEftersyn: "" },
-    { id: "DK-S-042087", stedNr: "3302", kunde: "Novo Nordisk A/S", navn: "Girostrøget Taastrup (GSBC)", adresse: "Girostrøget 1", postnr: "2630", by: "Taastrup", installation: "AIA", anlaeg: "NOX", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 4, interval: 12, sidsteEftersyn: "2026-04-06", casEftersyn: "CAS-506338-N6NWK4" },
-    { id: "DK-S-023537", stedNr: "3201", kunde: "Telenor A/S", navn: "Telenor adm.", adresse: "Frederikskaj 8", postnr: "2450", by: "København SV", installation: "AIA-ADK", anlaeg: "Unii control-Aros", serviceaftale: "Serviceaftale 4", ul: "Jansson", kontakt: "", eftersyn: true, esMaaned: 11, interval: 12, sidsteEftersyn: "2025-11-8", casEftersyn: "CAS-524807-CUL5XW" },
-    { id: "DK-S-003341", stedNr: "2729", kunde: "DHL Supply Chain", navn: "DHL Greve", adresse: "Ventrupvej 25", postnr: "2670", by: "Greve", installation: "AIA", anlaeg: "SPC", serviceaftale: "Serviceaftale 1", ul: "", kontakt: "", eftersyn: true, esMaaned: 10, interval: 12, sidsteEftersyn: "2025-10-20", casEftersyn: "" },
+    { id: "DK-S-038357", kode: "LH 85", stedNr: "3301", kunde: "Novo Nordisk A/S", navn: "LH85 Lyngby Hovedgade", adresse: "Lyngby Hovedgade 85", postnr: "2800", by: "Lyngby", installation: "AIA-ADK-TVO", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 3, interval: 6, sidsteEftersyn: "2026-03-14", casEftersyn: "" },
+    { id: "DK-S-042087", kode: "GSBC", stedNr: "3302", kunde: "Novo Nordisk A/S", navn: "Girostrøget Taastrup", adresse: "Girostrøget 1", postnr: "2630", by: "Taastrup", installation: "AIA", anlaeg: "NOX", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 4, interval: 12, sidsteEftersyn: "2026-04-06", casEftersyn: "CAS-506338-N6NWK4" },
+    { id: "DK-S-023537", kode: "TEL FK8", stedNr: "3201", kunde: "Telenor A/S", navn: "Telenor adm.", adresse: "Frederikskaj 8", postnr: "2450", by: "København SV", installation: "AIA-ADK", anlaeg: "Unii control-Aros", serviceaftale: "Serviceaftale 4", ul: "Jansson", kontakt: "", eftersyn: true, esMaaned: 11, interval: 12, sidsteEftersyn: "2025-11-08", casEftersyn: "CAS-524807-CUL5XW" },
+    { id: "DK-S-003341", kode: "DHL GRE", stedNr: "2729", kunde: "DHL Supply Chain", navn: "DHL Greve", adresse: "Ventrupvej 25", postnr: "2670", by: "Greve", installation: "AIA", anlaeg: "SPC", serviceaftale: "Serviceaftale 1", ul: "", kontakt: "", eftersyn: true, esMaaned: 10, interval: 12, sidsteEftersyn: "2025-10-20", casEftersyn: "" },
     { id: "DK-S-044467", stedNr: "", kunde: "Bar5800", navn: "Bar5800 Spillemaskiner", adresse: "Vesterbrogade 58", postnr: "1620", by: "København V", installation: "AIA", anlaeg: "SPC", serviceaftale: "", ul: "Prosikring", kontakt: "", eftersyn: true, esMaaned: 5, interval: 6, sidsteEftersyn: "2026-05-14", casEftersyn: "CAS-523283-GYKZ8Y" },
     { id: "DK-S-009365", stedNr: "", kunde: "ISS / Nordea", navn: "Nordea CB", adresse: "Nicolai Eigtveds Gade 8", postnr: "1401", by: "København K", installation: "ADK-TVO", anlaeg: "Lenel", serviceaftale: "", ul: "Prosikring", kontakt: "Henrik Jacobsen", eftersyn: false, esMaaned: 11, interval: 12, sidsteEftersyn: "", casEftersyn: "" },
-    { id: "DK-S-050101", stedNr: "3303", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Bagsværd (NNB)", adresse: "Novo Allé 1", postnr: "2880", by: "Bagsværd", installation: "AIA-ADK", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: false, esMaaned: 2, interval: 12, sidsteEftersyn: "", casEftersyn: "" },
-    { id: "DK-S-050102", stedNr: "3304", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Kalundborg", adresse: "Krogshøjvej 55", postnr: "4400", by: "Kalundborg", installation: "AIA-ADK-TVO", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 10, interval: 12, sidsteEftersyn: "2025-10-12", casEftersyn: "" },
-    { id: "DK-S-050103", stedNr: "3305", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Hillerød", adresse: "Krogshøjvej 45", postnr: "3400", by: "Hillerød", installation: "ADK-TVO", anlaeg: "SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 8, interval: 6, sidsteEftersyn: "2026-08-14", casEftersyn: "" },
-    { id: "DK-S-050104", stedNr: "3306", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Måløv (NNM)", adresse: "Måløv Byvej 55", postnr: "2760", by: "Måløv", installation: "AIA-ADK", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 11, interval: 12, sidsteEftersyn: "2025-11-14", casEftersyn: "" },
-    { id: "DK-S-050105", stedNr: "1500", kunde: "Vestas Wind Systems A/S", navn: "Vestas Aarhus Hovedkontor", adresse: "Hedeager 42", postnr: "8200", by: "Aarhus N", installation: "AIA-ADK", anlaeg: "SPC", serviceaftale: "Serviceaftale 3", ul: "Lindpro", kontakt: "Karin Sørensen", eftersyn: true, esMaaned: 12, interval: 6, sidsteEftersyn: "2026-06-8", casEftersyn: "" },
+    { id: "DK-S-050101", kode: "NNB", stedNr: "3303", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Bagsværd", adresse: "Novo Allé 1", postnr: "2880", by: "Bagsværd", installation: "AIA-ADK", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: false, esMaaned: 2, interval: 12, sidsteEftersyn: "", casEftersyn: "" },
+    { id: "DK-S-050102", kode: "NNK", stedNr: "3304", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Kalundborg", adresse: "Krogshøjvej 55", postnr: "4400", by: "Kalundborg", installation: "AIA-ADK-TVO", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 10, interval: 12, sidsteEftersyn: "2025-10-12", casEftersyn: "" },
+    { id: "DK-S-050103", kode: "NNH", stedNr: "3305", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Hillerød", adresse: "Krogshøjvej 45", postnr: "3400", by: "Hillerød", installation: "ADK-TVO", anlaeg: "SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 8, interval: 6, sidsteEftersyn: "2026-08-14", casEftersyn: "" },
+    { id: "DK-S-050104", kode: "NNM", stedNr: "3306", kunde: "Novo Nordisk A/S", navn: "Novo Nordisk Måløv", adresse: "Måløv Byvej 55", postnr: "2760", by: "Måløv", installation: "AIA-ADK", anlaeg: "NOX / SiPass", serviceaftale: "Novo rammeaftale", ul: "", kontakt: "", eftersyn: true, esMaaned: 11, interval: 12, sidsteEftersyn: "2025-11-14", casEftersyn: "" },
+    { id: "DK-S-050105", stedNr: "1500", kunde: "Vestas Wind Systems A/S", navn: "Vestas Aarhus Hovedkontor", adresse: "Hedeager 42", postnr: "8200", by: "Aarhus N", installation: "AIA-ADK", anlaeg: "SPC", serviceaftale: "Serviceaftale 3", ul: "Lindpro", kontakt: "Karin Sørensen", eftersyn: true, esMaaned: 12, interval: 6, sidsteEftersyn: "2026-06-08", casEftersyn: "" },
     { id: "DK-S-050106", stedNr: "1600", kunde: "Grundfos A/S", navn: "Grundfos Bjerringbro", adresse: "Poul Due Jensens Vej 7", postnr: "8850", by: "Bjerringbro", installation: "AIA-ADK-TVO", anlaeg: "NOX", serviceaftale: "Serviceaftale 3", ul: "", kontakt: "Jesper Toft", eftersyn: true, esMaaned: 12, interval: 6, sidsteEftersyn: "2026-06-12", casEftersyn: "" },
     { id: "DK-S-050107", stedNr: "4500", kunde: "Aalborg Kommune", navn: "Aalborg Rådhus", adresse: "Boulevarden 13", postnr: "9000", by: "Aalborg", installation: "ADK-TVO", anlaeg: "Lenel", serviceaftale: "Serviceaftale 2", ul: "Jansson", kontakt: "Mette Holm", eftersyn: true, esMaaned: 5, interval: 12, sidsteEftersyn: "2026-05-10", casEftersyn: "" },
     { id: "DK-S-050108", stedNr: "4600", kunde: "Odense Kommune", navn: "Odense Kommune Ejendomme", adresse: "Ørbækvej 100", postnr: "5220", by: "Odense SØ", installation: "AIA", anlaeg: "SPC", serviceaftale: "Serviceaftale 2", ul: "", kontakt: "Rasmus Bech", eftersyn: true, esMaaned: 9, interval: 12, sidsteEftersyn: "2025-09-22", casEftersyn: "" },
@@ -1017,26 +1035,28 @@ window.DEMO = {
 
   // Serviceopgaver (CAS) – fra Opgavestyring
   serviceopgaver: [
+    { id: "PRDK000949-1", parent: "PRDK000949", siteId: "DK-S-038357", beskrivelse: "Programmering af 91 kort, udleveret til reception", tekniker: "VA", status: "Lukket til fakturering", po: "8002455120", oprettet: "2026-08-04", lukket: "2026-08-12", type: "Service", pris: 0 },
+    { id: "PRDK000949-2", parent: "PRDK000949", siteId: "DK-S-038357", beskrivelse: "Kortproduktion – Lenel – HID kodt med kode", tekniker: "VA", status: "Åben", po: "8002455120", oprettet: "2026-08-20", lukket: "", type: "Service", pris: 0 },
     { id: "CAS-550526-L3T4W2", siteId: "DK-S-038357", beskrivelse: "ADK DKLYN009224 virker ikke, står og blinker", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-08-20", lukket: "", type: "Fejl", pris: 1850 },
     { id: "CAS-538366-R3K2F7", siteId: "DK-S-003341", beskrivelse: "IO-modul skal opsættes til at give signal til BMS", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-07-14", lukket: "2026-07-22", type: "Service", pris: 4200 },
-    { id: "PRDK000720-4", siteId: "DK-S-042087", beskrivelse: "GSBC – Dørskift med tømrer", tekniker: "PEBO", status: "Lukket til fakturering", po: "8002401177", oprettet: "2026-02-10", lukket: "2026-02-14", type: "Service", pris: 22800 },
-    { id: "PRDK502630-8", siteId: "DK-S-023537", beskrivelse: "Alarmcentral melder fejl 12 – kommunikation", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-03-26", lukket: "", type: "Fejl", pris: 3100 },
-    { id: "PRDK970214-6", siteId: "DK-S-050107", beskrivelse: "Eftersyn af nødstrøm/batteribackup", tekniker: "SB", status: "Faktureret", po: "8002405224", oprettet: "2026-09-18", lukket: "2026-09-26", type: "Eftersyn", pris: 6200 },
+    { id: "PRDK000720-4", parent: "PRDK000720", siteId: "DK-S-042087", beskrivelse: "GSBC – Dørskift med tømrer", tekniker: "PEBO", status: "Lukket til fakturering", po: "8002401177", oprettet: "2026-02-10", lukket: "2026-02-14", type: "Service", pris: 22800 },
+    { id: "PRDK502630-8", parent: "PRDK502630", siteId: "DK-S-023537", beskrivelse: "Alarmcentral melder fejl 12 – kommunikation", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-03-26", lukket: "", type: "Fejl", pris: 3100 },
+    { id: "PRDK970214-6", parent: "PRDK970214", siteId: "DK-S-050107", beskrivelse: "Eftersyn af nødstrøm/batteribackup", tekniker: "SB", status: "Faktureret", po: "8002405224", oprettet: "2026-09-18", lukket: "2026-09-26", type: "Eftersyn", pris: 6200 },
     { id: "CAS-534010-XR8KFV", siteId: "DK-S-050101", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "VA", status: "Faktureret", po: "8002499125", oprettet: "2026-01-25", lukket: "2026-01-28", type: "Service", pris: 12400 },
     { id: "CAS-545460-SLY9P5", siteId: "DK-S-050108", beskrivelse: "Sirene udløses ikke ved test", tekniker: "SB", status: "Åben", po: "", oprettet: "2026-06-11", lukket: "", type: "Fejl", pris: 1200 },
-    { id: "PRDK201206-9", siteId: "DK-S-020092", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "CG", status: "Åben", po: "", oprettet: "2026-02-25", lukket: "", type: "Eftersyn", pris: 4800 },
+    { id: "PRDK201206-9", parent: "PRDK201206", siteId: "DK-S-020092", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "CG", status: "Åben", po: "", oprettet: "2026-02-25", lukket: "", type: "Eftersyn", pris: 4800 },
     { id: "CAS-518876-R7ZSDA", siteId: "DK-S-050106", beskrivelse: "Tilføjelse af nye brugere/kort i systemet", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-08-21", lukket: "2026-08-28", type: "Service", pris: 850 },
-    { id: "PRDK683863-2", siteId: "DK-S-009365", beskrivelse: "Læser ved hovedindgang svarer ikke", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-09-14", lukket: "2026-09-16", type: "Fejl", pris: 2400 },
+    { id: "PRDK683863-2", parent: "PRDK683863", siteId: "DK-S-009365", beskrivelse: "Læser ved hovedindgang svarer ikke", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-09-14", lukket: "2026-09-16", type: "Fejl", pris: 2400 },
     { id: "CAS-525138-G8WT27", siteId: "DK-S-023537", beskrivelse: "Halvårligt eftersyn af ADK-anlæg", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-05-14", lukket: "2026-05-22", type: "Eftersyn", pris: 6200 },
     { id: "CAS-538465-VYS6ER", siteId: "DK-S-038357", beskrivelse: "Justering af kameraer efter ombygning", tekniker: "SB", status: "Åben", po: "", oprettet: "2026-09-09", lukket: "", type: "Service", pris: 850 },
-    { id: "PRDK630728-1", siteId: "DK-S-050108", beskrivelse: "Opgradering af firmware på centraler", tekniker: "SB", status: "Lukket til fakturering", po: "", oprettet: "2026-06-07", lukket: "2026-06-11", type: "Service", pris: 12400 },
+    { id: "PRDK630728-1", parent: "PRDK630728", siteId: "DK-S-050108", beskrivelse: "Opgradering af firmware på centraler", tekniker: "SB", status: "Lukket til fakturering", po: "", oprettet: "2026-06-07", lukket: "2026-06-11", type: "Service", pris: 12400 },
     { id: "CAS-556996-D66RDT", siteId: "DK-S-050108", beskrivelse: "Kamera mister billede periodisk", tekniker: "SB", status: "Lukket til fakturering", po: "", oprettet: "2026-03-16", lukket: "2026-03-17", type: "Fejl", pris: 1850 },
     { id: "CAS-542587-C6M6Y6", siteId: "DK-S-040396", beskrivelse: "Sirene udløses ikke ved test", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-03-03", lukket: "2026-03-11", type: "Fejl", pris: 3100 },
-    { id: "PRDK438536-2", siteId: "DK-S-050105", beskrivelse: "Kamera mister billede periodisk", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-01-20", lukket: "2026-01-22", type: "Fejl", pris: 2400 },
+    { id: "PRDK438536-2", parent: "PRDK438536", siteId: "DK-S-050105", beskrivelse: "Kamera mister billede periodisk", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-01-20", lukket: "2026-01-22", type: "Fejl", pris: 2400 },
     { id: "CAS-524565-QEHTQV", siteId: "DK-S-042087", beskrivelse: "Læser ved hovedindgang svarer ikke", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-05-01", lukket: "2026-05-02", type: "Fejl", pris: 3950 },
     { id: "CAS-530221-XKRKYA", siteId: "DK-S-003341", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-07-20", lukket: "2026-07-24", type: "Service", pris: 6200 },
     { id: "CAS-516390-R6LGP6", siteId: "DK-S-050102", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-06-19", lukket: "", type: "Eftersyn", pris: 3100 },
-    { id: "PRDK251426-8", siteId: "DK-S-042087", beskrivelse: "Opgradering af firmware på centraler", tekniker: "CG", status: "Lukket til fakturering", po: "8002489889", oprettet: "2026-05-01", lukket: "2026-05-08", type: "Service", pris: 3100 },
+    { id: "PRDK251426-8", parent: "PRDK251426", siteId: "DK-S-042087", beskrivelse: "Opgradering af firmware på centraler", tekniker: "CG", status: "Lukket til fakturering", po: "8002489889", oprettet: "2026-05-01", lukket: "2026-05-08", type: "Service", pris: 3100 },
     { id: "CAS-543200-Y5EXD7", siteId: "DK-S-009365", beskrivelse: "Årligt eftersyn af AIA-anlæg", tekniker: "CG", status: "Åben", po: "", oprettet: "2026-04-20", lukket: "", type: "Eftersyn", pris: 3100 },
     { id: "CAS-508661-4U7NTT", siteId: "DK-S-050102", beskrivelse: "Dørautomatik reagerer ikke på kort", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-03-03", lukket: "2026-03-08", type: "Fejl", pris: 3950 },
     { id: "CAS-549424-9H6Y2Y", siteId: "DK-S-003341", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-05-24", lukket: "2026-05-28", type: "Service", pris: 1200 },
@@ -1044,14 +1064,40 @@ window.DEMO = {
     { id: "CAS-526758-DEB9BL", siteId: "DK-S-009365", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "CG", status: "Faktureret", po: "", oprettet: "2026-04-21", lukket: "2026-04-23", type: "Eftersyn", pris: 6200 },
     { id: "CAS-558026-QXD5SW", siteId: "DK-S-042087", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "VA", status: "Lukket til fakturering", po: "", oprettet: "2026-06-22", lukket: "2026-06-28", type: "Service", pris: 4800 },
     { id: "CAS-559093-XNBPKG", siteId: "DK-S-050101", beskrivelse: "Servicebesøg – gennemgang af anlæg", tekniker: "CG", status: "Åben", po: "8002489873", oprettet: "2026-08-08", lukket: "", type: "Service", pris: 3950 },
-    { id: "PRDK415173-2", siteId: "DK-S-050107", beskrivelse: "Justering af kameraer efter ombygning", tekniker: "VA", status: "Lukket til fakturering", po: "", oprettet: "2026-01-02", lukket: "2026-01-08", type: "Service", pris: 2400 },
-    { id: "PRDK766456-5", siteId: "DK-S-044467", beskrivelse: "Halvårligt eftersyn af ADK-anlæg", tekniker: "VA", status: "Åben", po: "8002418964", oprettet: "2026-03-26", lukket: "", type: "Eftersyn", pris: 12400 },
+    { id: "PRDK415173-2", parent: "PRDK415173", siteId: "DK-S-050107", beskrivelse: "Justering af kameraer efter ombygning", tekniker: "VA", status: "Lukket til fakturering", po: "", oprettet: "2026-01-02", lukket: "2026-01-08", type: "Service", pris: 2400 },
+    { id: "PRDK766456-5", parent: "PRDK766456", siteId: "DK-S-044467", beskrivelse: "Halvårligt eftersyn af ADK-anlæg", tekniker: "VA", status: "Åben", po: "8002418964", oprettet: "2026-03-26", lukket: "", type: "Eftersyn", pris: 12400 },
     { id: "CAS-517391-BE2QTD", siteId: "DK-S-042087", beskrivelse: "Årligt eftersyn af AIA-anlæg", tekniker: "PEBO", status: "Åben", po: "", oprettet: "2026-06-26", lukket: "", type: "Eftersyn", pris: 2400 },
     { id: "CAS-551329-86YTLR", siteId: "DK-S-050108", beskrivelse: "Årligt eftersyn af AIA-anlæg", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-02-15", lukket: "2026-02-24", type: "Eftersyn", pris: 2400 },
   ],
 
   // Tidsregistreringer fra teknikere (fra teknikerarkene)
   tid: [
+    { dato: "2026-07-06", sag: "Intern", kategori: "Ferie", tekniker: "PEBO", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-07", sag: "Intern", kategori: "Ferie", tekniker: "PEBO", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-08", sag: "Intern", kategori: "Ferie", tekniker: "PEBO", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-09", sag: "Intern", kategori: "Ferie", tekniker: "PEBO", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-10", sag: "Intern", kategori: "Ferie", tekniker: "PEBO", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-08-19", sag: "Intern", kategori: "Kursus", tekniker: "PEBO", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Kursus: førstehjælp", materialer: [] },
+    { dato: "2026-09-03", sag: "Intern", kategori: "Intern tid", tekniker: "PEBO", timer: 3, ot1: 0, ot2: 0, koersel: 0, udfoert: "Dialogmøde og bilvask", materialer: [] },
+    { dato: "2026-07-13", sag: "Intern", kategori: "Ferie", tekniker: "VA", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-14", sag: "Intern", kategori: "Ferie", tekniker: "VA", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-15", sag: "Intern", kategori: "Ferie", tekniker: "VA", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-08-25", sag: "Intern", kategori: "Kursus", tekniker: "VA", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Kursus: førstehjælp", materialer: [] },
+    { dato: "2026-09-01", sag: "Intern", kategori: "Intern tid", tekniker: "VA", timer: 3, ot1: 0, ot2: 0, koersel: 0, udfoert: "Dialogmøde og bilvask", materialer: [] },
+    { dato: "2026-09-04", sag: "Intern", kategori: "Sygdom", tekniker: "VA", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Syg", materialer: [] },
+    { dato: "2026-07-20", sag: "Intern", kategori: "Ferie", tekniker: "CG", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-21", sag: "Intern", kategori: "Ferie", tekniker: "CG", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-08-11", sag: "Intern", kategori: "Sygdom", tekniker: "CG", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Syg", materialer: [] },
+    { dato: "2026-09-02", sag: "Intern", kategori: "Intern tid", tekniker: "CG", timer: 3, ot1: 0, ot2: 0, koersel: 0, udfoert: "Dialogmøde og bilvask", materialer: [] },
+    { dato: "2026-07-27", sag: "Intern", kategori: "Ferie", tekniker: "SB", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-28", sag: "Intern", kategori: "Ferie", tekniker: "SB", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-07-29", sag: "Intern", kategori: "Ferie", tekniker: "SB", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Ferie", materialer: [] },
+    { dato: "2026-08-28", sag: "Intern", kategori: "Afspadsering", tekniker: "SB", timer: 7.4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Afspadsering", materialer: [] },
+    { dato: "2026-09-03", sag: "Intern", kategori: "Intern tid", tekniker: "SB", timer: 3, ot1: 0, ot2: 0, koersel: 0, udfoert: "Dialogmøde og bilvask", materialer: [] },
+    { dato: "2026-08-05", sag: "PRDK000949-1", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Programmering af kort, udleveret til reception", materialer: [] },
+    { dato: "2026-08-06", sag: "PRDK000949-1", tekniker: "VA", timer: 3.5, ot1: 0, ot2: 0, koersel: 1, udfoert: "Programmering af kort, udleveret til reception", materialer: [] },
+    { dato: "2026-08-12", sag: "PRDK000949-1", tekniker: "VA", timer: 1, ot1: 0, ot2: 0, koersel: 1, udfoert: "Programmering af kort, udleveret til reception", materialer: [] },
+    { dato: "2026-08-26", sag: "PRDK000949-2", tekniker: "VA", timer: 1, ot1: 0, ot2: 0, koersel: 0, udfoert: "Kortproduktion til receptionen", materialer: [] },
     { dato: "2026-08-25", sag: "PRDK000949", tekniker: "PEBO", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Montage af NOX-detektorer, etage 3", materialer: [{ type: "Pir", model: "DD1012", antal: 12 }] },
     { dato: "2026-08-25", sag: "PRDK000949", tekniker: "VA", timer: 7.5, ot1: 1, ot2: 0, koersel: 1, udfoert: "SiPass læsere ved hovedindgang", materialer: [{ type: "Kabel", model: "4x2x0,6 PTK", antal: 2 }] },
     { dato: "2026-08-26", sag: "PRDK000949", tekniker: "PEBO", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Montage af NOX-detektorer, etage 4", materialer: [] },
@@ -1383,12 +1429,50 @@ window.DEMO = {
     const fakt = (p.fakturering || []).filter(f => f.status === 'Faktureret').reduce((a, f) => a + (+f.beloeb || 0), 0);
     const dgB = salg ? (salg - (p.salgKost || 0)) / salg * 100 : null;
     const dgF = salg ? (salg - udg) / salg * 100 : null;
-    const timer = (S.tid || []).filter(t => t.sag === p.id).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
+    const timer = (S.tid || []).filter(t => t.sag === p.id || (t.sag || '').startsWith(p.id + '-')).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
     return { salg, udg, fakt, rest: salg - fakt, dgB, dgF, timer };
   };
   const dgCell = v => v == null ? '<td class="num">–</td>' : `<td class="num dg ${v >= 30 ? 'good' : v >= 15 ? 'warn' : 'bad'}">${pct(v)}</td>`;
   const STATUS_CLASS = { 'Opstart': 'opstart', 'Under udførsel': 'udf', 'Klar til fakturering': 'klar', 'Faktureret': 'fakt', 'Åben': 'aaben', 'Lukket til fakturering': 'klar', 'Afsluttet': 'fakt' };
   const st = s => `<span class="st ${STATUS_CLASS[s] || ''}">${h(s)}</span>`;
+
+
+  // ---------- Jobstyring-inspirerede helpers (PLAN-v3) ----------
+  const siteLabel = (s, short) => {
+    const o = typeof s === 'string' ? site(s) : (s || {});
+    if (short) return o.kode || o.navn || o.id || '';
+    const adr = o.adresse || o.navn || o.id || '';
+    return o.kode ? `${adr} (${o.kode})` : adr;
+  };
+  const INTERN_KATEGORIER = ['Ferie', 'Sygdom', 'Kursus', 'Afspadsering', 'Intern tid'];
+  const isIntern = t => t && (t.sag === 'Intern' || !!t.kategori);
+  const pris = s => {
+    const o = typeof s === 'string' ? site(s) : (s || {});
+    const time = +o.timepris || 1025;
+    return { time, ot1: Math.round(time * 1.5), ot2: Math.round(time * 2), koersel: +o.koersel || time };
+  };
+  const workdays = (year, month) => { // month 1-12
+    let c = 0; const dt = new Date(year, month - 1, 1);
+    while (dt.getMonth() === month - 1) { const wd = dt.getDay(); if (wd !== 0 && wd !== 6) c++; dt.setDate(dt.getDate() + 1); }
+    return c;
+  };
+  const expectedHours = (year, month) => Math.round(workdays(year, month) * 7.4 * 10) / 10;
+  const subtasks = prdk => (S.serviceopgaver || []).filter(o => o.parent === prdk);
+  const nextSubtaskId = prdk => {
+    const n = subtasks(prdk).map(o => +(o.id.split('-')[1] || 0)).reduce((a, b) => Math.max(a, b), 0) + 1;
+    return `${prdk}-${n}`;
+  };
+  const csvDownload = (filename, rows) => {
+    const esc = v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const csv = '\ufeff' + rows.map(r => r.map(esc).join(';')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  };
+  const printSection = (el, title) => {
+    document.querySelectorAll('.print-only').forEach(x => x.remove());
+    const wrap = document.createElement('div'); wrap.className = 'print-only';
+    wrap.innerHTML = `<h1>${h(title || document.title)}</h1>` + el.outerHTML;
+    document.body.appendChild(wrap); window.print(); setTimeout(() => wrap.remove(), 1000);
+  };
 
   // ---------- UI helpers ----------
   const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2800); };
@@ -1442,6 +1526,9 @@ window.DEMO = {
       const sec = document.createElement('section');
       sec.className = 'page'; sec.id = 'page-' + p.id; sec.innerHTML = p.html || '';
       main.appendChild(sec);
+      // modaler skal kunne åbnes fra andre sider (fx projektkortets "Fakturakladde"-knap), så de må
+      // ikke sidde inde i en skjult .page-sektion (display:none på forælder slår position:fixed ihjel).
+      $$('.modal-bg', sec).forEach(m => document.body.appendChild(m));
       if (p.init) p.init();
       p._mounted = true;
     });
@@ -1544,6 +1631,7 @@ window.DEMO = {
   window.App = {
     D, S, save, $, $$, kr, n, pct, h, today, now, icon, st, dgCell, site, bc, emp, proj, calc, role,
     toast, openModal, closeModal, confirmDialog, go, openProject, registerPage, getPage,
+    siteLabel, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, printSection,
     get currentProj() { return currentProj; },
     icons: ['feed', 'screen', 'calendar-check', 'mobile', 'home', 'check', 'close', 'export', 'search', 'service', 'user', 'time', 'mail', 'notification', 'download', 'info', 'shield-check', 'location'],
   };
@@ -1602,7 +1690,7 @@ App.registerPage({
     this.openAssign = id => {
       assigning = S.indbakke.find(i => i.id === id);
       const s = site(assigning.siteId);
-      $('#assignInfo').innerHTML = `<b>${App.h(s.kunde)}</b> – ${App.h(assigning.tekst)}<br><span class="muted">${App.h(assigning.opportunity)} · ${App.h(s.id)} · sted nr. ${App.h(s.stedNr) || 'mangler'}</span>`;
+      $('#assignInfo').innerHTML = `<b>${App.h(s.kunde)}</b> – ${App.h(assigning.tekst)}<br><span class="muted">${App.h(assigning.opportunity)} · ${App.h(App.siteLabel(s))} · sted nr. ${App.h(s.stedNr) || 'mangler'}</span>`;
       $('#aPrdk').value = 'PRDK00' + S.nextPrdk;
       $('#aAfd').value = (s.kunde || '').startsWith('Novo') ? 'Novo' : 'Generel';
       const pm = $('#aPm'); pm.innerHTML = '';
@@ -1625,14 +1713,14 @@ App.registerPage({
     });
   },
   render() {
-    const { $, $$, S, site, kr, h, icon } = App;
+    const { $, $$, S, site, kr, h, icon, siteLabel } = App;
     const tb = $('#inboxRows');
     if (!S.indbakke.length) { tb.innerHTML = '<tr><td colspan="10" class="empty">Ingen nye sager. Alt er tildelt.</td></tr>'; return; }
     tb.innerHTML = S.indbakke.map(i => {
       const s = site(i.siteId);
       return `<tr>
         <td>${i.dato}</td><td><b>${h(i.opportunity)}</b></td>
-        <td><b>${h(s.kunde)}</b><br><span class="muted">${h(s.navn)} · ${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</span></td>
+        <td><b>${h(s.kunde)}</b><br><span class="muted">${h(siteLabel(s))}</span></td>
         <td>${h(i.produkt)}</td><td style="max-width:28ch">${h(i.tekst)}</td>
         <td class="num">${kr(i.oekonomi)}${i.model === 'Solution' ? `<br><span class="caption muted">${i.loebetid} mdr. × ${kr(i.mdlRate)}</span>` : ''}</td>
         <td>${h(i.model)}</td><td>${h(i.salg)}</td>
@@ -1717,6 +1805,7 @@ App.registerPage({
           <div class="form-grid" id="ncNewSite" style="margin-bottom:18px">
             <label>Kunde<input type="text" id="ncKunde"></label>
             <label>Site-navn<input type="text" id="ncSiteNavn"></label>
+            <label>Site-kode<input type="text" id="ncSiteKode" placeholder="fx GSBC (valgfrit)"></label>
             <label>Adresse<input type="text" id="ncAdresse"></label>
             <label>Postnr.<input type="text" id="ncPostnr"></label>
             <label>By<input type="text" id="ncBy"></label>
@@ -1738,7 +1827,7 @@ App.registerPage({
     </div>
   `,
   init() {
-    const { $, $$, D, S, site, bc, save, toast, openModal, closeModal, openProject, h } = App;
+    const { $, $$, D, S, site, bc, save, toast, openModal, closeModal, openProject, h, siteLabel } = App;
     const fPm = $('#fPm');
     D.medarbejdere.filter(m => m.rolle === 'PM').forEach(m => fPm.add(new Option(m.navn, m.id)));
     ['#fPm', '#fStatus', '#fMaaned', '#fSearch'].forEach(s => $(s).addEventListener('input', () => this.render()));
@@ -1750,7 +1839,7 @@ App.registerPage({
 
     const siteSel = $('#ncSiteSel');
     const refreshSiteOptions = () => {
-      siteSel.innerHTML = '<option value="">+ Nyt site</option>' + S.sites.map(s => `<option value="${s.id}">${h(s.kunde)} – ${h(s.navn)} (${s.id})</option>`).join('');
+      siteSel.innerHTML = '<option value="">+ Nyt site</option>' + S.sites.map(s => `<option value="${s.id}">${h(s.kunde)} – ${h(siteLabel(s))}</option>`).join('');
     };
     const updatePreview = () => {
       const m = bc($('#ncStedNr').value);
@@ -1768,7 +1857,7 @@ App.registerPage({
 
     $('#btnNewCase').addEventListener('click', () => {
       refreshSiteOptions(); siteSel.value = ''; toggleNewSite();
-      $('#ncKunde').value = ''; $('#ncSiteNavn').value = ''; $('#ncAdresse').value = ''; $('#ncPostnr').value = ''; $('#ncBy').value = '';
+      $('#ncKunde').value = ''; $('#ncSiteNavn').value = ''; $('#ncSiteKode').value = ''; $('#ncAdresse').value = ''; $('#ncPostnr').value = ''; $('#ncBy').value = '';
       $('#ncOpportunity').value = ''; $('#ncBeskrivelse').value = ''; $('#ncSalgspris').value = '';
       openModal('modalNewCase');
     });
@@ -1780,7 +1869,7 @@ App.registerPage({
         if (!kunde || !navn) { toast('Udfyld kunde og site-navn'); return; }
         let id; do { id = 'DK-S-' + String(Math.floor(100000 + Math.random() * 900000)); } while (S.sites.some(x => x.id === id));
         s = {
-          id, stedNr: $('#ncStedNr').value.trim(), kunde, navn,
+          id, stedNr: $('#ncStedNr').value.trim(), kunde, navn, kode: $('#ncSiteKode').value.trim(),
           adresse: $('#ncAdresse').value.trim(), postnr: $('#ncPostnr').value.trim(), by: $('#ncBy').value.trim(),
           installation: $('#ncType').value, anlaeg: '', serviceaftale: '', ul: '', kontakt: '',
         };
@@ -1802,7 +1891,7 @@ App.registerPage({
     });
   },
   render() {
-    const { $, $$, S, site, emp, calc, kr, h, st, dgCell, pct, openProject } = App;
+    const { $, $$, S, site, emp, calc, kr, h, st, dgCell, pct, openProject, siteLabel } = App;
     $$('#fAfd .ftab').forEach(x => x.classList.toggle('on', x.dataset.v === (S.fAfd || '')));
     const q = $('#fSearch').value.trim().toLowerCase();
     const rows = S.projekter.filter(p => {
@@ -1811,7 +1900,8 @@ App.registerPage({
       if ($('#fStatus').value && p.status !== $('#fStatus').value) return false;
       if ($('#fMaaned').value && !(p.maaned || '').startsWith($('#fMaaned').value)) return false;
       if (q) {
-        const hay = [p.id, p.navn, site(p.siteId).kunde, ...p.udgifter.flatMap(u => [u.faktura, u.leverandoer, u.ydelse, u.beloeb]), ...p.fakturering.map(f => f.tekst)].join(' ').toLowerCase();
+        const s = site(p.siteId);
+        const hay = [p.id, p.navn, s.kunde, s.kode, s.navn, ...p.udgifter.flatMap(u => [u.faktura, u.leverandoer, u.ydelse, u.beloeb]), ...p.fakturering.map(f => f.tekst)].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -1819,9 +1909,10 @@ App.registerPage({
     const tot = { salg: 0, kost: 0, udg: 0, fakt: 0, rest: 0 };
     $('#projRows').innerHTML = rows.map(p => {
       const c = calc(p); tot.salg += c.salg; tot.kost += p.salgKost || 0; tot.udg += c.udg; tot.fakt += c.fakt; tot.rest += c.rest;
+      const s = site(p.siteId);
       return `<tr class="click" data-open="${p.id}" tabindex="0">
         <td><b>${p.id}</b><br><span class="muted">${h(p.navn)}</span></td>
-        <td>${h(site(p.siteId).kunde)}</td><td>${h(p.type)}</td><td>${h(p.afdeling)}</td><td>${h(emp(p.pm).navn)}</td><td>${st(p.status)}</td>
+        <td>${h(s.kunde)}<br><span class="muted">${h(siteLabel(s))}</span></td><td>${h(p.type)}</td><td>${h(p.afdeling)}</td><td>${h(emp(p.pm).navn)}</td><td>${st(p.status)}</td>
         <td class="num">${kr(c.salg)}</td><td class="num">${kr(p.salgKost)}</td><td class="num">${kr(c.udg)}</td>${dgCell(c.dgB)}${dgCell(c.dgF)}
         <td class="num">${kr(c.fakt)}</td><td class="num">${kr(c.rest)}</td></tr>`;
     }).join('') || '<tr><td colspan="13" class="empty">Ingen projekter matcher filteret. Ryd filtrene, eller opret en ny sag.</td></tr>';
@@ -1843,7 +1934,7 @@ App.registerPage({
 </script>
 <script>
 // Projektkort. Erstatter ét PRDK-faneblad og Fakturering-arket. Åbnes via App.openProject(id).
-let udgEditIdx = null, fakEditIdx = null;
+let udgEditIdx = null, fakEditIdx = null, delopgEditId = null;
 
 App.registerPage({
   id: 'projekt', label: 'Projektkort', group: 'Projekter', icon: 'calendar-check', order: 25, hidden: true,
@@ -1867,6 +1958,7 @@ App.registerPage({
         <button class="tab active" data-tab="stam">Stamdata</button>
         <button class="tab" data-tab="udg">Udgifter</button>
         <button class="tab" data-tab="fak">Fakturering</button>
+        <button class="tab" data-tab="delopg">Delopgaver</button>
         <button class="tab" data-tab="tid">Tid og log</button>
       </div>
 
@@ -1928,12 +2020,26 @@ App.registerPage({
         </div>
       </div>
 
+      <div class="tabpane" id="tab-delopg">
+        <div class="card-body">
+          <div style="display:flex; justify-content:flex-end; margin-bottom:12px">
+            <button class="btn primary" id="btnDelopgNy">Ny delopgave</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nummer</th><th>Beskrivelse</th><th>Type</th><th>Tekniker</th><th>Status</th><th class="num">Timer</th><th class="num">Kladde</th><th></th></tr></thead>
+              <tbody id="delopgRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="tabpane" id="tab-tid">
         <div class="card-body">
           <h3 style="margin-bottom:12px">Teknikertimer fra tidsregistrering</h3>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Dato</th><th>Tekniker</th><th class="num">Timer</th><th class="num">OT1</th><th class="num">OT2</th><th class="num">Kørsel</th><th>Udført</th><th>Materialer</th></tr></thead>
+              <thead><tr><th>Dato</th><th>Sag</th><th>Tekniker</th><th class="num">Timer</th><th class="num">OT1</th><th class="num">OT2</th><th class="num">Kørsel</th><th>Udført</th><th>Materialer</th></tr></thead>
               <tbody id="tidRows"></tbody>
               <tfoot><tr id="tidSum"></tr></tfoot>
             </table>
@@ -1965,6 +2071,37 @@ App.registerPage({
       </div>
     </div>
 
+    <div class="modal-bg" id="modalDelopgNy">
+      <div class="modal" role="dialog" aria-labelledby="delopgNyTitle">
+        <header><h2 id="delopgNyTitle">Ny delopgave</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <div class="form-grid">
+            <label>Type<select id="delopgType"><option>Service</option><option>Eftersyn</option><option>Fejl</option></select></label>
+            <label>Tekniker<select id="delopgTekniker"></select></label>
+            <label>PO<input type="text" id="delopgPo" placeholder="Indkøbsordre"></label>
+            <label>Pris (valgfri)<input type="number" id="delopgPris" min="0" step="1" placeholder="0"></label>
+            <label style="grid-column:1/-1">Beskrivelse<textarea id="delopgBeskrivelse" rows="3" placeholder="Hvad drejer delopgaven sig om?"></textarea></label>
+          </div>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="delopgNyOk">Opret delopgave</button></footer>
+      </div>
+    </div>
+
+    <div class="modal-bg" id="modalDelopgRediger">
+      <div class="modal" role="dialog" aria-labelledby="delopgRedTitle">
+        <header><h2 id="delopgRedTitle">Rediger delopgave</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <div class="form-grid">
+            <label>Type<select id="delopgRedType"><option>Service</option><option>Eftersyn</option><option>Fejl</option></select></label>
+            <label>Tekniker<select id="delopgRedTekniker"></select></label>
+            <label>PO<input type="text" id="delopgRedPo" placeholder="Indkøbsordre"></label>
+            <label style="grid-column:1/-1">Beskrivelse<textarea id="delopgRedBeskrivelse" rows="3"></textarea></label>
+          </div>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="delopgRedOk">Gem ændring</button></footer>
+      </div>
+    </div>
+
     <div class="modal-bg" id="modalAfslut">
       <div class="modal" role="dialog" aria-labelledby="afslutTitle">
         <header><h2 id="afslutTitle">Afslut projekt og overdrag til service</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
@@ -1988,13 +2125,69 @@ App.registerPage({
     </div>
   `,
   init() {
-    const { $, $$, S, proj, save, toast, today, now, site, bc, emp, kr, h, openModal, closeModal } = App;
+    const { $, $$, D, S, proj, save, toast, today, now, site, bc, emp, kr, h, openModal, closeModal, nextSubtaskId } = App;
     const cur = () => proj(App.currentProj);
+    const teknikere = () => D.medarbejdere.filter(m => m.rolle === 'Tekniker');
     $$('#page-projekt .tab').forEach(t => t.addEventListener('click', () => {
       $$('#page-projekt .tab').forEach(x => x.classList.toggle('active', x === t));
       $$('#page-projekt .tabpane').forEach(x => x.classList.toggle('active', x.id === 'tab-' + t.dataset.tab));
     }));
     $('#pStatus').addEventListener('change', () => { const p = cur(); p.status = $('#pStatus').value; save(); this.render(); });
+
+    // ---- Delopgaver ----
+    $('#btnDelopgNy').addEventListener('click', () => {
+      const p = cur();
+      const tekSel = $('#delopgTekniker'); tekSel.innerHTML = '';
+      teknikere().forEach(t => tekSel.add(new Option(t.navn, t.id)));
+      $('#delopgType').value = 'Service';
+      const ref = p.ref || '';
+      $('#delopgPo').value = /^PO\s/i.test(ref) ? ref : '';
+      $('#delopgPris').value = '';
+      $('#delopgBeskrivelse').value = '';
+      openModal('modalDelopgNy');
+    });
+    $('#delopgNyOk').addEventListener('click', () => {
+      const p = cur();
+      const beskrivelse = $('#delopgBeskrivelse').value.trim();
+      if (!beskrivelse) return toast('Skriv en beskrivelse, før du opretter delopgaven');
+      const id = nextSubtaskId(p.id);
+      S.serviceopgaver = S.serviceopgaver || [];
+      S.serviceopgaver.push({
+        id, parent: p.id, siteId: p.siteId, beskrivelse, tekniker: $('#delopgTekniker').value, status: 'Åben',
+        po: $('#delopgPo').value.trim(), oprettet: today(), lukket: '', type: $('#delopgType').value, pris: +$('#delopgPris').value || 0,
+      });
+      save(); closeModal('modalDelopgNy'); toast(`Delopgave ${id} oprettet`); this.render();
+    });
+    $('#delopgRows').addEventListener('click', e => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const o = (S.serviceopgaver || []).find(x => x.id === btn.dataset.id);
+      if (!o) return;
+      if (btn.dataset.act === 'luk') {
+        o.status = 'Lukket til fakturering'; o.lukket = today(); save(); toast(`${o.id} lukket til fakturering`); this.render();
+      } else if (btn.dataset.act === 'genaabn') {
+        o.status = 'Åben'; o.lukket = ''; save(); toast(`${o.id} genåbnet`); this.render();
+      } else if (btn.dataset.act === 'kladde') {
+        window.ServiceKladde.open(o.id);
+      } else if (btn.dataset.act === 'rediger') {
+        delopgEditId = o.id;
+        const tekSel = $('#delopgRedTekniker'); tekSel.innerHTML = '';
+        teknikere().forEach(t => tekSel.add(new Option(t.navn, t.id)));
+        $('#delopgRedType').value = o.type || 'Service';
+        $('#delopgRedTekniker').value = o.tekniker;
+        $('#delopgRedPo').value = o.po || '';
+        $('#delopgRedBeskrivelse').value = o.beskrivelse || '';
+        openModal('modalDelopgRediger');
+      }
+    });
+    $('#delopgRedOk').addEventListener('click', () => {
+      const o = (S.serviceopgaver || []).find(x => x.id === delopgEditId);
+      if (!o) return closeModal('modalDelopgRediger');
+      const beskrivelse = $('#delopgRedBeskrivelse').value.trim();
+      if (!beskrivelse) return toast('Skriv en beskrivelse');
+      o.beskrivelse = beskrivelse; o.tekniker = $('#delopgRedTekniker').value; o.type = $('#delopgRedType').value; o.po = $('#delopgRedPo').value.trim();
+      save(); closeModal('modalDelopgRediger'); toast(`${o.id} opdateret`); this.render();
+    });
     $('#udgForm').addEventListener('submit', e => {
       e.preventDefault(); const fd = new FormData(e.target); const p = cur();
       const rec = { faktura: fd.get('faktura'), leverandoer: fd.get('leverandoer'), ydelse: fd.get('ydelse'), beloeb: +fd.get('beloeb'), dato: today() };
@@ -2130,7 +2323,7 @@ App.registerPage({
         <div class="pdf-head"><b>Faktureringsanmodning</b><span class="muted">${p.id} · ${today()}</span><svg viewBox="0 0 304 164" aria-label="Securitas" style="width:84px;color:#031F30"><use href="#logo-white"/></svg></div>
         <dl>
           <dt>Kunde</dt><dd>${h(s.kunde)}</dd><dt>Account nr.</dt><dd>${m ? h(m.account) : '–'}</dd>
-          <dt>Adresse</dt><dd>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</dd><dt>Site nr.</dt><dd>${h(s.id)}</dd>
+          <dt>Adresse</dt><dd>${h(App.siteLabel(s))}</dd><dt>Site nr.</dt><dd>${h(s.id)}</dd>
           <dt>Projekt nr.</dt><dd>${p.id}</dd><dt>Tilbuds nr.</dt><dd>${h(p.opportunity)}</dd>
           <dt>Costcenter</dt><dd>${m ? h(m.costcenter) : '–'}</dd><dt>Profitcenter</dt><dd>${m ? h(m.profitcenter) : '–'}</dd>
           <dt>TOS</dt><dd>${m ? h(m.tos) : '–'}</dd><dt>Rekvirent</dt><dd>${h(p.rekvirent) || '–'}</dd>
@@ -2151,17 +2344,19 @@ App.registerPage({
     });
   },
   render() {
-    const { $, $$, S, proj, site, bc, emp, calc, kr, n, pct, h, st, save, toast, go } = App;
+    const { $, $$, S, proj, site, bc, emp, calc, kr, n, pct, h, st, save, toast, go, siteLabel, subtasks } = App;
     const p = proj(App.currentProj); if (!p) return go('projekter');
     const s = site(p.siteId), c = calc(p);
+    const delopgaver = subtasks(p.id);
     $('#pId').textContent = `${p.id} · ${p.opportunity} · ${p.afdeling}`;
     $('#pNavn').textContent = p.navn;
-    $('#pSub').textContent = `${s.kunde} · ${s.adresse}, ${s.postnr} ${s.by} · PM ${emp(p.pm).navn}`;
+    $('#pSub').textContent = `${s.kunde} · ${siteLabel(s)} · PM ${emp(p.pm).navn}`;
     $('#pStatus').value = p.status;
     $('#btnAfslut').disabled = p.status !== 'Faktureret';
     $('#pStats').innerHTML = [
       ['Salg total', kr(c.salg)], ['Udgifter', kr(c.udg)], ['DG beregnet', pct(c.dgB)], ['DG faktisk', pct(c.dgF)],
       ['Faktureret', kr(c.fakt)], ['Rest', kr(c.rest)], ['Teknikertimer', n(c.timer) + ' t'],
+      ['Delopgaver', `${delopgaver.filter(o => o.status === 'Åben').length} åbne / ${delopgaver.length} i alt`],
     ].map(([l, v]) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`).join('');
 
     // Stamdata
@@ -2177,6 +2372,7 @@ App.registerPage({
       f('Site (DK-S)', s.id, { auto: true }),
       f('Kunde', s.kunde, { auto: true }),
       f('Adresse', `${s.adresse}, ${s.postnr} ${s.by}`, { auto: true }),
+      f('Site-kode', s.kode, { name: 'siteKode' }),
       f('Rekvirent', p.rekvirent, { name: 'rekvirent' }),
       f('Ref. / formålsnr.', p.ref, { name: 'ref' }),
       f('WO', p.wo, { name: 'wo' }),
@@ -2188,6 +2384,7 @@ App.registerPage({
       f('Salg kostpris', p.salgKost, { name: 'salgKost', type: 'number' }),
     ].join('');
     $$('#stamForm input[name]').forEach(i => i.addEventListener('change', () => {
+      if (i.name === 'siteKode') { s.kode = i.value.trim(); save(); this.render(); return; }
       p[i.name] = i.type === 'number' ? +i.value : i.value; save(); this.render();
       if (i.name === 'stedNr') toast(bc(i.value) ? 'Stamdata hentet fra Business Central-mapping' : 'Sted nr. findes ikke i mappingen');
     }));
@@ -2226,11 +2423,33 @@ App.registerPage({
       App.confirmDialog('Slet faktureringslinjen?').then(ok => { if (!ok) return; p.fakturering.splice(i, 1); save(); this.render(); toast('Faktureringslinje slettet'); });
     }));
 
-    // Tid og log
-    const rows = S.tid.filter(t => t.sag === p.id).sort((a, b) => b.dato.localeCompare(a.dato));
+    // Delopgaver
+    const timerForDelopg = id => S.tid.filter(t => t.sag === id).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
+    $('#delopgRows').innerHTML = delopgaver.map(o => {
+      const canLuk = o.status === 'Åben';
+      const canGenaabn = o.status === 'Lukket til fakturering';
+      return `<tr>
+        <td><b>${h(o.id)}</b></td>
+        <td>${h(o.beskrivelse)}</td>
+        <td>${h(o.type || 'Service')}</td>
+        <td>${h(emp(o.tekniker).navn)}</td>
+        <td>${st(o.status)}</td>
+        <td class="num">${n(timerForDelopg(o.id))}</td>
+        <td class="num">${o.kladde ? kr(o.kladde.total) : '–'}</td>
+        <td>
+          <button class="tlink" data-act="kladde" data-id="${h(o.id)}">Fakturakladde</button> ·
+          ${canLuk ? `<button class="tlink" data-act="luk" data-id="${h(o.id)}">Luk til fakturering</button> · ` : ''}
+          ${canGenaabn ? `<button class="tlink" data-act="genaabn" data-id="${h(o.id)}">Genåbn</button> · ` : ''}
+          <button class="tlink" data-act="rediger" data-id="${h(o.id)}">Rediger</button>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="8" class="empty">Ingen delopgaver på projektet endnu. Opret den første med "Ny delopgave".</td></tr>';
+
+    // Tid og log (inkl. timer registreret på delopgaver)
+    const rows = S.tid.filter(t => t.sag === p.id || (t.sag || '').startsWith(p.id + '-')).sort((a, b) => b.dato.localeCompare(a.dato));
     const sum = k => rows.reduce((a, t) => a + (+t[k] || 0), 0);
-    $('#tidRows').innerHTML = rows.map(t => `<tr><td>${t.dato}</td><td>${h(emp(t.tekniker).navn)}</td><td class="num">${n(t.timer)}</td><td class="num">${n(t.ot1)}</td><td class="num">${n(t.ot2)}</td><td class="num">${n(t.koersel)}</td><td>${h(t.udfoert)}</td><td class="muted">${(t.materialer || []).map(x => `${x.antal} × ${h(x.model)}`).join(', ')}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">Ingen teknikertimer registreret på sagen.</td></tr>';
-    $('#tidSum').innerHTML = `<td colspan="2">Total</td><td class="num">${n(sum('timer'))}</td><td class="num">${n(sum('ot1'))}</td><td class="num">${n(sum('ot2'))}</td><td class="num">${n(sum('koersel'))}</td><td colspan="2"></td>`;
+    $('#tidRows').innerHTML = rows.map(t => `<tr><td>${t.dato}</td><td>${h(t.sag)}</td><td>${h(emp(t.tekniker).navn)}</td><td class="num">${n(t.timer)}</td><td class="num">${n(t.ot1)}</td><td class="num">${n(t.ot2)}</td><td class="num">${n(t.koersel)}</td><td>${h(t.udfoert)}</td><td class="muted">${(t.materialer || []).map(x => `${x.antal} × ${h(x.model)}`).join(', ')}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">Ingen teknikertimer registreret på sagen.</td></tr>';
+    $('#tidSum').innerHTML = `<td colspan="3">Total</td><td class="num">${n(sum('timer'))}</td><td class="num">${n(sum('ot1'))}</td><td class="num">${n(sum('ot2'))}</td><td class="num">${n(sum('koersel'))}</td><td colspan="2"></td>`;
     $('#logRows').innerHTML = p.log.map((l, i) => `<li><time>${h(l.dato)}</time><span>${h(l.tekst)}</span><span class="who">${h(emp(l.af).navn)} · PM ${n(l.pmTid)} t / SE ${n(l.seTid)} t / UL ${n(l.ulTid)} t${l.af === S.user ? ` · <button class="tlink" data-logdel="${i}">Slet</button>` : ''}</span></li>`).join('');
     $$('[data-logdel]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.logdel;
@@ -2248,7 +2467,7 @@ App.registerPage({
     <div class="page-head">
       <div>
         <h1>Tidsregistrering – teknikerens telefon</h1>
-        <p>Teknikeren vælger en af sine åbne sager. Kunde og adresse følger med fra sagen, så der kun tastes timer, udført arbejde og materialer.</p>
+        <p>Teknikeren vælger en af sine åbne sager – eller registrerer intern tid (ferie, sygdom, kursus m.m.). Kunde og adresse følger med fra sagen, så der kun tastes timer, udført arbejde og materialer.</p>
       </div>
       <div class="replaces">Erstatter <b>Tids_registrering</b> og de seks teknikerark</div>
     </div>
@@ -2258,17 +2477,24 @@ App.registerPage({
           <div class="app-bar"><div><b>Mine opgaver</b><small id="techName"></small></div><svg aria-label="Securitas"><use href="#logo-white"/></svg></div>
           <div class="content">
             <div class="field">Tekniker<select id="techSel"></select></div>
-            <div class="field">Mine åbne sager<ul class="my-cases" id="myCases"></ul></div>
+            <div class="field">Registrér på
+              <div class="ftabs" id="regMode">
+                <button type="button" class="ftab on" data-mode="sag">Sag</button>
+                <button type="button" class="ftab" data-mode="intern">Intern tid</button>
+              </div>
+            </div>
+            <div class="field" id="caseField">Mine åbne sager<ul class="my-cases" id="myCases"></ul></div>
+            <div class="field" id="internField" hidden>Kategori<ul class="my-cases" id="internCats"></ul></div>
             <div class="site-chip" id="siteChip">Vælg en sag</div>
             <div class="field">Dato<input type="date" id="tDato"></div>
             <div class="row">
               <div class="field">Timer<input type="number" id="tTimer" step="0.5" value="7.5"></div>
               <div class="field">OT 1<input type="number" id="tOt1" step="0.5" value="0"></div>
               <div class="field">OT 2<input type="number" id="tOt2" step="0.5" value="0"></div>
-              <div class="field">Kørsel<input type="number" id="tKoersel" step="1" value="1"></div>
+              <div class="field" id="koerselField">Kørsel<input type="number" id="tKoersel" step="1" value="1"></div>
             </div>
             <div class="field">Udført<textarea id="tUdfoert" rows="3" placeholder="Hvad blev lavet?"></textarea></div>
-            <div class="field">Materialer der ikke er købt til sagen
+            <div class="field" id="matField">Materialer der ikke er købt til sagen
               <div class="mat">
                 <select id="mType"></select>
                 <select id="mModel"></select>
@@ -2286,9 +2512,12 @@ App.registerPage({
         <ul>
           <li>Sagen (PRDK eller CAS) bærer selv kunde, adresse, sted nr. og PO. Teknikeren taster det aldrig.</li>
           <li>Registreringen lander direkte på projektkortets fane <b>Tid og log</b> og i kontering af timer.</li>
+          <li>Intern tid (ferie, sygdom, kursus, afspadsering) tælles med i kontering og "denne måned", men vises aldrig i sags- eller faktureringslister.</li>
           <li>Materialer tages fra det fælles katalog (Materiale liste) og kan bruges til efterfakturering.</li>
           <li>Når en serviceopgave lukkes, går den til <b>Til fakturering</b> uden at nogen kopierer rækker.</li>
         </ul>
+        <h2>Denne måned <small id="monthLabel"></small></h2>
+        <div class="stats" id="monthStats"></div>
         <h2>Seneste registreringer</h2>
         <div class="card"><div class="table-wrap"><table>
           <thead><tr><th>Dato</th><th>Sag</th><th>Tekniker</th><th class="num">Timer</th></tr></thead>
@@ -2301,53 +2530,126 @@ App.registerPage({
     const { $, $$, D, S, save, toast, today, h } = App;
     const techSel = $('#techSel');
     D.medarbejdere.filter(m => m.rolle === 'Tekniker').forEach(m => techSel.add(new Option(m.navn, m.id)));
-    this.selCase = null; this.mats = [];
+    this.mode = 'sag'; this.selCase = null; this.selKat = null;
     $('#tDato').value = today();
     const mType = $('#mType'), mModel = $('#mModel');
     Object.keys(D.materialer).forEach(k => mType.add(new Option(k, k)));
     const fillModels = () => { mModel.innerHTML = ''; (D.materialer[mType.value] || []).forEach(m => mModel.add(new Option(m, m))); };
     mType.addEventListener('change', fillModels); fillModels();
-    techSel.addEventListener('change', () => { this.selCase = null; this.render(); });
+    techSel.addEventListener('change', () => { this.selCase = null; this.selKat = null; this.render(); });
+
+    $$('#regMode .ftab').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.mode === this.mode) return;
+      this.mode = b.dataset.mode;
+      if (this.mode === 'intern') { if (!this.selKat) this.selKat = App.INTERN_KATEGORIER[0]; $('#tTimer').value = this.selKat === 'Intern tid' ? 3 : 7.4; }
+      this.render();
+    }));
+
     const renderMats = () => {
       $('#matList').innerHTML = this.mats.map((m, i) => `<div class="item"><span>${m.antal} × ${h(m.type)} · ${h(m.model)}</span><button class="tlink" data-rm="${i}">Fjern</button></div>`).join('');
       $$('[data-rm]').forEach(b => b.addEventListener('click', () => { this.mats.splice(+b.dataset.rm, 1); renderMats(); }));
     };
+    this.mats = [];
     $('#mAdd').addEventListener('click', () => { this.mats.push({ type: mType.value, model: mModel.value, antal: +$('#mAntal').value || 1 }); renderMats(); });
+
     $('#tGem').addEventListener('click', () => {
-      if (!this.selCase) return toast('Vælg en sag først');
-      if (!$('#tUdfoert').value.trim()) return toast('Skriv hvad der blev udført, før du gemmer');
-      S.tid.push({ dato: $('#tDato').value, sag: this.selCase, tekniker: techSel.value, timer: +$('#tTimer').value, ot1: +$('#tOt1').value, ot2: +$('#tOt2').value, koersel: +$('#tKoersel').value, udfoert: $('#tUdfoert').value.trim(), materialer: this.mats });
-      this.mats = []; renderMats(); $('#tUdfoert').value = ''; save(); this.render();
-      toast(`Gemt på ${this.selCase}. Timerne vises nu på projektkortet.`);
+      const dato = $('#tDato').value, timer = +$('#tTimer').value, ot1 = +$('#tOt1').value, ot2 = +$('#tOt2').value;
+      if (this.mode === 'sag') {
+        if (!this.selCase) return toast('Vælg en sag først');
+        if (!$('#tUdfoert').value.trim()) return toast('Skriv hvad der blev udført, før du gemmer');
+        S.tid.push({ dato, sag: this.selCase, tekniker: techSel.value, timer, ot1, ot2, koersel: +$('#tKoersel').value, udfoert: $('#tUdfoert').value.trim(), materialer: this.mats });
+        this.mats = []; renderMats(); $('#tUdfoert').value = ''; save(); this.render();
+        toast(`Gemt på ${this.selCase}. Timerne vises nu på projektkortet.`);
+      } else {
+        if (!this.selKat) return toast('Vælg en kategori først');
+        const udfoert = $('#tUdfoert').value.trim() || this.selKat;
+        S.tid.push({ dato, sag: 'Intern', kategori: this.selKat, tekniker: techSel.value, timer, ot1: 0, ot2: 0, koersel: 0, udfoert, materialer: [] });
+        $('#tUdfoert').value = ''; save(); this.render();
+        toast(`Gemt som intern tid – ${this.selKat}.`);
+      }
     });
   },
   myCases(tech) {
     const { S, emp } = App;
     const t = emp(tech);
     const ps = S.projekter.filter(p => p.status !== 'Faktureret' && (p.afdeling === t.afdeling || S.tid.some(x => x.sag === p.id && x.tekniker === tech))).map(p => ({ id: p.id, navn: p.navn, siteId: p.siteId, kind: 'Projekt' }));
-    const cs = (S.serviceopgaver || []).filter(c => c.tekniker === tech && c.status === 'Åben').map(c => ({ id: c.id, navn: c.beskrivelse, siteId: c.siteId, kind: 'Service' }));
-    return [...cs, ...ps];
+    const cs = (S.serviceopgaver || []).filter(c => c.tekniker === tech && c.status === 'Åben' && !c.parent).map(c => ({ id: c.id, navn: c.beskrivelse, siteId: c.siteId, kind: 'Service' }));
+    const subs = (S.serviceopgaver || []).filter(c => c.tekniker === tech && c.status === 'Åben' && c.parent).map(c => {
+      const parentP = (S.projekter || []).find(pp => pp.id === c.parent);
+      return { id: c.id, navn: c.beskrivelse || (parentP ? parentP.navn : ''), siteId: c.siteId, kind: 'Delopgave' };
+    });
+    return [...cs, ...subs, ...ps];
   },
   render() {
-    const { $, $$, S, site, emp, h, n } = App;
+    const { $, $$, S, site, siteLabel, emp, h, n, isIntern, INTERN_KATEGORIER, expectedHours } = App;
     const techSel = $('#techSel');
     // Er den aktuelle bruger tekniker, vælges vedkommende automatisk
-    if (emp(S.user).rolle === 'Tekniker' && techSel.value !== S.user) { techSel.value = S.user; this.selCase = null; }
+    if (emp(S.user).rolle === 'Tekniker' && techSel.value !== S.user) { techSel.value = S.user; this.selCase = null; this.selKat = null; }
     const tech = techSel.value; $('#techName').textContent = emp(tech).navn;
+
+    // ---- registrér-på tabs ----
+    $$('#regMode .ftab').forEach(b => b.classList.toggle('on', b.dataset.mode === this.mode));
+    $('#caseField').hidden = this.mode !== 'sag';
+    $('#internField').hidden = this.mode !== 'intern';
+    $('#koerselField').hidden = this.mode === 'intern';
+    $('#matField').hidden = this.mode === 'intern';
+
+    // ---- sagsliste ----
     const cases = this.myCases(tech);
-    if (!this.selCase || !cases.find(c => c.id === this.selCase)) this.selCase = cases[0]?.id || null;
-    $('#myCases').innerHTML = cases.map(c => `<li class="${c.id === this.selCase ? 'sel' : ''}" data-case="${c.id}" tabindex="0"><b>${c.id} · ${c.kind}</b>${h(c.navn)}</li>`).join('') || '<li class="empty">Ingen åbne sager på denne tekniker. Vælg en anden tekniker, eller opret en serviceopgave.</li>';
-    $$('[data-case]').forEach(li => li.addEventListener('click', () => { this.selCase = li.dataset.case; this.render(); }));
-    const c = cases.find(x => x.id === this.selCase); const s = c ? site(c.siteId) : null;
-    $('#siteChip').innerHTML = s ? `<b>${h(s.kunde)}</b>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)} · sted nr. ${h(s.stedNr) || '–'}` : 'Vælg en sag';
-    $('#recentTid').innerHTML = [...S.tid].sort((a, b) => b.dato.localeCompare(a.dato)).slice(0, 8).map(t => `<tr><td>${t.dato}</td><td>${t.sag}</td><td>${h(emp(t.tekniker).navn)}</td><td class="num">${n((+t.timer) + (+t.ot1) + (+t.ot2))}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Ingen registreringer endnu.</td></tr>';
+    if (this.mode === 'sag' && (!this.selCase || !cases.find(c => c.id === this.selCase))) this.selCase = cases[0]?.id || null;
+    $('#myCases').innerHTML = cases.map(c => `<li class="${c.id === this.selCase ? 'sel' : ''}" data-case="${c.id}" tabindex="0"><b>${c.kind === 'Delopgave' ? `${c.kind} · ${c.id}` : `${c.id} · ${c.kind}`}</b>${h(c.navn)}<br><span class="muted">${h(siteLabel(c.siteId))}</span></li>`).join('') || '<li class="empty">Ingen åbne sager på denne tekniker. Vælg en anden tekniker, eller opret en serviceopgave.</li>';
+    $$('[data-case]').forEach(li => li.addEventListener('click', () => { this.mode = 'sag'; this.selCase = li.dataset.case; this.render(); }));
+
+    // ---- interne kategorier ----
+    if (!this.selKat) this.selKat = INTERN_KATEGORIER[0];
+    $('#internCats').innerHTML = INTERN_KATEGORIER.map(k => `<li class="${this.mode === 'intern' && k === this.selKat ? 'sel' : ''}" data-kat="${h(k)}" tabindex="0"><b>${h(k)}</b></li>`).join('');
+    $$('[data-kat]').forEach(li => li.addEventListener('click', () => {
+      this.selKat = li.dataset.kat;
+      $('#tTimer').value = this.selKat === 'Intern tid' ? 3 : 7.4;
+      this.render();
+    }));
+
+    // ---- site-chip ----
+    if (this.mode === 'intern') {
+      $('#siteChip').innerHTML = '<b>Securitas A/S · intern tid</b>';
+    } else {
+      const c = cases.find(x => x.id === this.selCase); const s = c ? site(c.siteId) : null;
+      $('#siteChip').innerHTML = s ? `<b>${h(siteLabel(s))}</b>${h(s.postnr)} ${h(s.by)} · sted nr. ${h(s.stedNr) || '–'}` : 'Vælg en sag';
+    }
+
+    // ---- denne måned ----
+    const now = new Date(); const y = now.getFullYear(), m = now.getMonth() + 1;
+    const prefix = `${y}-${String(m).padStart(2, '0')}`;
+    const monthTid = S.tid.filter(t => t.tekniker === tech && (t.dato || '').startsWith(prefix));
+    const sum = list => list.reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
+    const internHours = sum(monthTid.filter(isIntern));
+    const caseHours = sum(monthTid.filter(t => !isIntern(t)));
+    const total = internHours + caseHours;
+    const expected = expectedHours(y, m);
+    const diff = Math.round((total - expected) * 10) / 10;
+    $('#monthLabel').textContent = now.toLocaleDateString('da-DK', { month: 'long', year: 'numeric' });
+    $('#monthStats').innerHTML = `
+      <div class="stat"><small>Sager</small><b>${n(caseHours)}</b></div>
+      <div class="stat"><small>Intern tid</small><b>${n(internHours)}</b></div>
+      <div class="stat"><small>Registreret i alt</small><b>${n(total)}</b></div>
+      <div class="stat"><small>Forventet</small><b>${n(expected)}</b></div>
+      <div class="stat"><small>Difference</small><b>${diff > 0 ? '+' : ''}${n(diff)}</b></div>
+    `;
+
+    // ---- seneste registreringer ----
+    $('#recentTid').innerHTML = [...S.tid].sort((a, b) => b.dato.localeCompare(a.dato)).slice(0, 8).map(t => `<tr><td>${t.dato}</td><td>${isIntern(t) ? `Intern · ${h(t.kategori)}` : h(t.sag)}</td><td>${h(emp(t.tekniker).navn)}</td><td class="num">${n((+t.timer) + (+t.ot1) + (+t.ot2))}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Ingen registreringer endnu.</td></tr>';
   },
 });
 
 </script>
 <script>
 // Kunder og sites. Erstatter Kundekartotek og de skjulte Ark1 / Maping AS400-BC-ark.
-let kFilter = '';
+// To visninger: "Kunder" (kundeliste -> kundeniveau med sites) og "Alle sites" (flad tabel, uændret).
+let kView = 'kunder';       // 'kunder' | 'alle'
+let kCurrentKunde = null;   // valgt kunde på kundeniveau
+let kSearch = '';           // søgning på kundelisten
+let kSiteSearch = '';       // søgning på kundeniveau
+let kFilter = '';           // filter på "Alle sites"
 
 App.registerPage({
   id: 'kunder', label: 'Kunder og sites', group: 'Stamdata', icon: 'home', order: 60,
@@ -2360,23 +2662,76 @@ App.registerPage({
       </div>
       <div class="replaces">Erstatter <b>Kundekartotek</b> og de skjulte <b>Ark1 / Maping AS400-BC</b>-ark</div>
     </div>
-    <div class="card">
-      <div class="toolbar">
-        <div class="ftabs" id="kFilter" role="group" aria-label="Serviceaftale">
-          <button class="ftab on" data-v="">Alle</button>
-          <button class="ftab" data-v="med">Med serviceaftale</button>
-          <button class="ftab" data-v="uden">Uden serviceaftale</button>
+
+    <div class="ftabs" id="kViewTabs" role="group" aria-label="Visning" style="margin-bottom:var(--space-4)">
+      <button class="ftab on" data-v="kunder">Kunder</button>
+      <button class="ftab" data-v="alle">Alle sites</button>
+    </div>
+
+    <div id="kundeListeView">
+      <div class="card">
+        <div class="toolbar">
+          <label class="field">Søg <input type="text" id="kSearch" placeholder="Kunde" size="28"></label>
+          <span class="spacer"></span>
+          <button class="btn primary" id="btnNewKunde">Ny kunde</button>
         </div>
-        <label class="field">Søg <input type="text" id="kSearch" placeholder="Kunde, site, adresse" size="28"></label>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Kunde</th><th>Account</th><th class="num">Sites</th><th class="num">Åbne sager</th><th class="num">Serviceaftaler</th><th>UL'er</th>
+            </tr></thead>
+            <tbody id="kundeRows"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Site (DK-S)</th><th>Kunde</th><th>Site-navn</th><th>Adresse</th><th>Sted nr.</th><th>Costcenter</th><th>TOS</th><th>Account</th>
-            <th>Installation</th><th>Serviceaftale</th><th>UL</th><th class="num">Timepris</th><th>Eftersyn</th><th>Sidst opdateret</th><th class="num">Projekter</th>
-          </tr></thead>
-          <tbody id="siteRows"></tbody>
-        </table>
+    </div>
+
+    <div id="kundeDetailView" style="display:none">
+      <p><button class="tlink" id="btnBackKunder">Tilbage til kunder</button></p>
+      <div class="page-head">
+        <div>
+          <h1 id="kdKundeNavn"></h1>
+          <p id="kdKundeAccount" class="muted"></p>
+        </div>
+      </div>
+      <div class="stats" id="kdStats"></div>
+      <div class="card">
+        <div class="toolbar">
+          <label class="field">Søg site <input type="text" id="kdSearch" placeholder="Site, kode, adresse" size="28"></label>
+          <span class="spacer"></span>
+          <button class="btn primary" id="btnNewSite">Nyt site</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Kode</th><th>Site</th><th>Adresse</th><th>Sted nr.</th><th>Costcenter</th><th>TOS</th><th>CEP site</th>
+              <th>Installation</th><th>Serviceaftale</th><th>UL</th><th class="num">Åbne sager</th>
+            </tr></thead>
+            <tbody id="kdSiteRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="alleSitesView" style="display:none">
+      <div class="card">
+        <div class="toolbar">
+          <div class="ftabs" id="kFilter" role="group" aria-label="Serviceaftale">
+            <button class="ftab on" data-v="">Alle</button>
+            <button class="ftab" data-v="med">Med serviceaftale</button>
+            <button class="ftab" data-v="uden">Uden serviceaftale</button>
+          </div>
+          <label class="field">Søg <input type="text" id="asSearch" placeholder="Kunde, site, adresse" size="28"></label>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Kode</th><th>Site (DK-S)</th><th>Kunde</th><th>Site-navn</th><th>Adresse</th><th>Sted nr.</th><th>Costcenter</th><th>TOS</th><th>Account</th>
+              <th>Installation</th><th>Serviceaftale</th><th>UL</th><th class="num">Timepris</th><th>Eftersyn</th><th>Sidst opdateret</th><th class="num">Projekter</th>
+            </tr></thead>
+            <tbody id="siteRows"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -2393,17 +2748,64 @@ App.registerPage({
         <footer><button class="btn" data-close>Luk</button></footer>
       </div>
     </div>
+
+    <div class="modal-bg" id="modalNewKunde">
+      <div class="modal" role="dialog" aria-labelledby="newKundeTitle">
+        <header><h2 id="newKundeTitle">Ny kunde</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <div class="form-grid">
+            <label>Kunde navn<input type="text" id="nkNavn" required></label>
+            <label>Kunde nr.<input type="text" id="nkKundeNr" placeholder="valgfrit"></label>
+            <label>Adresse<input type="text" id="nkAdresse" required></label>
+            <label>Postnr.<input type="text" id="nkPostnr" required></label>
+            <label>By<input type="text" id="nkBy" required></label>
+            <label>Site-kode<input type="text" id="nkKode" placeholder="fx GSBC (valgfrit)"></label>
+          </div>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="nkOk">Opret kunde</button></footer>
+      </div>
+    </div>
+
+    <div class="modal-bg" id="modalNewSite">
+      <div class="modal" role="dialog" aria-labelledby="newSiteTitle">
+        <header><h2 id="newSiteTitle">Nyt site</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <div class="form-grid" style="margin-bottom:18px">
+            <label>Kunde<input type="text" id="nsKunde" readonly></label>
+            <label>Site-navn<input type="text" id="nsNavn" required></label>
+            <label>Kode<input type="text" id="nsKode" placeholder="valgfrit"></label>
+            <label>Leveringsadresse<input type="text" id="nsAdresse" required></label>
+            <label>Postnr.<input type="text" id="nsPostnr" required></label>
+            <label>By<input type="text" id="nsBy" required></label>
+          </div>
+          <div class="form-grid" style="margin-bottom:18px">
+            <label>Sted nr. (AS400)<input type="text" id="nsStedNr"></label>
+            <label class="auto">BC-opslag<input type="text" id="nsBcPreview" readonly></label>
+            <label>Installation<select id="nsInstallation"><option>AIA</option><option>ADK</option><option>TVO</option><option>KOMBI</option><option>ANDET</option></select></label>
+            <label>Serviceaftale<select id="nsServiceaftale"><option>Ingen</option><option>Serviceaftale 1</option><option>Serviceaftale 2</option><option>Serviceaftale 4</option><option>Novo rammeaftale</option></select></label>
+            <label>UL<input type="text" id="nsUl" placeholder="valgfrit"></label>
+          </div>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="nsOk">Opret site</button></footer>
+      </div>
+    </div>
   `,
   init() {
-    const { $, $$, S, site, bc, h, kr, st, openModal } = App;
-    $$('#kFilter .ftab').forEach(b => b.addEventListener('click', () => { kFilter = b.dataset.v; this.render(); }));
-    $('#kSearch').addEventListener('input', () => this.render());
+    const { $, $$, S, site, bc, h, kr, st, openModal, closeModal, save, toast, siteLabel } = App;
 
+    // ---------- visnings-tabs ----------
+    $$('#kViewTabs .ftab').forEach(b => b.addEventListener('click', () => {
+      kView = b.dataset.v;
+      if (kView === 'kunder') kCurrentKunde = null;
+      this.render();
+    }));
+
+    // ---------- åbn site-modal (delt af begge visninger) ----------
     this.openSite = id => {
       const s = site(id), m = bc(s.stedNr);
       $('#siteTitle').textContent = `${s.kunde} – ${s.navn}`;
       const rows = [
-        ['Site', s.id], ['Kunde', s.kunde], ['Site-navn', s.navn], ['Adresse', `${s.adresse}, ${s.postnr} ${s.by}`],
+        ['Kode', s.kode || '–'], ['Site', s.id], ['Kunde', s.kunde], ['Site-navn', s.navn], ['Adresse', `${s.adresse}, ${s.postnr} ${s.by}`],
         ['Sted nr.', s.stedNr || '–'], ['Costcenter', m ? `${m.costcenter} – ${m.costcenterNavn}` : '–'],
         ['TOS', m ? `${m.tos} – ${m.tosNavn}` : '–'], ['Account', m ? `${m.account} – ${m.accountNavn}` : '–'],
         ['Installation', s.installation || '–'], ['Anlægstype', s.anlaeg || '–'], ['Serviceaftale', s.serviceaftale || '–'],
@@ -2420,17 +2822,158 @@ App.registerPage({
         || '<li style="display:block; padding:12px 0; color:var(--text-secondary)">Ingen serviceopgaver på sitet.</li>';
       openModal('modalSite');
     };
+
+    // ---------- kundeliste ----------
+    $('#kSearch').addEventListener('input', () => this.render());
+    $('#btnBackKunder').addEventListener('click', () => { kCurrentKunde = null; this.render(); });
+    $('#kdSearch').addEventListener('input', () => this.renderKundeDetail());
+
+    this.openKunde = kunde => { kCurrentKunde = kunde; kSiteSearch = ''; $('#kdSearch').value = ''; this.render(); };
+
+    // ---------- ny kunde ----------
+    $('#btnNewKunde').addEventListener('click', () => {
+      $('#nkNavn').value = ''; $('#nkKundeNr').value = ''; $('#nkAdresse').value = ''; $('#nkPostnr').value = ''; $('#nkBy').value = ''; $('#nkKode').value = '';
+      openModal('modalNewKunde');
+    });
+    $('#nkOk').addEventListener('click', () => {
+      const navn = $('#nkNavn').value.trim(), adresse = $('#nkAdresse').value.trim(), postnr = $('#nkPostnr').value.trim(), by = $('#nkBy').value.trim();
+      if (!navn || !adresse || !postnr || !by) { toast('Udfyld kunde, adresse, postnr. og by'); return; }
+      if (S.sites.some(s => s.kunde.toLowerCase() === navn.toLowerCase())) { toast('Kunden findes allerede'); return; }
+      let id; do { id = 'DK-S-' + String(Math.floor(100000 + Math.random() * 900000)); } while (S.sites.some(x => x.id === id));
+      const s = {
+        id, stedNr: '', kunde: navn, navn: `${navn} – hovedadresse`, kode: $('#nkKode').value.trim(),
+        adresse, postnr, by, installation: '', anlaeg: '', serviceaftale: '', ul: '', kontakt: '', kundeNr: $('#nkKundeNr').value.trim(),
+      };
+      S.sites.push(s); save(); closeModal('modalNewKunde');
+      toast(`${navn} er oprettet`);
+      this.openKunde(navn);
+    });
+
+    // ---------- nyt site ----------
+    const updateNsPreview = () => {
+      const m = bc($('#nsStedNr').value);
+      $('#nsBcPreview').value = m ? `${m.costcenter} · TOS ${m.tos} · ${m.account}` : ($('#nsStedNr').value ? 'Ikke fundet i mappingen' : '');
+    };
+    $('#nsStedNr').addEventListener('input', updateNsPreview);
+    $('#btnNewSite').addEventListener('click', () => {
+      if (!kCurrentKunde) return;
+      $('#nsKunde').value = kCurrentKunde;
+      $('#nsNavn').value = ''; $('#nsKode').value = ''; $('#nsAdresse').value = ''; $('#nsPostnr').value = ''; $('#nsBy').value = '';
+      $('#nsStedNr').value = ''; $('#nsInstallation').value = 'AIA'; $('#nsServiceaftale').value = 'Ingen'; $('#nsUl').value = '';
+      updateNsPreview();
+      openModal('modalNewSite');
+    });
+    $('#nsOk').addEventListener('click', () => {
+      const navn = $('#nsNavn').value.trim(), adresse = $('#nsAdresse').value.trim(), postnr = $('#nsPostnr').value.trim(), by = $('#nsBy').value.trim();
+      if (!navn || !adresse || !postnr || !by) { toast('Udfyld site-navn, leveringsadresse, postnr. og by'); return; }
+      let id; do { id = 'DK-S-' + String(Math.floor(100000 + Math.random() * 900000)); } while (S.sites.some(x => x.id === id));
+      const serviceaftale = $('#nsServiceaftale').value === 'Ingen' ? '' : $('#nsServiceaftale').value;
+      const s = {
+        id, stedNr: $('#nsStedNr').value.trim(), kunde: kCurrentKunde, navn, kode: $('#nsKode').value.trim(),
+        adresse, postnr, by, installation: $('#nsInstallation').value, anlaeg: '', serviceaftale, ul: $('#nsUl').value.trim(), kontakt: '',
+      };
+      S.sites.push(s); save(); closeModal('modalNewSite');
+      toast(`${siteLabel(s)} er oprettet`);
+      this.render();
+    });
+
+    // ---------- alle sites (uændret funktion) ----------
+    $$('#kFilter .ftab').forEach(b => b.addEventListener('click', () => { kFilter = b.dataset.v; this.render(); }));
+    $('#asSearch').addEventListener('input', () => this.render());
   },
+
+  // ---------- åbne sager pr. site/kunde ----------
+  openSagerForSite(id) {
+    const { S } = App;
+    const projekter = S.projekter.filter(p => p.siteId === id && p.status !== 'Faktureret' && p.status !== 'Afsluttet').length;
+    const opgaver = (S.serviceopgaver || []).filter(o => o.siteId === id && o.status === 'Åben').length;
+    return projekter + opgaver;
+  },
+
   render() {
+    const { $, $$ } = App;
+    $$('#kViewTabs .ftab').forEach(x => x.classList.toggle('on', x.dataset.v === kView));
+
+    $('#alleSitesView').style.display = kView === 'alle' ? '' : 'none';
+    $('#kundeListeView').style.display = kView === 'kunder' && !kCurrentKunde ? '' : 'none';
+    $('#kundeDetailView').style.display = kView === 'kunder' && kCurrentKunde ? '' : 'none';
+
+    if (kView === 'alle') { this.renderAlleSites(); return; }
+    if (kCurrentKunde) { this.renderKundeDetail(); } else { this.renderKundeListe(); }
+  },
+
+  renderKundeListe() {
+    const { $, $$, S, bc, h } = App;
+    kSearch = ($('#kSearch').value || '').trim().toLowerCase();
+    const grupper = new Map();
+    S.sites.forEach(s => {
+      if (!grupper.has(s.kunde)) grupper.set(s.kunde, []);
+      grupper.get(s.kunde).push(s);
+    });
+    let kunder = [...grupper.entries()].map(([kunde, sites]) => {
+      const withStedNr = sites.find(s => s.stedNr && bc(s.stedNr));
+      const m = withStedNr ? bc(withStedNr.stedNr) : null;
+      const aabne = sites.reduce((a, s) => a + this.openSagerForSite(s.id), 0);
+      const aftaler = sites.filter(s => s.serviceaftale && s.serviceaftale !== 'Ingen').length;
+      const uler = new Set(sites.map(s => s.ul).filter(Boolean));
+      return { kunde, account: m ? `${m.account} – ${m.accountNavn}` : '–', sites: sites.length, aabne, aftaler, uler: [...uler] };
+    });
+    kunder.sort((a, b) => a.kunde.localeCompare(b.kunde, 'da'));
+    if (kSearch) kunder = kunder.filter(k => k.kunde.toLowerCase().includes(kSearch));
+
+    $('#kundeRows').innerHTML = kunder.map(k => `
+      <tr class="click" data-kunde="${h(k.kunde)}" tabindex="0">
+        <td><b>${h(k.kunde)}</b></td><td>${h(k.account)}</td><td class="num">${k.sites}</td><td class="num">${k.aabne}</td>
+        <td class="num">${k.aftaler}</td><td>${k.uler.length ? h(k.uler.join(', ')) : '–'}</td>
+      </tr>`).join('') || '<tr><td colspan="6" class="empty">Ingen kunder matcher søgningen. Ryd søgefeltet, eller opret en ny kunde.</td></tr>';
+    $$('[data-kunde]', $('#kundeRows')).forEach(r => r.addEventListener('click', () => this.openKunde(r.dataset.kunde)));
+  },
+
+  renderKundeDetail() {
+    const { $, $$, S, site, bc, h, kr, siteLabel } = App;
+    const kunde = kCurrentKunde;
+    const sites = S.sites.filter(s => s.kunde === kunde);
+    const withStedNr = sites.find(s => s.stedNr && bc(s.stedNr));
+    const m = withStedNr ? bc(withStedNr.stedNr) : null;
+    $('#kdKundeNavn').textContent = kunde;
+    $('#kdKundeAccount').textContent = m ? `Account: ${m.account} – ${m.accountNavn}` : 'Account: ikke fundet i BC-mappingen';
+
+    const aabne = sites.reduce((a, s) => a + this.openSagerForSite(s.id), 0);
+    const projekterTotal = sites.reduce((a, s) => a + S.projekter.filter(p => p.siteId === s.id).length, 0);
+    $('#kdStats').innerHTML = [
+      ['Sites', sites.length], ['Åbne sager', aabne], ['Projekter i alt', projekterTotal],
+    ].map(([l, v]) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`).join('');
+
+    kSiteSearch = ($('#kdSearch').value || '').trim().toLowerCase();
+    let rows = sites;
+    if (kSiteSearch) {
+      rows = rows.filter(s => `${s.kode || ''} ${s.navn} ${s.adresse}`.toLowerCase().includes(kSiteSearch));
+    }
+    rows = [...rows].sort((a, b) => siteLabel(a).localeCompare(siteLabel(b), 'da'));
+
+    $('#kdSiteRows').innerHTML = rows.map(s => {
+      const bcRow = bc(s.stedNr);
+      const aabneSite = this.openSagerForSite(s.id);
+      return `<tr class="click" data-open="${s.id}" tabindex="0">
+        <td>${s.kode ? h(s.kode) : '–'}</td><td>${h(siteLabel(s))}</td><td>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</td>
+        <td>${h(s.stedNr) || '<span class="alert">Mangler</span>'}</td>
+        <td>${bcRow ? h(bcRow.costcenter) : '–'}</td><td>${bcRow ? h(bcRow.tos) : '–'}</td><td>${h(s.id)}</td>
+        <td>${h(s.installation) || '–'}</td><td>${h(s.serviceaftale) || '–'}</td><td>${h(s.ul) || '–'}</td>
+        <td class="num">${aabneSite}</td></tr>`;
+    }).join('') || '<tr><td colspan="11" class="empty">Ingen sites matcher søgningen på denne kunde. Ryd søgefeltet, eller opret et nyt site.</td></tr>';
+    $$('[data-open]', $('#kdSiteRows')).forEach(r => r.addEventListener('click', () => this.openSite(r.dataset.open)));
+  },
+
+  renderAlleSites() {
     const { $, $$, S, bc, h, kr } = App;
     $$('#kFilter .ftab').forEach(x => x.classList.toggle('on', x.dataset.v === kFilter));
-    const q = ($('#kSearch').value || '').trim().toLowerCase();
+    const q = ($('#asSearch').value || '').trim().toLowerCase();
     const highlight = App._highlightSite;
     const rows = S.sites.filter(s => {
       const hasSA = s.serviceaftale && s.serviceaftale !== 'Ingen';
       if (kFilter === 'med' && !hasSA) return false;
       if (kFilter === 'uden' && hasSA) return false;
-      if (q && !`${s.id} ${s.kunde} ${s.navn} ${s.adresse}`.toLowerCase().includes(q)) return false;
+      if (q && !`${s.id} ${s.kode || ''} ${s.kunde} ${s.navn} ${s.adresse}`.toLowerCase().includes(q)) return false;
       return true;
     });
     $('#siteRows').innerHTML = rows.map(s => {
@@ -2438,13 +2981,13 @@ App.registerPage({
       const eftersyn = s.eftersyn ? `${s.esMaaned ? 'Måned ' + s.esMaaned : '–'} / ${s.interval || 12} mdr.` : '–';
       const rowStyle = s.id === highlight ? ' style="background:var(--ui-purple-100)"' : '';
       return `<tr class="click" data-open="${s.id}" tabindex="0"${rowStyle}>
-        <td><b>${h(s.id)}</b></td><td>${h(s.kunde)}</td><td>${h(s.navn)}</td><td>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</td>
+        <td>${s.kode ? h(s.kode) : '–'}</td><td><b>${h(s.id)}</b></td><td>${h(s.kunde)}</td><td>${h(s.navn)}</td><td>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</td>
         <td>${h(s.stedNr) || '<span class="alert">Mangler</span>'}</td>
         <td>${m ? h(m.costcenter) : '–'}</td><td>${m ? h(m.tos) : '–'}</td><td>${m ? h(m.account) : '–'}</td>
         <td>${h(s.installation)}</td><td>${h(s.serviceaftale) || '–'}</td><td>${h(s.ul) || '–'}</td>
         <td class="num">${s.timepris ? kr(s.timepris) : '–'}</td><td>${eftersyn}</td><td class="muted">${h(s.sidsteEftersyn) || '–'}</td>
         <td class="num">${cnt}</td></tr>`;
-    }).join('') || '<tr><td colspan="15" class="empty">Ingen sites matcher filteret. Ryd filtrene, eller opret en ny sag med et nyt site fra projektoverblikket.</td></tr>';
+    }).join('') || '<tr><td colspan="16" class="empty">Ingen sites matcher filteret. Ryd filtrene, eller opret en ny sag med et nyt site fra projektoverblikket.</td></tr>';
     $$('[data-open]', $('#siteRows')).forEach(r => {
       r.addEventListener('click', () => this.openSite(r.dataset.open));
     });
@@ -2475,6 +3018,7 @@ App.registerPage({
           <button class="ftab" data-v="Åben">Åben</button>
           <button class="ftab" data-v="Lukket til fakturering">Lukket til fakturering</button>
           <button class="ftab" data-v="Faktureret">Faktureret</button>
+          <button class="ftab" data-v="__delopgaver">Delopgaver</button>
         </div>
         <label class="field">Tekniker <select id="svcTekniker"><option value="">Alle</option></select></label>
         <label class="field">Søg <input type="text" id="svcSearch" placeholder="Sag, kunde, beskrivelse" size="26"></label>
@@ -2515,6 +3059,17 @@ App.registerPage({
         <footer><button class="btn" data-close>Luk</button></footer>
       </div>
     </div>
+
+    <div class="modal-bg" id="modalSvcKladde">
+      <div class="modal" style="width:min(980px, 100%)" role="dialog" aria-labelledby="svcKladdeTitle">
+        <header><h2 id="svcKladdeTitle">Fakturakladde</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <div class="pdf" id="svcKladdeContent"></div>
+          <div style="margin-top:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap" id="svcKladdeActions"></div>
+        </div>
+        <footer><button class="btn" data-close>Luk</button></footer>
+      </div>
+    </div>
   `,
   init() {
     const { $, $$, D, S, save, toast, today, h, kr, n, role, openModal, closeModal, emp, site } = App;
@@ -2534,7 +3089,7 @@ App.registerPage({
     // "ny serviceopgave"-modal
     $('#svcNy').addEventListener('click', () => {
       const siteSel = $('#svcSite'); siteSel.innerHTML = '';
-      (S.sites || []).forEach(s => siteSel.add(new Option(`${s.kunde} – ${s.navn || s.adresse}`, s.id)));
+      (S.sites || []).forEach(s => siteSel.add(new Option(`${s.kunde} – ${App.siteLabel(s)}`, s.id)));
       const tekAssign = $('#svcTekAssign'); tekAssign.innerHTML = '';
       teknikere().forEach(t => tekAssign.add(new Option(t.navn, t.id)));
       $('#svcType').value = 'Service'; $('#svcPo').value = ''; $('#svcPris').value = ''; $('#svcBeskrivelse').value = '';
@@ -2558,6 +3113,7 @@ App.registerPage({
     $('#svcRows').addEventListener('click', e => {
       const btn = e.target.closest('[data-act]');
       if (!btn) return;
+      if (btn.dataset.act === 'aabnprojekt') { App.openProject(btn.dataset.id); return; }
       const c = (S.serviceopgaver || []).find(x => x.id === btn.dataset.id);
       if (!c) return;
       if (btn.dataset.act === 'luk') {
@@ -2566,6 +3122,51 @@ App.registerPage({
         c.status = 'Åben'; c.lukket = ''; save(); toast(`${c.id} genåbnet`); this.render();
       } else if (btn.dataset.act === 'detaljer') {
         this.openDetaljer(c.id);
+      } else if (btn.dataset.act === 'kladde') {
+        this.openKladde(c.id);
+      }
+    });
+
+    // Fakturakladde-modal: redigerbare prislinjer (delegeret, containeren består på tværs af renderKladde())
+    $('#svcKladdeContent').addEventListener('input', e => {
+      const idx = e.target.dataset.lineidx;
+      if (idx == null || !this._kladdeLines) return;
+      const l = this._kladdeLines[idx];
+      if (!l) return;
+      l[e.target.dataset.field] = +e.target.value || 0;
+      const beloeb = (+l.antal || 0) * (+l.enhedspris || 0);
+      const cell = $(`[data-beloeb="${idx}"]`);
+      if (cell) cell.textContent = (l.material && beloeb === 0) ? 'Efter regning' : kr(beloeb);
+      const totalEl = $('#svcKladdeTotal');
+      if (totalEl) totalEl.textContent = kr(this._kladdeLines.reduce((a, x) => a + (+x.antal || 0) * (+x.enhedspris || 0), 0));
+    });
+
+    $('#svcKladdeActions').addEventListener('click', e => {
+      const btn = e.target.closest('button, .tlink');
+      if (!btn) return;
+      const c = (S.serviceopgaver || []).find(x => x.id === this._kladdeId);
+      if (!c) return;
+      if (btn.id === 'svcKladdePdf') {
+        const el = $('#svcKladdeContent');
+        $$('input', el).forEach(i => i.setAttribute('value', i.value));
+        App.printSection(el, `Fakturakladde ${c.id}`);
+      } else if (btn.id === 'svcKladdeGodkend') {
+        const tid = (S.tid || []).filter(t => t.sag === c.id);
+        const linjer = this._kladdeLines.map(l => ({ tekst: l.tekst, antal: +l.antal || 0, enhedspris: +l.enhedspris || 0, beloeb: (+l.antal || 0) * (+l.enhedspris || 0) }));
+        const total = linjer.reduce((a, l) => a + l.beloeb, 0);
+        c.kladde = {
+          linjer, total,
+          dage: new Set(tid.map(t => t.dato)).size,
+          timer: tid.reduce((a, t) => a + (+t.timer || 0), 0),
+          ot1: tid.reduce((a, t) => a + (+t.ot1 || 0), 0),
+          ot2: tid.reduce((a, t) => a + (+t.ot2 || 0), 0),
+          godkendtAf: S.user, dato: today(),
+        };
+        c.status = 'Lukket til fakturering'; c.lukket = today();
+        save(); toast(`Fakturakladde for ${c.id} godkendt og sendt til fakturering`);
+        this.renderKladde(); this.render();
+      } else if (btn.id === 'svcKladdeNy') {
+        delete c.kladde; save(); this.renderKladde(); this.render();
       }
     });
   },
@@ -2578,7 +3179,7 @@ App.registerPage({
     $('#svcDetTitle').textContent = `Serviceopgave ${c.id}`;
     $('#svcDetBody').innerHTML = `
       <div class="form-grid" style="margin-bottom:18px">
-        <div><small class="muted">Kunde og site</small><br><b>${h(s.kunde || '–')}</b><br><span class="muted">${h(s.adresse || '')}${s.postnr ? ', ' + h(s.postnr) + ' ' + h(s.by || '') : ''}</span></div>
+        <div><small class="muted">Kunde og site</small><br><b>${h(s.kunde || '–')}</b><br><span class="muted">${h(App.siteLabel(s))}</span></div>
         <div><small class="muted">Type</small><br><b>${h(c.type || 'Service')}</b></div>
         <div><small class="muted">Tekniker</small><br><b>${h(emp(c.tekniker).navn)}</b></div>
         <div><small class="muted">Status</small><br>${st(c.status)}</div>
@@ -2596,8 +3197,105 @@ App.registerPage({
     `;
     openModal('modalSvcDetaljer');
   },
+  openKladde(id) {
+    this._kladdeId = id;
+    this.renderKladde();
+    App.openModal('modalSvcKladde');
+  },
+  renderKladde() {
+    const { $, S, site, emp, h, kr, n, today, pris, siteLabel, bc } = App;
+    const c = (S.serviceopgaver || []).find(x => x.id === this._kladdeId);
+    if (!c) return;
+    const s = site(c.siteId);
+    const m = bc(s.stedNr);
+    const tid = (S.tid || []).filter(t => t.sag === c.id).sort((a, b) => a.dato.localeCompare(b.dato));
+
+    const head = `
+      <div class="pdf-head"><b>Fakturakladde</b><span class="muted">${h(c.id)} · ${today()}</span><svg viewBox="0 0 304 164" aria-label="Securitas" style="width:84px;color:#031F30"><use href="#logo-white"/></svg></div>
+      <dl>
+        <dt>Sag</dt><dd>${h(c.id)}${c.parent ? ` <span class="muted">(Delopgave under ${h(c.parent)})</span>` : ''}</dd>
+        <dt>CEP account</dt><dd>${m ? h(m.account) : '–'}</dd>
+        <dt>Kunde</dt><dd>${h(s.kunde || '–')}</dd>
+        <dt>CEP site</dt><dd>${h(s.id || '–')}</dd>
+        <dt>Adresse</dt><dd>${h(siteLabel(s))}</dd>
+        <dt>Sted nr.</dt><dd>${h(s.stedNr || '–')}</dd>
+        <dt>Costcenter</dt><dd>${m ? `${h(m.costcenter)} – ${h(m.costcenterNavn)}` : '–'}</dd>
+        <dt>TOS</dt><dd>${m ? `${h(m.tos)} – ${h(m.tosNavn)}` : '–'}</dd>
+        <dt>PO</dt><dd>${h(c.po || '–')}</dd>
+        <dt>Type</dt><dd>${h(c.type || 'Service')}</dd>
+      </dl>
+      <p><b>Opgavebeskrivelse</b><br>${h(c.beskrivelse)}</p>
+      <p style="margin-top:12px"><b>Udført dag for dag</b></p>
+      <table><thead><tr><th>Dato</th><th>Tekniker</th><th class="num">Timer</th><th class="num">OT1</th><th class="num">OT2</th><th>Udført</th></tr></thead>
+      <tbody>${tid.length ? tid.map(t => `<tr><td>${h(t.dato)}</td><td>${h(emp(t.tekniker).navn)}</td><td class="num">${n(t.timer)}</td><td class="num">${n(t.ot1)}</td><td class="num">${n(t.ot2)}</td><td>${h(t.udfoert || '')}</td></tr>`).join('') : '<tr><td colspan="6" class="empty">Ingen tidsregistreringer på opgaven endnu.</td></tr>'}</tbody></table>
+    `;
+
+    if (c.kladde) {
+      const rowsHtml = c.kladde.linjer.map(l => `<tr><td>${h(l.tekst)}</td><td class="num">${n(l.antal)}</td><td class="num">${kr(l.enhedspris)}</td><td class="num">${(+l.beloeb || 0) === 0 ? 'Efter regning' : kr(l.beloeb)}</td></tr>`).join('');
+      $('#svcKladdeContent').innerHTML = head + `
+        <p style="margin-top:12px"><b>Prislinjer</b></p>
+        <table><thead><tr><th>Tekst</th><th class="num">Antal</th><th class="num">Enhedspris</th><th class="num">Beløb</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr><td colspan="3">Total</td><td class="num">${kr(c.kladde.total)}</td></tr></tfoot></table>
+        <p class="muted" style="margin-top:12px">Godkendt af ${h(emp(c.kladde.godkendtAf).navn)} den ${h(c.kladde.dato)}</p>
+      `;
+      const actions = [`<button class="btn" id="svcKladdePdf">Gem som PDF</button>`];
+      if (c.status !== 'Faktureret') actions.push(`<button class="tlink" id="svcKladdeNy">Lav ny kladde</button>`);
+      $('#svcKladdeActions').innerHTML = actions.join('');
+      return;
+    }
+
+    const p = pris(s);
+    const dage = new Set(tid.map(t => t.dato)).size;
+    const sum = k => tid.reduce((a, t) => a + (+t[k] || 0), 0);
+    const matMap = new Map();
+    tid.forEach(t => (t.materialer || []).forEach(mt => {
+      const mkey = `${mt.type}|${mt.model}`;
+      matMap.set(mkey, (matMap.get(mkey) || 0) + (+mt.antal || 0));
+    }));
+    const fastPris = +c.pris > 0;
+    const lines = [];
+    if (fastPris) {
+      lines.push({ tekst: 'Aftalt pris', antal: 1, enhedspris: +c.pris });
+    } else {
+      lines.push({ tekst: 'Timer normal', antal: sum('timer'), enhedspris: p.time });
+      lines.push({ tekst: 'Overtid 1', antal: sum('ot1'), enhedspris: p.ot1 });
+      lines.push({ tekst: 'Overtid 2', antal: sum('ot2'), enhedspris: p.ot2 });
+      lines.push({ tekst: 'Servicevogn', antal: dage, enhedspris: p.koersel });
+      matMap.forEach((antal, mkey) => {
+        const [type, model] = mkey.split('|');
+        lines.push({ tekst: `${type} · ${model}`, antal, enhedspris: 0, material: true });
+      });
+    }
+    this._kladdeLines = lines;
+    const infoLines = fastPris ? [
+      { tekst: 'Timer normal', antal: sum('timer'), enhedspris: p.time },
+      { tekst: 'Overtid 1', antal: sum('ot1'), enhedspris: p.ot1 },
+      { tekst: 'Overtid 2', antal: sum('ot2'), enhedspris: p.ot2 },
+      { tekst: 'Servicevogn', antal: dage, enhedspris: p.koersel },
+      ...[...matMap.entries()].map(([mkey, antal]) => { const [type, model] = mkey.split('|'); return { tekst: `${type} · ${model}`, antal, enhedspris: 0 }; }),
+    ] : [];
+    const beloebTxt = l => { const b = (+l.antal || 0) * (+l.enhedspris || 0); return (l.material && b === 0) ? 'Efter regning' : kr(b); };
+    const lineRow = (l, i) => `<tr>
+      <td>${h(l.tekst)}</td>
+      <td class="num"><input type="number" step="0.5" min="0" value="${l.antal}" data-lineidx="${i}" data-field="antal" style="width:70px"></td>
+      <td class="num"><input type="number" step="1" min="0" value="${l.enhedspris}" data-lineidx="${i}" data-field="enhedspris" style="width:90px"></td>
+      <td class="num" data-beloeb="${i}">${beloebTxt(l)}</td>
+    </tr>`;
+    $('#svcKladdeContent').innerHTML = head + `
+      <p style="margin-top:12px"><b>Prislinjer</b></p>
+      <table><thead><tr><th>Tekst</th><th class="num">Antal</th><th class="num">Enhedspris</th><th class="num">Beløb</th></tr></thead>
+      <tbody>${lines.map(lineRow).join('')}</tbody>
+      <tfoot><tr><td colspan="3">Total</td><td class="num" id="svcKladdeTotal">${kr(lines.reduce((a, l) => a + (+l.antal || 0) * (+l.enhedspris || 0), 0))}</td></tr></tfoot></table>
+      ${infoLines.length ? `<p style="margin-top:12px"><b>Informativt (indgår ikke i beløbet – opgaven har aftalt pris)</b></p>
+      <table><thead><tr><th>Tekst</th><th class="num">Antal</th><th class="num">Enhedspris</th><th class="num">Beløb</th></tr></thead>
+      <tbody>${infoLines.map(l => `<tr><td>${h(l.tekst)}</td><td class="num">${n(l.antal)}</td><td class="num">${kr(l.enhedspris)}</td><td class="num">${kr((+l.antal || 0) * (+l.enhedspris || 0))}</td></tr>`).join('')}</tbody></table>` : ''}
+    `;
+    const canGodkend = c.status === 'Åben' || c.status === 'Lukket til fakturering';
+    $('#svcKladdeActions').innerHTML = `<button class="btn" id="svcKladdePdf">Gem som PDF</button>` + (canGodkend ? `<button class="btn cta" id="svcKladdeGodkend">Godkend og send til fakturering</button>` : '');
+  },
   render() {
-    const { $, $$, S, site, emp, h, kr, n, st, role } = App;
+    const { $, $$, S, site, emp, h, kr, n, st, role, siteLabel } = App;
     const isTekniker = role() === 'Tekniker';
     $('#svcNy').style.display = isTekniker ? 'none' : '';
     const all = (S.serviceopgaver || []).filter(c => !isTekniker || c.tekniker === S.user);
@@ -2609,11 +3307,12 @@ App.registerPage({
     const tek = $('#svcTekniker').value;
     const q = $('#svcSearch').value.trim().toLowerCase();
     const rows = all.filter(c => {
-      if (status && c.status !== status) return false;
+      if (status === '__delopgaver') { if (!c.parent) return false; }
+      else if (status && c.status !== status) return false;
       if (tek && c.tekniker !== tek) return false;
       if (q) {
         const s = site(c.siteId);
-        const hay = [c.id, c.beskrivelse, s.kunde, s.navn, emp(c.tekniker).navn].join(' ').toLowerCase();
+        const hay = [c.id, c.beskrivelse, s.kunde, s.navn, s.kode, emp(c.tekniker).navn].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -2626,8 +3325,8 @@ App.registerPage({
       const canGenaabn = c.status === 'Lukket til fakturering';
       return `<tr>
         <td><b>${h(c.id)}</b></td>
-        <td>${h(s.kunde || '–')}<br><span class="muted">${h(s.navn || s.adresse || '')}</span></td>
-        <td>${h(c.beskrivelse)}</td>
+        <td>${h(s.kunde || '–')}<br><span class="muted">${h(siteLabel(s))}</span></td>
+        <td>${h(c.beskrivelse)}${c.parent ? `<br><span class="muted caption">Delopgave under ${h(c.parent)}</span>` : ''}</td>
         <td>${h(c.type || 'Service')}</td>
         <td>${h(emp(c.tekniker).navn)}</td>
         <td>${h(c.oprettet || '–')}</td>
@@ -2637,6 +3336,8 @@ App.registerPage({
         <td>
           ${canLuk ? `<button class="tlink" data-act="luk" data-id="${c.id}">Luk til fakturering</button> · ` : ''}
           ${canGenaabn ? `<button class="tlink" data-act="genaabn" data-id="${c.id}">Genåbn</button> · ` : ''}
+          ${(c.status === 'Åben' || c.status === 'Lukket til fakturering') ? `<button class="tlink" data-act="kladde" data-id="${c.id}">Fakturakladde</button> · ` : ''}
+          ${c.parent ? `<button class="tlink" data-act="aabnprojekt" data-id="${h(c.parent)}">Åbn projekt</button> · ` : ''}
           <button class="tlink" data-act="detaljer" data-id="${c.id}">Detaljer</button>
         </td>
       </tr>`;
@@ -2658,6 +3359,9 @@ App.registerPage({
     `;
   },
 });
+
+// Genbruges af projektkortets fane "Delopgaver" (samme fakturakladde-modal som her).
+window.ServiceKladde = { open(id) { App.getPage('service').openKladde(id); } };
 
 </script>
 <script>
@@ -2716,7 +3420,7 @@ App.registerPage({
     $('#soegInput').focus();
   },
   renderResults() {
-    const { $, S, h, kr, emp, site, proj, openProject, go, toast } = App;
+    const { $, S, h, kr, emp, site, proj, openProject, go, toast, siteLabel } = App;
     const out = $('#soegResults');
     const query = ($('#soegInput').value || '').trim();
     const filter = S.lastSearchFilter || '';
@@ -2764,12 +3468,13 @@ App.registerPage({
     {
       const rows = [];
       (S.projekter || []).forEach(p => {
-        const kunde = site(p.siteId).kunde || '';
-        const hay = [p.id, p.navn, p.opportunity, kunde].join(' ').toLowerCase();
+        const s = site(p.siteId);
+        const kunde = s.kunde || '';
+        const hay = [p.id, p.navn, p.opportunity, kunde, s.kode].join(' ').toLowerCase();
         if (matchesAll(hay)) {
           rows.push({
             title: `${mark(p.id)} — ${mark(p.navn)}`,
-            sub: `${mark(kunde)} · ${mark(p.opportunity || '')} · ${emp(p.pm).navn}`,
+            sub: `${mark(kunde)} · ${mark(siteLabel(s))} · ${mark(p.opportunity || '')} · ${emp(p.pm).navn}`,
             onClick: () => openProject(p.id),
           });
         }
@@ -2826,14 +3531,15 @@ App.registerPage({
     // Serviceopgaver
     {
       const rows = [];
-      (S.serviceopgaver || []).forEach(s => {
-        const kunde = site(s.siteId).kunde || '';
-        const tekniker = emp(s.tekniker).navn || s.tekniker || '';
-        const hay = [s.id, s.beskrivelse, s.po, s.tekniker, s.status, tekniker, kunde].join(' ').toLowerCase();
+      (S.serviceopgaver || []).forEach(c => {
+        const st = site(c.siteId);
+        const kunde = st.kunde || '';
+        const tekniker = emp(c.tekniker).navn || c.tekniker || '';
+        const hay = [c.id, c.beskrivelse, c.po, c.tekniker, c.status, tekniker, kunde, st.kode].join(' ').toLowerCase();
         if (matchesAll(hay)) {
           rows.push({
-            title: `${mark(s.id)} — ${mark(s.beskrivelse)}`,
-            sub: `${mark(kunde)} · ${mark(tekniker)} · ${h(s.status)}${s.po ? ' · PO ' + mark(s.po) : ''}`,
+            title: `${mark(c.id)} — ${mark(c.beskrivelse)}`,
+            sub: `${mark(kunde)} · ${mark(siteLabel(st))} · ${mark(tekniker)} · ${h(c.status)}${c.po ? ' · PO ' + mark(c.po) : ''}`,
             onClick: () => goOrToast('service'),
           });
         }
@@ -2845,10 +3551,10 @@ App.registerPage({
     {
       const rows = [];
       (S.sites || []).forEach(s => {
-        const hay = [s.id, s.kunde, s.navn, s.adresse, s.by, s.stedNr].join(' ').toLowerCase();
+        const hay = [s.id, s.kode, s.kunde, s.navn, s.adresse, s.by, s.stedNr].join(' ').toLowerCase();
         if (matchesAll(hay)) {
           rows.push({
-            title: `${mark(s.kunde)} — ${mark(s.navn)}`,
+            title: `${mark(s.kunde)} — ${mark(siteLabel(s))}`,
             sub: `${mark(s.adresse || '')}, ${h(s.postnr || '')} ${mark(s.by || '')} · Sted nr. ${mark(s.stedNr || '–')}`,
             onClick: () => go('kunder'),
           });
@@ -3015,10 +3721,12 @@ App.registerPage({
     const timerForRow = row => (S.tid || []).filter(t => t.sag === row.id).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
     const beloebForRow = row => {
       if (row.type === 'projekt') return { beloeb: +row.line.beloeb || 0, forslag: false };
+      if (row.opg.kladde) return { beloeb: +row.opg.kladde.total || 0, forslag: false };
       const pris = +row.opg.pris || 0;
       if (pris) return { beloeb: pris, forslag: false };
       return { beloeb: timerForRow(row) * 1025, forslag: true };
     };
+    const manglerKladde = row => row.type === 'service' && !row.opg.kladde;
     const approxDate = row => {
       if (row.type === 'projekt') {
         const lg = (row.p.log || [])[0];
@@ -3028,6 +3736,7 @@ App.registerPage({
     };
     const relatedProjectId = row => {
       if (row.type === 'projekt') return row.p.id;
+      if (row.opg.parent) return row.opg.parent;
       const hit = (S.projekter || []).find(p => row.opg.id && row.opg.id.startsWith(p.id));
       return hit ? hit.id : null;
     };
@@ -3061,14 +3770,14 @@ App.registerPage({
         (p.fakturering || []).forEach(line => {
           if (line.status === 'Faktureret' && line.dato && line.dato >= cutoffStr) {
             const s = site(p.siteId);
-            out.push({ sag: p.id, kunde: `${s.kunde} · ${s.navn || ''}`, tekst: line.tekst, beloeb: +line.beloeb || 0, dato: line.dato, init: line.initialer });
+            out.push({ sag: p.id, kunde: `${s.kunde} · ${App.siteLabel(s)}`, tekst: line.tekst, beloeb: +line.beloeb || 0, dato: line.dato, init: line.initialer });
           }
         });
       });
       (S.serviceopgaver || []).forEach(opg => {
         if (opg.status === 'Faktureret' && opg.dato && opg.dato >= cutoffStr) {
           const s = site(opg.siteId);
-          out.push({ sag: opg.id, kunde: `${s.kunde} · ${s.navn || ''}`, tekst: opg.beskrivelse, beloeb: +opg.pris || 0, dato: opg.dato, init: opg.initialer });
+          out.push({ sag: opg.id, kunde: `${s.kunde} · ${App.siteLabel(s)}`, tekst: opg.beskrivelse, beloeb: +opg.pris || 0, dato: opg.dato, init: opg.initialer });
         }
       });
       return out.sort((a, b) => b.dato.localeCompare(a.dato));
@@ -3081,7 +3790,7 @@ App.registerPage({
         if (afd && afdForRow(row) !== afd) return false;
         if (soeg) {
           const q = soeg.toLowerCase();
-          const hay = [row.id, row.s.kunde, row.s.navn, row.type === 'projekt' ? row.line.tekst : row.opg.beskrivelse].join(' ').toLowerCase();
+          const hay = [row.id, row.s.kunde, row.s.navn, row.s.kode, row.type === 'projekt' ? row.line.tekst : row.opg.beskrivelse].join(' ').toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -3098,7 +3807,7 @@ App.registerPage({
         <div class="pdf-head"><b>Faktureringsanmodning</b><span class="muted">${h(row.id)} · ${today()}</span><svg viewBox="0 0 304 164" aria-label="Securitas" style="width:84px;color:#031F30"><use href="#logo-white"/></svg></div>
         <dl>
           <dt>Kunde</dt><dd>${h(s.kunde)}</dd><dt>Account nr.</dt><dd>${m ? h(m.account) : '–'}</dd>
-          <dt>Adresse</dt><dd>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</dd><dt>Site nr.</dt><dd>${h(s.id)}</dd>
+          <dt>Adresse</dt><dd>${h(App.siteLabel(s))}</dd><dt>Site nr.</dt><dd>${h(s.id)}</dd>
           <dt>Sag</dt><dd>${h(row.id)}</dd><dt>Costcenter</dt><dd>${m ? h(m.costcenter) : '–'}</dd>
           <dt>PO / rekv. nr.</dt><dd>${h(rekv) || '–'}</dd><dt>TOS</dt><dd>${m ? h(m.tos) : '–'}</dd>
         </dl>
@@ -3106,6 +3815,30 @@ App.registerPage({
         <tbody><tr><td>${h(tekst)}</td><td class="num">${kr(beloeb)}</td></tr></tbody>
         <tfoot><tr><td>Samlet pris ekskl. moms</td><td class="num">${kr(beloeb)}</td></tr></tfoot></table>
         <p class="caption muted" style="margin-top:18px">Alle felter ovenfor er hentet fra sagen.</p>`;
+      openModal('modalFkAnmodning');
+    }
+
+    // Serviceopgaver med godkendt fakturakladde: vis den gemte kladde (samme .pdf-markup som service.js),
+    // bygget ud fra de gemte linjer – service.js' render kan ikke genbruges på tværs af filer.
+    function openKladdeVis(row) {
+      const opg = row.opg, s = row.s, kladde = opg.kladde;
+      const m = bc(s.stedNr);
+      const rowsHtml = kladde.linjer.map(l => `<tr><td>${h(l.tekst)}</td><td class="num">${App.n(l.antal)}</td><td class="num">${kr(l.enhedspris)}</td><td class="num">${(+l.beloeb || 0) === 0 ? 'Efter regning' : kr(l.beloeb)}</td></tr>`).join('');
+      $('#fkPdfPreview').innerHTML = `
+        <div class="pdf-head"><b>Fakturakladde</b><span class="muted">${h(opg.id)} · ${h(kladde.dato)}</span><svg viewBox="0 0 304 164" aria-label="Securitas" style="width:84px;color:#031F30"><use href="#logo-white"/></svg></div>
+        <dl>
+          <dt>Sag</dt><dd>${h(opg.id)}${opg.parent ? ` <span class="muted">(Delopgave under ${h(opg.parent)})</span>` : ''}</dd>
+          <dt>CEP account</dt><dd>${m ? h(m.account) : '–'}</dd>
+          <dt>Kunde</dt><dd>${h(s.kunde)}</dd><dt>CEP site</dt><dd>${h(s.id)}</dd>
+          <dt>Adresse</dt><dd>${h(App.siteLabel(s))}</dd><dt>Sted nr.</dt><dd>${h(s.stedNr) || '–'}</dd>
+          <dt>Costcenter</dt><dd>${m ? `${h(m.costcenter)} – ${h(m.costcenterNavn)}` : '–'}</dd><dt>TOS</dt><dd>${m ? h(m.tos) : '–'}</dd>
+          <dt>PO</dt><dd>${h(opg.po) || '–'}</dd><dt>Type</dt><dd>${h(opg.type || 'Service')}</dd>
+        </dl>
+        <p><b>Opgavebeskrivelse</b><br>${h(opg.beskrivelse)}</p>
+        <table><thead><tr><th>Tekst</th><th class="num">Antal</th><th class="num">Enhedspris</th><th class="num">Beløb</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr><td colspan="3">Total</td><td class="num">${kr(kladde.total)}</td></tr></tfoot></table>
+        <p class="caption muted" style="margin-top:18px">Godkendt af ${h(emp(kladde.godkendtAf).navn)} den ${h(kladde.dato)}</p>`;
       openModal('modalFkAnmodning');
     }
 
@@ -3124,7 +3857,8 @@ App.registerPage({
     });
     $('#fkMarker').addEventListener('click', () => {
       if (!valgt.size) return;
-      const rows = queueRows().filter(r => valgt.has(key(r)));
+      const rows = queueRows().filter(r => valgt.has(key(r)) && !manglerKladde(r));
+      if (!rows.length) return;
       const projekterBeroert = new Set();
       rows.forEach(row => {
         if (row.type === 'projekt') {
@@ -3145,6 +3879,7 @@ App.registerPage({
     });
 
     this._openAnmodning = openAnmodning;
+    this._openKladdeVis = openKladdeVis;
     this._filtered = filtered;
     this._queueRows = queueRows;
     this._recentRows = recentRows;
@@ -3152,6 +3887,7 @@ App.registerPage({
     this._costcenterForRow = costcenterForRow;
     this._timerForRow = timerForRow;
     this._beloebForRow = beloebForRow;
+    this._manglerKladde = manglerKladde;
     this._approxDate = approxDate;
     this._relatedProjectId = relatedProjectId;
     this._key = key;
@@ -3194,14 +3930,15 @@ App.registerPage({
         const init = row.type === 'projekt' ? row.line.initialer : row.opg.initialer;
         const afsendt = dato ? `${h(dato)} · ${h(emp(init).navn)}` : '–';
         const relId = this._relatedProjectId(row);
+        const mangler = this._manglerKladde(row);
         return `<tr>
-          <td><input type="checkbox" data-k="${h(k)}" ${this._valgt.has(k) ? 'checked' : ''} aria-label="Vælg linje"></td>
-          <td>${h(row.id)}<div class="caption muted">${row.type === 'projekt' ? 'Projekt' : 'Serviceopgave'}</div></td>
-          <td>${h(s.kunde)}<div class="caption muted">${h(s.navn || s.id)}</div></td>
+          <td><input type="checkbox" data-k="${h(k)}" ${this._valgt.has(k) ? 'checked' : ''} ${mangler ? 'disabled' : ''} aria-label="Vælg linje"></td>
+          <td>${h(row.id)}<div class="caption muted">${row.type === 'projekt' ? 'Projekt' : (row.opg.parent ? `Delopgave under ${h(row.opg.parent)}` : 'Serviceopgave')}</div></td>
+          <td>${h(s.kunde)}<div class="caption muted">${h(App.siteLabel(s))}</div></td>
           <td>${h(tekst)}</td>
           <td>${h(rekv) || '–'}</td>
           <td>${this._costcenterForRow(row)}</td>
-          <td class="num">${kr(beloeb)}${forslag ? '<div class="caption muted">Forslag</div>' : ''}</td>
+          <td class="num">${kr(beloeb)}${forslag ? '<div class="caption muted">Forslag</div>' : ''}${mangler ? '<div class="alert">Mangler kladde</div>' : ''}</td>
           <td class="num">${timer ? n(timer) + ' t' : '–'}</td>
           <td>${afsendt}</td>
           <td><button class="tlink" data-vis="${h(k)}">Vis anmodning</button></td>
@@ -3219,7 +3956,9 @@ App.registerPage({
     }));
     $$('#fkRows [data-vis]').forEach(b => b.addEventListener('click', () => {
       const row = this._queueRows().find(r => this._key(r) === b.dataset.vis);
-      if (row) this._openAnmodning(row);
+      if (!row) return;
+      if (row.type === 'service' && row.opg.kladde) this._openKladdeVis(row);
+      else this._openAnmodning(row);
     }));
     $$('#fkRows [data-aabn]').forEach(b => b.addEventListener('click', () => App.openProject(b.dataset.aabn)));
     $('#fkMarker').disabled = !this._valgt.size;
@@ -3398,7 +4137,7 @@ App.registerPage({
         <h3 style="margin:24px 0 12px">Sites med denne UL</h3>
         <div class="table-wrap">
           <table><thead><tr><th>Site</th><th>Navn</th><th>Adresse</th></tr></thead>
-          <tbody>${sites.map(s => `<tr><td><b>${h(s.id)}</b></td><td>${h(s.navn)}</td><td>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Ingen sites bruger denne UL.</td></tr>'}</tbody></table>
+          <tbody>${sites.map(s => `<tr><td><b>${h(s.id)}</b></td><td>${h(App.siteLabel(s))}</td><td>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Ingen sites bruger denne UL.</td></tr>'}</tbody></table>
         </div>`;
       $('#ulFooterView').style.display = ''; $('#ulFooterEdit').style.display = 'none';
       $('#ulView').style.display = ''; $('#ulEditWrap').style.display = 'none';
@@ -3462,7 +4201,7 @@ App.registerPage({
       $('#bestPreview').innerHTML = `
         <div class="pdf-head"><b>Bestilling til ${h(u.navn)}</b><span class="muted">${today()}</span></div>
         <dl>
-          <dt>Emne</dt><dd>Bestilling – ${h(info.label)} – ${h(info.site.navn || '')}</dd>
+          <dt>Emne</dt><dd>Bestilling – ${h(info.label)} – ${h(App.siteLabel(info.site))}</dd>
           <dt>Ønsket dato</dt><dd>${h(dato) || '–'}</dd>
           <dt>Adresse</dt><dd>${h(info.site.adresse) || '–'}, ${h(info.site.postnr) || ''} ${h(info.site.by) || ''}</dd>
           <dt>Sted nr.</dt><dd>${h(info.site.stedNr) || '–'}</dd>
@@ -3668,7 +4407,7 @@ App.registerPage({
           const forsteTekniker = (D.medarbejdere.find(m => m.rolle === 'Tekniker') || {}).id || '';
           const id = genCasId();
           S.serviceopgaver = S.serviceopgaver || [];
-          S.serviceopgaver.push({ id, siteId: s.id, beskrivelse: `Eftersyn – ${s.navn || s.kunde}`, tekniker: forsteTekniker, status: 'Åben', type: 'Eftersyn', oprettet: today(), lukket: '', po: '', pris: 0 });
+          S.serviceopgaver.push({ id, siteId: s.id, beskrivelse: `Eftersyn – ${App.siteLabel(s)}`, tekniker: forsteTekniker, status: 'Åben', type: 'Eftersyn', oprettet: today(), lukket: '', po: '', pris: 0 });
           s.casEftersyn = id;
           save(); toast(`Eftersynsopgave ${id} oprettet`); this.render();
         } else if (btn.dataset.act === 'udfoert') {
@@ -3698,7 +4437,7 @@ App.registerPage({
       $('#efMailPreview').innerHTML = `
         <div class="pdf-head"><b>Påmindelse om eftersyn</b><span class="muted">${today()}</span><svg viewBox="0 0 304 164" aria-label="Securitas" style="width:84px;color:#031F30"><use href="#logo-white"/></svg></div>
         <dl>
-          <dt>Kunde</dt><dd>${h(s.kunde)}</dd><dt>Site</dt><dd>${h(s.navn || s.id)}</dd>
+          <dt>Kunde</dt><dd>${h(s.kunde)}</dd><dt>Site</dt><dd>${h(App.siteLabel(s))}</dd>
           <dt>Adresse</dt><dd>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</dd><dt>Kontaktperson</dt><dd>${h(s.kontakt) || '–'}</dd>
           <dt>Installation</dt><dd>${h(s.installation) || '–'}</dd><dt>Planlagt dato</dt><dd>${nd ? ddmm(nd.getFullYear() + '-' + String(nd.getMonth() + 1).padStart(2, '0') + '-' + String(nd.getDate()).padStart(2, '0')) : '–'}</dd>
         </dl>
@@ -3711,7 +4450,7 @@ App.registerPage({
     });
   },
   openDetaljer(siteId) {
-    const { $, S, site, h, kr, st, openModal } = App;
+    const { $, S, site, h, kr, st, openModal, siteLabel } = App;
     const { ddmm, startOfToday, nextEftersyn, opgaveFor, rowInfo } = this.helpers;
     const s = site(siteId); if (!s || !s.id) return;
     this._curSite = siteId;
@@ -3721,7 +4460,7 @@ App.registerPage({
     $('#efDetTitle').textContent = `Eftersyn · ${s.navn || s.kunde}`;
     $('#efDetBody').innerHTML = `
       <div class="form-grid" style="margin-bottom:18px">
-        <div><small class="muted">Site og kunde</small><br><b>${h(s.kunde)}</b><br><span class="muted">${h(s.navn || s.id)}</span></div>
+        <div><small class="muted">Site og kunde</small><br><b>${h(s.kunde)}</b><br><span class="muted">${h(siteLabel(s))}</span></div>
         <div><small class="muted">Adresse</small><br><b>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</b></div>
         <div><small class="muted">Installation</small><br><b>${h(s.installation) || '–'}</b></div>
         <div><small class="muted">Serviceaftale</small><br><b>${h(s.serviceaftale) || '–'}</b></div>
@@ -3737,7 +4476,7 @@ App.registerPage({
     openModal('modalEfDetaljer');
   },
   render() {
-    const { $, $$, S, h, kr, site, st } = App;
+    const { $, $$, S, h, kr, site, st, siteLabel } = App;
     const { ddmm, startOfToday, opgaveFor, rowInfo } = this.helpers;
     const t = startOfToday();
     const all = (S.sites || []).map(s => rowInfo(s, t));
@@ -3761,7 +4500,7 @@ App.registerPage({
     let rows = all.filter(r => {
       if (status && r.status !== status) return false;
       if (q) {
-        const hay = [r.site.id, r.site.kunde, r.site.navn, r.site.installation, r.site.adresse].join(' ').toLowerCase();
+        const hay = [r.site.id, r.site.kode, r.site.kunde, r.site.navn, r.site.installation, r.site.adresse].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -3779,7 +4518,7 @@ App.registerPage({
         const opg = opgaveFor(s);
         const iso = r.nextDate ? r.nextDate.getFullYear() + '-' + String(r.nextDate.getMonth() + 1).padStart(2, '0') + '-' + String(r.nextDate.getDate()).padStart(2, '0') : '';
         return `<tr class="click" data-site="${h(s.id)}" tabindex="0">
-          <td><b>${h(s.kunde)}</b><br><span class="muted">${h(s.navn || s.id)}</span></td>
+          <td><b>${h(s.kunde)}</b><br><span class="muted">${h(siteLabel(s))}</span></td>
           <td>${h(s.adresse) || '–'}${s.postnr ? ', ' + h(s.postnr) + ' ' + h(s.by) : ''}</td>
           <td>${h(s.installation) || '–'}</td>
           <td>${h(s.serviceaftale) || '–'}</td>
@@ -3815,7 +4554,7 @@ App.registerPage({
           <div class="card-body">
             <h3>${h(title)}</h3>
             <div class="count">${items.length}</div>
-            <ul>${items.map(r => `<li data-site="${h(r.site.id)}" tabindex="0" style="cursor:pointer"><b>${h(r.site.kunde)}</b><br><span class="muted">${h(r.site.navn || r.site.id)}</span></li>`).join('') || '<li class="muted">Ingen eftersyn</li>'}</ul>
+            <ul>${items.map(r => `<li data-site="${h(r.site.id)}" tabindex="0" style="cursor:pointer"><b>${h(r.site.kunde)}</b><br><span class="muted">${h(siteLabel(r.site, true))}</span></li>`).join('') || '<li class="muted">Ingen eftersyn</li>'}</ul>
           </div>
         </div>`;
       $('#efCalWrap').innerHTML = `<div class="ef-cal">${cardHtml('Overskredet', overdue, true)}${months.map(mo => cardHtml(mo.label, mo.items, false)).join('')}</div>`;
@@ -4010,12 +4749,18 @@ App.registerPage({
       key: t.id, label: t.navn, color: CAT_COLORS[i % CAT_COLORS.length],
       values: months.map(() => 0),
     }));
+    // intern tid (ferie, sygdom, kursus m.m.) tælles aldrig med i sagstimerne pr. tekniker,
+    // men vises som sin egen serie, så månedens samlede fravær stadig kan aflæses.
+    const internSeries = { key: '__intern', label: 'Intern tid', color: 'var(--ui-grey-700)', values: months.map(() => 0) };
     S.tid.forEach(r => {
       const i = idx[monthKey(r.dato)];
       if (i == null) return;
+      const timer = (+r.timer || 0) + (+r.ot1 || 0) + (+r.ot2 || 0);
+      if (App.isIntern(r)) { internSeries.values[i] += timer; return; }
       const s = series.find(s => s.key === r.tekniker);
-      if (s) s.values[i] += (+r.timer || 0) + (+r.ot1 || 0) + (+r.ot2 || 0);
+      if (s) s.values[i] += timer;
     });
+    series.push(internSeries);
     return { rows, series };
   }
 
@@ -4446,6 +5191,211 @@ App.registerPage({
     if (!ok) { $('#gateErr').hidden = false; $('#gatePw').select(); return; }
     localStorage.setItem('proto-gate', CFG.passwordHash);
     $('#gate').hidden = true; document.documentElement.classList.remove('gated'); showWelcome();
+  });
+})();
+
+</script>
+<script>
+// Kontering pr. tekniker og måned. Erstatter Kontering af timer i Opgavestyring-filen og
+// Jobstyrings "Kontering af tekniker": vælg tekniker og måned, se en grupperet linje pr. sag
+// (og pr. intern kategori) med Business Central-felterne klar til bogføring.
+(function () {
+  // ---------- opslag ----------
+  // Finder kunde, site, beskrivelse og BC-felter for en sag (projekt, delopgave eller serviceopgave/CAS).
+  function resolveCase(sagId) {
+    const { proj, site, bc, siteLabel } = App;
+    const p = proj(sagId);
+    if (p) {
+      const s = site(p.siteId), m = bc(p.stedNr);
+      return {
+        kunde: s.kunde || '', site: siteLabel(s), beskrivelse: p.navn || '',
+        stedNr: p.stedNr || '', costcenter: m ? `${m.costcenter} – ${m.costcenterNavn}` : '',
+        tos: m ? `${m.tos} – ${m.tosNavn}` : '', account: m ? m.account : '', cepSite: s.id || '',
+      };
+    }
+    const o = (App.S.serviceopgaver || []).find(x => x.id === sagId);
+    if (o) {
+      const s = site(o.siteId), m = bc(s.stedNr);
+      return {
+        kunde: s.kunde || '', site: siteLabel(s), beskrivelse: o.beskrivelse || '',
+        stedNr: s.stedNr || '', costcenter: m ? `${m.costcenter} – ${m.costcenterNavn}` : '',
+        tos: m ? `${m.tos} – ${m.tosNavn}` : '', account: m ? m.account : '', cepSite: s.id || '',
+      };
+    }
+    return { kunde: '', site: '', beskrivelse: '', stedNr: '', costcenter: '', tos: '', account: '', cepSite: '' };
+  }
+
+  // Grupperer en teknikers tidsposter i en given måned pr. sag (eller pr. intern kategori).
+  function groupData(tech, month) {
+    const rows = (App.S.tid || []).filter(t => t.tekniker === tech && (t.dato || '').slice(0, 7) === month);
+    const groups = new Map();
+    rows.forEach(t => {
+      const intern = App.isIntern(t);
+      const key = intern ? 'intern:' + t.kategori : 'sag:' + t.sag;
+      let g = groups.get(key);
+      if (!g) {
+        g = intern
+          ? { key, intern: true, label: `Intern · ${t.kategori}`, kunde: 'Securitas A/S', site: '', beskrivelse: t.kategori, stedNr: '', costcenter: '', tos: '', account: '', cepSite: '' }
+          : { key, intern: false, label: t.sag, ...resolveCase(t.sag) };
+        g.timer = 0; g.ot1 = 0; g.ot2 = 0; g.koersel = 0; g.days = [];
+        groups.set(key, g);
+      }
+      g.timer += +t.timer || 0; g.ot1 += +t.ot1 || 0; g.ot2 += +t.ot2 || 0; g.koersel += +t.koersel || 0;
+      g.days.push(t);
+    });
+    return [...groups.values()].sort((a, b) => {
+      if (a.intern !== b.intern) return a.intern ? 1 : -1;
+      return a.label.localeCompare(b.label, 'da');
+    });
+  }
+
+  App.registerPage({
+    id: 'kontering', label: 'Kontering', group: 'Økonomi', icon: 'time', order: 52,
+    roles: ['Chef', 'PM', 'Fakturering', 'Tekniker'],
+    html: `
+    <div class="page-head">
+      <div>
+        <h1>Kontering</h1>
+        <p>Kontering af en teknikers timer i en given måned – grupperet pr. sag, med kunde, site og de Business Central-felter der skal bruges ved bogføring.</p>
+      </div>
+      <div class="replaces">Erstatter <b>Kontering af timer</b> i Opgavestyring-filen og Jobstyrings <b>Kontering af tekniker</b></div>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        <label class="field">Tekniker <select id="konTekniker"></select></label>
+        <label class="field">Måned <select id="konMaaned"></select></label>
+        <span class="spacer"></span>
+        <button class="btn" id="konPdf"><svg class="ico s"><use href="#i-download"/></svg>Gem som PDF</button>
+        <button class="btn" id="konCsv"><svg class="ico s"><use href="#i-export"/></svg>Eksportér til Excel</button>
+      </div>
+      <div class="card-body">
+        <div class="stats" id="konStats"></div>
+        <div class="table-wrap" id="konTableWrap">
+          <table id="konTable">
+            <thead><tr>
+              <th>Sag</th><th>Kunde og site</th><th>Beskrivelse</th>
+              <th class="num">Timer</th><th class="num">Overtid 1</th><th class="num">Overtid 2</th><th class="num">Kørsel</th>
+              <th>Sted nr.</th><th>Costcenter</th><th>TOS</th><th>CEP account</th><th>CEP site</th><th></th>
+            </tr></thead>
+            <tbody id="konRows"></tbody>
+            <tfoot id="konFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  `,
+    init() {
+      const { $, $$, D, S, save, emp, role } = App;
+      this.expanded = new Set();
+
+      const teknikerSel = $('#konTekniker');
+      D.medarbejdere.filter(m => m.rolle === 'Tekniker').forEach(m => teknikerSel.add(new Option(m.navn, m.id)));
+      teknikerSel.addEventListener('change', () => { S.konTekniker = teknikerSel.value; this.expanded.clear(); save(); this.render(); });
+
+      const maanedSel = $('#konMaaned');
+      maanedSel.addEventListener('change', () => { S.konMaaned = maanedSel.value; this.expanded.clear(); save(); this.render(); });
+
+      $('#konPdf').addEventListener('click', () => {
+        const tech = emp(teknikerSel.value).navn, mnd = maanedSel.value;
+        App.printSection($('#konTableWrap'), `Kontering ${tech} ${mnd}`);
+      });
+      $('#konCsv').addEventListener('click', () => {
+        const tech = teknikerSel.value, mnd = maanedSel.value;
+        const groups = groupData(tech, mnd);
+        const rows = [['Sag', 'Kunde og site', 'Beskrivelse', 'Timer', 'Overtid 1', 'Overtid 2', 'Kørsel', 'Sted nr.', 'Costcenter', 'TOS', 'CEP account', 'CEP site']];
+        let tTimer = 0, tOt1 = 0, tOt2 = 0, tKoersel = 0;
+        groups.forEach(g => {
+          rows.push([g.label, [g.kunde, g.site].filter(Boolean).join(' · '), g.beskrivelse, App.n(g.timer), App.n(g.ot1), App.n(g.ot2), App.n(g.koersel), g.stedNr, g.costcenter, g.tos, g.account, g.cepSite]);
+          [...g.days].sort((a, b) => a.dato.localeCompare(b.dato)).forEach(d => {
+            rows.push([d.dato, '', d.udfoert || '', App.n(d.timer), App.n(d.ot1), App.n(d.ot2), App.n(d.koersel), '', '', '', '', '']);
+          });
+          tTimer += g.timer; tOt1 += g.ot1; tOt2 += g.ot2; tKoersel += g.koersel;
+        });
+        rows.push(['I alt', '', '', App.n(tTimer), App.n(tOt1), App.n(tOt2), App.n(tKoersel), '', '', '', '', '']);
+        if (groups.length === 0) { App.toast('Ingen registreringer i den valgte måned'); return; }
+        App.csvDownload(`kontering-${tech}-${mnd}.csv`, rows);
+      });
+    },
+    render() {
+      const { $, $$, S, D, emp, role, siteLabel, n, h, expectedHours, workdays, isIntern, save } = App;
+      const teknikerSel = $('#konTekniker'), maanedSel = $('#konMaaned');
+      const teknikere = D.medarbejdere.filter(m => m.rolle === 'Tekniker');
+
+      // Rollen Tekniker ser kun sig selv, og vælgeren er låst
+      const lockedToSelf = role() === 'Tekniker';
+      if (lockedToSelf) S.konTekniker = S.user;
+      if (!S.konTekniker || !teknikere.some(m => m.id === S.konTekniker)) S.konTekniker = teknikere[0]?.id || '';
+      teknikerSel.value = S.konTekniker;
+      teknikerSel.disabled = lockedToSelf;
+
+      // Måneder: dem der findes i tidsdata, nyeste først, standard = indeværende måned
+      const months = [...new Set((S.tid || []).map(t => (t.dato || '').slice(0, 7)))].filter(Boolean).sort().reverse();
+      if (!months.length) months.push(App.today().slice(0, 7));
+      if (!S.konMaaned || !months.includes(S.konMaaned)) {
+        const cur = App.today().slice(0, 7);
+        S.konMaaned = months.includes(cur) ? cur : months[0];
+      }
+      maanedSel.innerHTML = '';
+      months.forEach(m => maanedSel.add(new Option(m, m)));
+      maanedSel.value = S.konMaaned;
+      save();
+
+      const tech = S.konTekniker, month = S.konMaaned;
+      const groups = groupData(tech, month);
+
+      // ---- KPI ----
+      const [y, m] = month.split('-').map(Number);
+      const caseHours = groups.filter(g => !g.intern).reduce((a, g) => a + g.timer + g.ot1 + g.ot2, 0);
+      const internHours = groups.filter(g => g.intern).reduce((a, g) => a + g.timer + g.ot1 + g.ot2, 0);
+      const total = caseHours + internHours;
+      const expected = expectedHours(y, m);
+      const diff = Math.round((total - expected) * 10) / 10;
+      $('#konStats').innerHTML = `
+        <div class="stat"><small>Registreret i alt</small><b>${n(total)}</b></div>
+        <div class="stat"><small>Heraf på sager</small><b>${n(caseHours)}</b></div>
+        <div class="stat"><small>Heraf intern tid</small><b>${n(internHours)}</b></div>
+        <div class="stat"><small>Forventet (${workdays(y, m)} arbejdsdage)</small><b>${n(expected)}</b></div>
+        <div class="stat"><small>Difference</small><b class="dg ${diff >= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${n(diff)}</b></div>
+      `;
+
+      // ---- tabel ----
+      if (!groups.length) {
+        $('#konRows').innerHTML = '<tr><td colspan="13" class="empty">Ingen registreringer i den valgte måned.</td></tr>';
+        $('#konFoot').innerHTML = '';
+        return;
+      }
+      const dayRowFixed = d => `<tr class="konDay"><td>${h(d.dato)}</td><td></td><td>${h(d.udfoert || '')}</td><td class="num">${n(d.timer)}</td><td class="num">${n(d.ot1)}</td><td class="num">${n(d.ot2)}</td><td class="num">${n(d.koersel)}</td><td colspan="5"></td></tr>`;
+      $('#konRows').innerHTML = groups.map(g => {
+        const open = this.expanded.has(g.key);
+        const groupRow = `<tr class="konGroup">
+          <td>${h(g.label)}</td>
+          <td>${[g.kunde, g.site].filter(Boolean).map(h).join(' · ')}</td>
+          <td>${h(g.beskrivelse)}</td>
+          <td class="num">${n(g.timer)}</td>
+          <td class="num">${n(g.ot1)}</td>
+          <td class="num">${n(g.ot2)}</td>
+          <td class="num">${n(g.koersel)}</td>
+          <td>${h(g.stedNr) || '–'}</td>
+          <td>${h(g.costcenter) || '–'}</td>
+          <td>${h(g.tos) || '–'}</td>
+          <td>${h(g.account) || '–'}</td>
+          <td>${h(g.cepSite) || '–'}</td>
+          <td><button type="button" class="tlink" data-toggle="${h(g.key)}">${open ? 'Skjul dage' : 'Vis dage'}</button></td>
+        </tr>`;
+        const dayRows = open ? [...g.days].sort((a, b) => a.dato.localeCompare(b.dato)).map(dayRowFixed).join('') : '';
+        return groupRow + dayRows;
+      }).join('');
+
+      const tTimer = groups.reduce((a, g) => a + g.timer, 0), tOt1 = groups.reduce((a, g) => a + g.ot1, 0),
+        tOt2 = groups.reduce((a, g) => a + g.ot2, 0), tKoersel = groups.reduce((a, g) => a + g.koersel, 0);
+      $('#konFoot').innerHTML = `<tr class="konTotal"><td colspan="3"><b>I alt</b></td><td class="num"><b>${n(tTimer)}</b></td><td class="num"><b>${n(tOt1)}</b></td><td class="num"><b>${n(tOt2)}</b></td><td class="num"><b>${n(tKoersel)}</b></td><td colspan="6"></td></tr>`;
+
+      $$('[data-toggle]').forEach(b => b.addEventListener('click', () => {
+        const key = b.dataset.toggle;
+        if (this.expanded.has(key)) this.expanded.delete(key); else this.expanded.add(key);
+        this.render();
+      }));
+    },
   });
 })();
 
