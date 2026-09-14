@@ -381,6 +381,47 @@
     .print-only .num { text-align: right; }
     .print-only .tlink, .print-only button { display: none; }
   }
+
+  /* Tætte tabeller (én linje pr. række) og sortering – PLAN-v4 */
+  .table-dense { font-size: 14px; line-height: 21px; }
+  .table-dense th, .table-dense td { padding: var(--space-2) 9px; white-space: nowrap; vertical-align: middle; }
+  .table-dense td.cut { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+  .table-dense td.cut.w-s { max-width: 160px; }
+  .table-dense td.cut.w-m { max-width: 240px; }
+  .table-dense td.cut.w-l { max-width: 420px; }
+  .table-dense td.actions { white-space: nowrap; }
+  .table-dense td.actions .tlink + .tlink { margin-left: var(--space-3); }
+  th.sortable { cursor: pointer; user-select: none; padding-right: 18px; position: relative; }
+  th.sortable::after { content: ""; position: absolute; right: 6px; top: 50%; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--ui-grey-500); transform: translateY(-50%); }
+  th.sortable.sorted { color: var(--text-primary); }
+  th.sortable.sorted[data-dir="asc"]::after { border-top: 0; border-bottom: 5px solid var(--sec-navy-blue); }
+  th.sortable.sorted[data-dir="desc"]::after { border-top: 5px solid var(--sec-navy-blue); }
+  th.sortable:hover { color: var(--text-primary); }
+  tr[data-child] td { background: var(--surface-subtle); font-size: 12px; line-height: 18px; }
+
+  /* Mellemstore skærme (fx 1280-1440 px): mindre sidemargin og kortere tekstkolonner, så listerne passer uden vandret scroll */
+  @media (max-width: 1440px) and (min-width: 901px) {
+    .main { padding-left: var(--layout-2); padding-right: var(--layout-2); }
+    .table-dense td.cut.w-m { max-width: 160px; }
+    .table-dense td.cut.w-s { max-width: 120px; }
+    .table-dense th, .table-dense td { padding-left: 6px; padding-right: 6px; }
+    th.sortable { padding-right: 16px; }
+  }
+
+  /* Mellemstore skærme: ikon-sidebar, så tabellerne får pladsen */
+  @media (max-width: 1440px) and (min-width: 901px) {
+    .sidebar { width: 72px; padding: var(--space-4) var(--space-2); }
+    .sidebar .brand { padding: var(--space-2) 0 var(--space-4); }
+    .sidebar .brand svg { width: 48px; }
+    .sidebar .brand .caption, .sidebar .nav-label, .nav-btn .lbl, .sidebar .user .link { display: none; }
+    .sidebar .user { font-size: 0; padding: var(--space-2) 0; }
+    .sidebar .user select { font-size: 12px; padding: var(--space-1); }
+    .nav-btn { justify-content: center; padding: var(--space-3) 0; }
+    .nav-btn .count { position: absolute; margin: 0; transform: translate(14px, -12px); }
+    .nav-btn { position: relative; }
+    .nav-btn.active { background: var(--ui-blue-700); border-radius: var(--radius-overlay); }
+    .sidebar .user-mini { display: flex; }
+  }
 </style>
 </head>
 <body>
@@ -1474,6 +1515,39 @@ window.DEMO = {
     document.body.appendChild(wrap); window.print(); setTimeout(() => wrap.remove(), 1000);
   };
 
+
+  // ---------- Tætte, sorterbare tabeller (PLAN-v4) ----------
+  // Brug: <th data-sort="text|num|date">; kald App.sortable(tableEl, 'key') én gang og App.applySort(tableEl, 'key') efter hver render.
+  const parseCell = (td, type) => {
+    const raw = (td.dataset.value ?? td.textContent).trim();
+    if (type === 'num') { const s = raw.replace(/\./g, '').replace(',', '.').replace(/[^0-9.\-]/g, ''); const v = parseFloat(s); return isNaN(v) ? -Infinity : v; }
+    if (type === 'date') { const m = raw.match(/(\d{4})-(\d{2})-(\d{2})/) || raw.match(/(\d{2})\.(\d{2})\.(\d{4})/); return m ? (m[1].length === 4 ? m[1] + m[2] + m[3] : m[3] + m[2] + m[1]) : raw; }
+    return raw.toLowerCase();
+  };
+  const applySort = (table, key) => {
+    S.sort = S.sort || {}; const st = S.sort[key]; if (!st) return;
+    const ths = [...table.querySelectorAll('thead th')]; const th = ths[st.col]; if (!th) return;
+    const type = th.dataset.sort || 'text'; const tb = table.tBodies[0]; if (!tb) return;
+    const rows = [...tb.rows].filter(r => !r.classList.contains('empty-row') && !r.querySelector('.empty') && !r.dataset.child);
+    // datterrækker (fx foldede dagslinjer) følger deres forælder
+    const groups = rows.map(r => { const g = [r]; let n = r.nextElementSibling; while (n && n.dataset.child) { g.push(n); n = n.nextElementSibling; } return g; });
+    groups.sort((A, B) => { const a = parseCell(A[0].cells[st.col], type), b = parseCell(B[0].cells[st.col], type); const c = a < b ? -1 : a > b ? 1 : 0; return st.dir === 'desc' ? -c : c; });
+    groups.forEach(g => g.forEach(r => tb.appendChild(r)));
+    ths.forEach((t, i) => { t.classList.toggle('sorted', i === st.col); t.dataset.dir = i === st.col ? st.dir : ''; });
+  };
+  const sortable = (table, key, defaults) => {
+    S.sort = S.sort || {};
+    if (!S.sort[key] && defaults) S.sort[key] = defaults;
+    table.querySelectorAll('thead th[data-sort]').forEach((th, _i) => {
+      const col = [...th.parentElement.children].indexOf(th);
+      th.classList.add('sortable'); th.tabIndex = 0;
+      const toggle = () => { const cur = S.sort[key]; S.sort[key] = { col, dir: cur && cur.col === col && cur.dir === 'asc' ? 'desc' : 'asc' }; save(); applySort(table, key); };
+      th.addEventListener('click', toggle);
+      th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    });
+    applySort(table, key);
+  };
+
   // ---------- UI helpers ----------
   const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2800); };
 
@@ -1543,7 +1617,7 @@ window.DEMO = {
       if (!items.length) return;
       const lbl = document.createElement('div'); lbl.className = 'nav-label'; lbl.textContent = g; nav.appendChild(lbl);
       items.forEach(p => {
-        const b = document.createElement('button'); b.className = 'nav-btn'; b.dataset.page = p.id;
+        const b = document.createElement('button'); b.className = 'nav-btn'; b.dataset.page = p.id; b.title = p.label;
         b.innerHTML = `${icon(p.icon || 'screen', 'ico')}<span class="lbl">${h(p.label)}</span>${p.id === 'indbakke' ? '<span class="count" id="inboxCount">0</span>' : ''}`;
         b.addEventListener('click', () => go(p.id));
         nav.appendChild(b);
@@ -1632,6 +1706,7 @@ window.DEMO = {
     D, S, save, $, $$, kr, n, pct, h, today, now, icon, st, dgCell, site, bc, emp, proj, calc, role,
     toast, openModal, closeModal, confirmDialog, go, openProject, registerPage, getPage,
     siteLabel, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, printSection,
+    sortable, applySort,
     get currentProj() { return currentProj; },
     icons: ['feed', 'screen', 'calendar-check', 'mobile', 'home', 'check', 'close', 'export', 'search', 'service', 'user', 'time', 'mail', 'notification', 'download', 'info', 'shield-check', 'location'],
   };
@@ -1762,6 +1837,18 @@ App.registerPage({
   id: 'projekter', label: 'Projektoverblik', group: 'Projekter', icon: 'screen', order: 20,
   roles: ['Chef', 'PM', 'Fakturering'],
   html: `
+    <style>
+      /* Sidste udvej (kun denne side, jf. PLAN-v2): 11 mandrede kolonner passer ikke i 1280 px med
+         standard table-dense-padding (9 px) plus fast sidebar (240 px) og main-padding (48 px hver side,
+         core: styles.css/index.html). Tættere padding + trunkeret status (med title) her, indtil kernen
+         evt. gør main-området bredere. */
+      #projTable th, #projTable td { padding: var(--space-2) 6px; }
+      #projTable td.st-cut { max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      /* Pinnes til den tætte bredde uanset skærmbredde (standardklasserne udvider sig over 1440 px),
+         så listen heller ikke får vandret scroll ved fx 1920 px. */
+      #projTable td.cut.w-s { max-width: 120px; }
+      #projTable td.cut.w-m { max-width: 160px; }
+    </style>
     <div class="page-head">
       <div>
         <h1>Projektoverblik</h1>
@@ -1779,16 +1866,14 @@ App.registerPage({
         <label class="field">Status <select id="fStatus"><option value="">Alle</option><option>Opstart</option><option>Under udførsel</option><option>Klar til fakturering</option><option>Faktureret</option><option>Afsluttet</option></select></label>
         <label class="field">Måned <input type="text" id="fMaaned" placeholder="2026-03" size="8"></label>
         <label class="field">Søg <input type="text" id="fSearch" placeholder="PRDK, kunde, leverandør, faktura" size="28"></label>
+        <button class="ftab" id="fEkonomi" data-v="econ">Vis økonomi</button>
         <span class="spacer"></span>
         <button class="btn primary" id="btnNewCase">Ny sag</button>
         <button class="btn" id="btnExport"><svg class="ico s"><use href="#i-export"/></svg>Eksportér til Excel</button>
       </div>
       <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Projekt</th><th>Kunde</th><th>Type</th><th>Afdeling</th><th>PM</th><th>Status</th>
-            <th class="num">Salg total</th><th class="num">Kostpris</th><th class="num">Udgifter</th><th class="num">DG beregnet</th><th class="num">DG faktisk</th><th class="num">Faktureret</th><th class="num">Rest</th>
-          </tr></thead>
+        <table class="table-dense" id="projTable">
+          <thead></thead>
           <tbody id="projRows"></tbody>
           <tfoot><tr id="projSum"></tr></tfoot>
         </table>
@@ -1830,9 +1915,15 @@ App.registerPage({
     const { $, $$, D, S, site, bc, save, toast, openModal, closeModal, openProject, h, siteLabel } = App;
     const fPm = $('#fPm');
     D.medarbejdere.filter(m => m.rolle === 'PM').forEach(m => fPm.add(new Option(m.navn, m.id)));
-    ['#fPm', '#fStatus', '#fMaaned', '#fSearch'].forEach(s => $(s).addEventListener('input', () => this.render()));
+    // Rollen PM: filteret forudindstilles til brugeren selv, men først når rollen er kendt (render), og
+    // kun hvis brugeren ikke allerede har valgt noget andet (huskes i S.fPm, se render()).
+    if (S.fPm && [...fPm.options].some(o => o.value === S.fPm)) fPm.value = S.fPm;
+    fPm.addEventListener('input', () => { S.fPm = fPm.value; save(); this.render(); });
+    ['#fStatus', '#fMaaned', '#fSearch'].forEach(s => $(s).addEventListener('input', () => this.render()));
     $$('#fAfd .ftab').forEach(b => b.addEventListener('click', () => { S.fAfd = b.dataset.v; App.save(); this.render(); }));
+    $('#fEkonomi').addEventListener('click', () => { S.visOekonomi = !S.visOekonomi; save(); this.render(); });
     $('#btnExport').addEventListener('click', () => toast('Kun i den færdige løsning: her downloades listen som Excel-fil'));
+    this.table = $('#projTable');
 
     const ncPm = $('#ncPm');
     D.medarbejdere.filter(m => m.rolle === 'PM').forEach(m => ncPm.add(new Option(`${m.navn} (${m.afdeling})`, m.id)));
@@ -1890,9 +1981,61 @@ App.registerPage({
       openProject(p.id);
     });
   },
+  // Kolonneopsæt til projektoverblikket. Standardvisning passer i 1280 px uden vandret scroll;
+  // "Vis økonomi" tilføjer fire kolonner. Både thead, rækker og sumrækken bygges ud fra dette array,
+  // så kolonneantallet altid stemmer.
+  columns() {
+    const { h, kr, dgCell, st, siteLabel, role, S } = App;
+    // Rollen PM: så længe filteret peger på én bestemt projektleder, er PM-kolonnen overflødig
+    // (alle rækker viser samme navn) og skjules. Chef og Fakturering ser den altid.
+    const pmColumnHidden = role() === 'PM' && !!S.fPm;
+    const standard = [
+      { label: 'Projekt', sort: 'text', cell: p => `<td><b>${h(p.id)}</b></td>` },
+      { label: 'Navn', sort: 'text', cell: p => `<td class="cut w-m" title="${h(p.navn)}">${h(p.navn)}</td>` },
+      { label: 'Kunde', sort: 'text', cell: (p, c, s) => `<td class="cut w-s" title="${h(s.kunde || '')}">${h(s.kunde || '–')}</td>` },
+      {
+        label: 'Site', sort: 'text', cell: (p, c, s) => {
+          const kort = siteLabel(s, true);
+          return s.kode ? `<td>${h(kort)}</td>` : `<td class="cut w-s" title="${h(siteLabel(s))}">${h(kort)}</td>`;
+        },
+      },
+      { label: 'Type', sort: 'text', cell: p => `<td>${h(p.type)}</td>` },
+      { label: 'Afd.', sort: 'text', cell: p => `<td>${h(p.afdeling)}</td>` },
+      ...(pmColumnHidden ? [] : [{ label: 'PM', sort: 'text', cell: (p, c, s, e) => `<td title="${h(e.navn)}">${h(p.pm)}</td>` }]),
+      // Status beholdes (den styrer faktureringsflowet: Opstart → Under udførsel → Klar til fakturering →
+      // Faktureret), som sidste kolonne før beløbene, vist som prik + kort tekst.
+      { label: 'Status', sort: 'text', cell: p => `<td class="st-cut" title="${h(p.status)}">${st(p.status)}</td>` },
+      { label: 'Salg total', sort: 'num', num: true, cell: (p, c) => `<td class="num" data-value="${c.salg}">${kr(c.salg)}</td>`, sum: t => `<td class="num" data-value="${t.salg}">${kr(t.salg)}</td>` },
+    ];
+    const oekonomi = [
+      { label: 'Kostpris', sort: 'num', num: true, cell: p => `<td class="num" data-value="${p.salgKost || 0}">${kr(p.salgKost)}</td>`, sum: t => `<td class="num" data-value="${t.kost}">${kr(t.kost)}</td>` },
+      { label: 'Udgifter', sort: 'num', num: true, cell: (p, c) => `<td class="num" data-value="${c.udg}">${kr(c.udg)}</td>`, sum: t => `<td class="num" data-value="${t.udg}">${kr(t.udg)}</td>` },
+      {
+        label: 'DG beregnet', sort: 'num', num: true, cell: (p, c) => dgCell(c.dgB),
+        sum: t => dgCell(t.salg ? (t.salg - t.kost) / t.salg * 100 : null),
+      },
+    ];
+    const tail = [
+      { label: 'DG faktisk', sort: 'num', num: true, cell: (p, c) => dgCell(c.dgF), sum: t => dgCell(t.salg ? (t.salg - t.udg) / t.salg * 100 : null) },
+    ];
+    const oekonomiHale = [
+      { label: 'Faktureret', sort: 'num', num: true, cell: (p, c) => `<td class="num" data-value="${c.fakt}">${kr(c.fakt)}</td>`, sum: t => `<td class="num" data-value="${t.fakt}">${kr(t.fakt)}</td>` },
+    ];
+    const rest = [
+      { label: 'Rest', sort: 'num', num: true, cell: (p, c) => `<td class="num" data-value="${c.rest}">${kr(c.rest)}</td>`, sum: t => `<td class="num" data-value="${t.rest}">${kr(t.rest)}</td>` },
+    ];
+    return App.S.visOekonomi ? [...standard, ...oekonomi, ...tail, ...oekonomiHale, ...rest] : [...standard, ...tail, ...rest];
+  },
   render() {
-    const { $, $$, S, site, emp, calc, kr, h, st, dgCell, pct, openProject, siteLabel } = App;
+    const { $, $$, S, site, emp, calc, openProject, role, save } = App;
+    // Rollen PM: forudindstil filteret til brugeren selv, første gang siden vises som PM (og kun da –
+    // har brugeren selv valgt noget andet, står det i S.fPm og røres ikke igen).
+    if (role() === 'PM') {
+      if (S.fPm == null) { S.fPm = S.user; save(); }
+      if ($('#fPm').value !== S.fPm) $('#fPm').value = S.fPm;
+    }
     $$('#fAfd .ftab').forEach(x => x.classList.toggle('on', x.dataset.v === (S.fAfd || '')));
+    $('#fEkonomi').classList.toggle('on', !!S.visOekonomi);
     const q = $('#fSearch').value.trim().toLowerCase();
     const rows = S.projekter.filter(p => {
       if (S.fAfd && p.afdeling !== S.fAfd) return false;
@@ -1906,26 +2049,31 @@ App.registerPage({
       }
       return true;
     });
+
+    const cols = this.columns();
+    // thead genskabes hver gang, så antal kolonner altid stemmer og App.sortable aldrig dobbeltbindes.
+    this.table.querySelector('thead').innerHTML = `<tr>${cols.map(c => `<th data-sort="${c.sort}">${c.label}</th>`).join('')}</tr>`;
+
     const tot = { salg: 0, kost: 0, udg: 0, fakt: 0, rest: 0 };
     $('#projRows').innerHTML = rows.map(p => {
       const c = calc(p); tot.salg += c.salg; tot.kost += p.salgKost || 0; tot.udg += c.udg; tot.fakt += c.fakt; tot.rest += c.rest;
-      const s = site(p.siteId);
-      return `<tr class="click" data-open="${p.id}" tabindex="0">
-        <td><b>${p.id}</b><br><span class="muted">${h(p.navn)}</span></td>
-        <td>${h(s.kunde)}<br><span class="muted">${h(siteLabel(s))}</span></td><td>${h(p.type)}</td><td>${h(p.afdeling)}</td><td>${h(emp(p.pm).navn)}</td><td>${st(p.status)}</td>
-        <td class="num">${kr(c.salg)}</td><td class="num">${kr(p.salgKost)}</td><td class="num">${kr(c.udg)}</td>${dgCell(c.dgB)}${dgCell(c.dgF)}
-        <td class="num">${kr(c.fakt)}</td><td class="num">${kr(c.rest)}</td></tr>`;
-    }).join('') || '<tr><td colspan="13" class="empty">Ingen projekter matcher filteret. Ryd filtrene, eller opret en ny sag.</td></tr>';
-    const dg = tot.salg ? (tot.salg - tot.udg) / tot.salg * 100 : null;
-    $('#projSum').innerHTML = `<td colspan="6">${rows.length} projekter</td><td class="num">${kr(tot.salg)}</td><td class="num">${kr(tot.kost)}</td><td class="num">${kr(tot.udg)}</td><td class="num">${tot.salg ? pct((tot.salg - tot.kost) / tot.salg * 100) : '–'}</td>${dgCell(dg)}<td class="num">${kr(tot.fakt)}</td><td class="num">${kr(tot.rest)}</td>`;
+      const s = site(p.siteId); const e = emp(p.pm);
+      return `<tr class="click" data-open="${p.id}" tabindex="0">${cols.map(col => col.cell(p, c, s, e)).join('')}</tr>`;
+    }).join('') || `<tr><td colspan="${cols.length}" class="empty">Ingen projekter matcher filteret. Ryd filtrene, eller opret en ny sag.</td></tr>`;
+
+    const firstNum = cols.findIndex(c => c.num);
+    $('#projSum').innerHTML = `<td colspan="${firstNum}">${rows.length} projekter</td>` + cols.slice(firstNum).map(c => c.sum(tot)).join('');
+
+    App.sortable(this.table, 'projekter-liste', { col: 0, dir: 'desc' });
+
     $$('[data-open]').forEach(r => {
       r.addEventListener('click', () => openProject(r.dataset.open));
     });
     const all = S.projekter.map(calc);
     $('#projStats').innerHTML = [
       ['Aktive projekter', S.projekter.filter(p => p.status !== 'Faktureret' && p.status !== 'Afsluttet').length],
-      ['Klar til fakturering', kr(S.projekter.flatMap(p => p.fakturering).filter(f => f.status === 'Klar til fakturering').reduce((a, f) => a + +f.beloeb, 0))],
-      ['Rest at fakturere', kr(all.reduce((a, c) => a + c.rest, 0))],
+      ['Klar til fakturering', App.kr(S.projekter.flatMap(p => p.fakturering).filter(f => f.status === 'Klar til fakturering').reduce((a, f) => a + +f.beloeb, 0))],
+      ['Rest at fakturere', App.kr(all.reduce((a, c) => a + c.rest, 0))],
       ['Nye sager i indbakken', S.indbakke.length],
     ].map(([l, v]) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`).join('');
   },
@@ -3003,6 +3151,18 @@ App.registerPage({
   id: 'service', label: 'Serviceopgaver', group: 'Service', icon: 'calendar-check', order: 35,
   roles: ['Chef', 'PM', 'Fakturering', 'Service', 'Tekniker'],
   html: `
+    <style>
+      /* Sidste udvej (kun denne side, jf. PLAN-v2): 11 kolonner (12 for Chef/PM/Fakturering, som ser
+         Tekniker-kolonnen) passer ikke i 1280 px med standard table-dense-bredder. Tættere kunde/site/
+         tekniker-kolonner og trunkeret status (alle med title) her, indtil kernen evt. gør main-området
+         bredere eller tilføjer disse bredder til styles.css. */
+      #svcTable td.cut.w-xs { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+      #svcTable td.st-cut { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      /* Pinnes til den tætte bredde uanset skærmbredde (standard-padding og -klasserne udvider sig
+         over 1440 px), så listen heller ikke får vandret scroll ved fx 1920 px. */
+      #svcTable th, #svcTable td { padding: var(--space-2) 6px; }
+      #svcTable td.cut.w-m { max-width: 160px; }
+    </style>
     <div class="page-head">
       <div>
         <h1>Serviceopgaver</h1>
@@ -3020,16 +3180,14 @@ App.registerPage({
           <button class="ftab" data-v="Faktureret">Faktureret</button>
           <button class="ftab" data-v="__delopgaver">Delopgaver</button>
         </div>
-        <label class="field">Tekniker <select id="svcTekniker"><option value="">Alle</option></select></label>
+        <label class="field" id="svcTeknikerField">Tekniker <select id="svcTekniker"><option value="">Alle</option></select></label>
         <label class="field">Søg <input type="text" id="svcSearch" placeholder="Sag, kunde, beskrivelse" size="26"></label>
         <span class="spacer"></span>
         <button class="btn cta" id="svcNy">Ny serviceopgave</button>
       </div>
       <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Sag</th><th>Kunde og site</th><th>Beskrivelse</th><th>Type</th><th>Tekniker</th><th>Oprettet</th><th>Status</th><th class="num">Timer</th><th class="num">Pris</th><th></th>
-          </tr></thead>
+        <table class="table-dense" id="svcTable">
+          <thead></thead>
           <tbody id="svcRows"></tbody>
         </table>
       </div>
@@ -3085,6 +3243,9 @@ App.registerPage({
     }));
     tekSel.addEventListener('change', () => this.render());
     $('#svcSearch').addEventListener('input', () => this.render());
+
+    this.table = $('#svcTable');
+    // thead genskabes ved hver render (kolonnerne afhænger af rollen), så App.sortable bindes der i stedet.
 
     // "ny serviceopgave"-modal
     $('#svcNy').addEventListener('click', () => {
@@ -3294,17 +3455,59 @@ App.registerPage({
     const canGodkend = c.status === 'Åben' || c.status === 'Lukket til fakturering';
     $('#svcKladdeActions').innerHTML = `<button class="btn" id="svcKladdePdf">Gem som PDF</button>` + (canGodkend ? `<button class="btn cta" id="svcKladdeGodkend">Godkend og send til fakturering</button>` : '');
   },
+  // Kolonneopsæt. Rollen Tekniker ser kun sig selv (listen er allerede filtreret til brugeren), så
+  // Tekniker-kolonnen (og -filteret, se render()) er overflødig og skjules. Pris hører til kladden,
+  // ikke overbliksliste; Oprettet vises som dato uden klokkeslæt, og handlinger er begrænset til
+  // "Kladde", "Luk"/"Genåbn" og "Detaljer", så listen passer uden vandret scroll ved 1280 px.
+  columns() {
+    const { h, n, st, siteLabel, role } = App;
+    const isTekniker = role() === 'Tekniker';
+    // Delopgave-markeringen (sag med "parent") vises som titel på sag-nummeret i stedet for en egen
+    // kolonne – klik på "Detaljer" for at åbne det tilhørende projekt.
+    const cols = [
+      { label: 'Sag', sort: 'text', cell: c => `<td><b title="${c.parent ? h('Delopgave under ' + c.parent) : ''}">${h(c.id)}</b></td>` },
+      { label: 'Kunde', sort: 'text', cell: (c, s) => `<td class="cut w-xs" title="${h(s.kunde || '')}">${h(s.kunde || '–')}</td>` },
+      {
+        label: 'Site', sort: 'text', cell: (c, s) => {
+          const kort = siteLabel(s, true);
+          return s.kode ? `<td>${h(kort)}</td>` : `<td class="cut w-xs" title="${h(siteLabel(s))}">${h(kort)}</td>`;
+        },
+      },
+      { label: 'Beskrivelse', sort: 'text', cell: c => `<td class="cut w-m" title="${h(c.beskrivelse)}">${h(c.beskrivelse)}</td>` },
+      { label: 'Type', sort: 'text', cell: c => `<td>${h(c.type || 'Service')}</td>` },
+    ];
+    if (!isTekniker) cols.push({ label: 'Tekniker', sort: 'text', cell: (c, s, timer, e) => `<td class="cut w-xs" title="${h(e.navn)}">${h(e.navn)}</td>` });
+    cols.push(
+      { label: 'Oprettet', sort: 'date', cell: c => `<td>${h(c.oprettet || '–')}</td>` },
+      { label: 'Status', sort: 'text', cell: c => `<td class="st-cut" title="${h(c.status)}">${st(c.status)}</td>` },
+      { label: 'Timer', sort: 'num', num: true, cell: (c, s, timer) => `<td class="num" data-value="${timer}">${n(timer)}</td>` },
+      {
+        label: '', sort: '', cell: c => {
+          const canLuk = c.status === 'Åben';
+          const canGenaabn = c.status === 'Lukket til fakturering';
+          return `<td class="actions">
+            ${canLuk ? `<button class="tlink" data-act="luk" data-id="${c.id}">Luk</button>` : ''}
+            ${canGenaabn ? `<button class="tlink" data-act="genaabn" data-id="${c.id}">Genåbn</button>` : ''}
+            ${(c.status === 'Åben' || c.status === 'Lukket til fakturering') ? `<button class="tlink" data-act="kladde" data-id="${c.id}">Kladde</button>` : ''}
+            <button class="tlink" data-act="detaljer" data-id="${c.id}">Detaljer</button>
+          </td>`;
+        },
+      },
+    );
+    return cols;
+  },
   render() {
-    const { $, $$, S, site, emp, h, kr, n, st, role, siteLabel } = App;
+    const { $, $$, S, site, emp, h, kr, role } = App;
     const isTekniker = role() === 'Tekniker';
     $('#svcNy').style.display = isTekniker ? 'none' : '';
+    $('#svcTeknikerField').style.display = isTekniker ? 'none' : '';
     const all = (S.serviceopgaver || []).filter(c => !isTekniker || c.tekniker === S.user);
 
     const timerFor = id => (S.tid || []).filter(t => t.sag === id).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
 
     // filtre
     const status = this.fStatus || '';
-    const tek = $('#svcTekniker').value;
+    const tek = isTekniker ? '' : $('#svcTekniker').value;
     const q = $('#svcSearch').value.trim().toLowerCase();
     const rows = all.filter(c => {
       if (status === '__delopgaver') { if (!c.parent) return false; }
@@ -3318,30 +3521,18 @@ App.registerPage({
       return true;
     }).sort((a, b) => (b.oprettet || '').localeCompare(a.oprettet || ''));
 
+    const cols = this.columns();
+    // thead genskabes hver gang, så antal kolonner altid stemmer og App.sortable aldrig dobbeltbindes.
+    this.table.querySelector('thead').innerHTML = `<tr>${cols.map(c => c.sort ? `<th data-sort="${c.sort}">${c.label}</th>` : `<th>${c.label}</th>`).join('')}</tr>`;
+
     $('#svcRows').innerHTML = rows.map(c => {
       const s = site(c.siteId);
       const timer = timerFor(c.id);
-      const canLuk = c.status === 'Åben';
-      const canGenaabn = c.status === 'Lukket til fakturering';
-      return `<tr>
-        <td><b>${h(c.id)}</b></td>
-        <td>${h(s.kunde || '–')}<br><span class="muted">${h(siteLabel(s))}</span></td>
-        <td>${h(c.beskrivelse)}${c.parent ? `<br><span class="muted caption">Delopgave under ${h(c.parent)}</span>` : ''}</td>
-        <td>${h(c.type || 'Service')}</td>
-        <td>${h(emp(c.tekniker).navn)}</td>
-        <td>${h(c.oprettet || '–')}</td>
-        <td>${st(c.status)}</td>
-        <td class="num">${n(timer)}</td>
-        <td class="num">${kr(c.pris)}</td>
-        <td>
-          ${canLuk ? `<button class="tlink" data-act="luk" data-id="${c.id}">Luk til fakturering</button> · ` : ''}
-          ${canGenaabn ? `<button class="tlink" data-act="genaabn" data-id="${c.id}">Genåbn</button> · ` : ''}
-          ${(c.status === 'Åben' || c.status === 'Lukket til fakturering') ? `<button class="tlink" data-act="kladde" data-id="${c.id}">Fakturakladde</button> · ` : ''}
-          ${c.parent ? `<button class="tlink" data-act="aabnprojekt" data-id="${h(c.parent)}">Åbn projekt</button> · ` : ''}
-          <button class="tlink" data-act="detaljer" data-id="${c.id}">Detaljer</button>
-        </td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="10" class="empty">Ingen serviceopgaver matcher filteret. Ryd filtrene, eller opret en ny serviceopgave.</td></tr>';
+      const e = emp(c.tekniker);
+      return `<tr>${cols.map(col => col.cell(c, s, timer, e)).join('')}</tr>`;
+    }).join('') || `<tr><td colspan="${cols.length}" class="empty">Ingen serviceopgaver matcher filteret. Ryd filtrene, eller opret en ny serviceopgave.</td></tr>`;
+
+    App.sortable(this.table, 'service-opgaver', { col: cols.findIndex(c => c.label === 'Oprettet'), dir: 'desc' });
 
     // KPI'er (rolle-afgrænset, men uafhængige af tabellens filtre)
     const aabne = all.filter(c => c.status === 'Åben');
@@ -3638,6 +3829,17 @@ App.registerPage({
   id: 'fakturering', label: 'Til fakturering', group: 'Økonomi', icon: 'export', order: 50,
   roles: ['Chef', 'PM', 'Fakturering'],
   html: `
+    <style>
+      /* Sidste udvej (kun denne side, jf. PLAN-v2): 12 kolonner passer ikke i 1280 px med standard
+         table-dense-bredder. Tættere PO/costcenter-kolonner her, indtil kernen evt. gør main-området
+         bredere. "Mangler kladde" og "forslag" vises som title på beløbet i stedet for inline tekst. */
+      #fkTable td.cut.w-xs { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+      /* Pinnes til den tætte bredde uanset skærmbredde (standard-padding og -klasserne udvider sig
+         over 1440 px), så listen heller ikke får vandret scroll ved fx 1920 px. */
+      #fkTable th, #fkTable td { padding: var(--space-2) 6px; }
+      #fkTable td.cut.w-s { max-width: 120px; }
+      #fkTable td.cut.w-m { max-width: 160px; }
+    </style>
     <div class="page-head">
       <div>
         <h1>Til fakturering</h1>
@@ -3667,10 +3869,11 @@ App.registerPage({
         <button class="btn cta" id="fkMarker" disabled>Marker som faktureret</button>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="table-dense" id="fkTable">
           <thead><tr>
-            <th></th><th>Sag</th><th>Kunde og site</th><th>Tekst</th><th>Rekv. / PO</th><th>Costcenter</th>
-            <th class="num">Beløb</th><th class="num">Timer</th><th>Afsendt af / dato</th><th></th><th></th>
+            <th></th><th data-sort="text">Sag</th><th data-sort="text">Projekt</th><th data-sort="text">Kunde</th><th data-sort="text">Site</th>
+            <th data-sort="text">Tekst</th><th data-sort="text">PO</th><th data-sort="text">Costcenter</th>
+            <th class="num" data-sort="num">Beløb</th><th class="num" data-sort="num">Timer</th><th data-sort="date">Dato</th><th></th>
           </tr></thead>
           <tbody id="fkRows"></tbody>
           <tfoot><tr id="fkSum"></tr></tfoot>
@@ -3681,8 +3884,11 @@ App.registerPage({
     <p style="margin-top:18px"><button class="tlink" id="fkRecentToggle">Vis faktureret de seneste 30 dage</button></p>
     <div class="card" id="fkRecentCard" hidden>
       <div class="table-wrap">
-        <table>
-          <thead><tr><th>Sag</th><th>Kunde og site</th><th>Tekst</th><th class="num">Beløb</th><th>Dato</th><th>Init.</th></tr></thead>
+        <table class="table-dense" id="fkRecentTable">
+          <thead><tr>
+            <th data-sort="text">Sag</th><th data-sort="text">Kunde</th><th data-sort="text">Site</th><th data-sort="text">Tekst</th>
+            <th class="num" data-sort="num">Beløb</th><th data-sort="date">Dato</th><th data-sort="text">Init.</th>
+          </tr></thead>
           <tbody id="fkRecentRows"></tbody>
         </table>
       </div>
@@ -3770,14 +3976,14 @@ App.registerPage({
         (p.fakturering || []).forEach(line => {
           if (line.status === 'Faktureret' && line.dato && line.dato >= cutoffStr) {
             const s = site(p.siteId);
-            out.push({ sag: p.id, kunde: `${s.kunde} · ${App.siteLabel(s)}`, tekst: line.tekst, beloeb: +line.beloeb || 0, dato: line.dato, init: line.initialer });
+            out.push({ sag: p.id, kunde: s.kunde, site: App.siteLabel(s, true), tekst: line.tekst, beloeb: +line.beloeb || 0, dato: line.dato, init: line.initialer });
           }
         });
       });
       (S.serviceopgaver || []).forEach(opg => {
         if (opg.status === 'Faktureret' && opg.dato && opg.dato >= cutoffStr) {
           const s = site(opg.siteId);
-          out.push({ sag: opg.id, kunde: `${s.kunde} · ${App.siteLabel(s)}`, tekst: opg.beskrivelse, beloeb: +opg.pris || 0, dato: opg.dato, init: opg.initialer });
+          out.push({ sag: opg.id, kunde: s.kunde, site: App.siteLabel(s, true), tekst: opg.beskrivelse, beloeb: +opg.pris || 0, dato: opg.dato, init: opg.initialer });
         }
       });
       return out.sort((a, b) => b.dato.localeCompare(a.dato));
@@ -3878,6 +4084,11 @@ App.registerPage({
       this.render();
     });
 
+    this.table = $('#fkTable');
+    this.recentTable = $('#fkRecentTable');
+    App.sortable(this.table, 'fakturering-koe', { col: 1, dir: 'asc' });
+    App.sortable(this.recentTable, 'fakturering-seneste', { col: 5, dir: 'desc' });
+
     this._openAnmodning = openAnmodning;
     this._openKladdeVis = openKladdeVis;
     this._filtered = filtered;
@@ -3917,7 +4128,7 @@ App.registerPage({
 
     // Tabel
     if (!rows.length) {
-      $('#fkRows').innerHTML = `<tr><td colspan="10" class="empty">${all.length ? 'Ingen linjer matcher filtrene.' : 'Ingen linjer klar til fakturering lige nu.'}</td></tr>`;
+      $('#fkRows').innerHTML = `<tr><td colspan="12" class="empty">${all.length ? 'Ingen linjer matcher filtrene.' : 'Ingen linjer klar til fakturering lige nu.'}</td></tr>`;
     } else {
       $('#fkRows').innerHTML = rows.map(row => {
         const k = this._key(row);
@@ -3928,26 +4139,30 @@ App.registerPage({
         const timer = this._timerForRow(row);
         const dato = row.type === 'projekt' ? row.line.dato : row.opg.dato;
         const init = row.type === 'projekt' ? row.line.initialer : row.opg.initialer;
-        const afsendt = dato ? `${h(dato)} · ${h(emp(init).navn)}` : '–';
+        const afsendtAf = dato ? `Afsendt af ${h(emp(init).navn)}` : '';
         const relId = this._relatedProjectId(row);
         const mangler = this._manglerKladde(row);
+        const s2 = App.siteLabel(s, true);
+        const siteCell = s.kode ? `<td>${h(s2)}</td>` : `<td class="cut w-s" title="${h(App.siteLabel(s))}">${h(s2)}</td>`;
         return `<tr>
           <td><input type="checkbox" data-k="${h(k)}" ${this._valgt.has(k) ? 'checked' : ''} ${mangler ? 'disabled' : ''} aria-label="Vælg linje"></td>
-          <td>${h(row.id)}<div class="caption muted">${row.type === 'projekt' ? 'Projekt' : (row.opg.parent ? `Delopgave under ${h(row.opg.parent)}` : 'Serviceopgave')}</div></td>
-          <td>${h(s.kunde)}<div class="caption muted">${h(App.siteLabel(s))}</div></td>
-          <td>${h(tekst)}</td>
-          <td>${h(rekv) || '–'}</td>
-          <td>${this._costcenterForRow(row)}</td>
-          <td class="num">${kr(beloeb)}${forslag ? '<div class="caption muted">Forslag</div>' : ''}${mangler ? '<div class="alert">Mangler kladde</div>' : ''}</td>
+          <td><b>${h(row.id)}</b></td>
+          <td>${relId ? `<button class="tlink" data-aabn="${h(relId)}">${h(relId)}</button>` : '–'}</td>
+          <td class="cut w-s" title="${h(s.kunde)}">${h(s.kunde)}</td>
+          ${siteCell}
+          <td class="cut w-m" title="${h(tekst)}">${h(tekst)}</td>
+          <td class="cut w-xs" title="${h(rekv || '')}">${h(rekv) || '–'}</td>
+          <td class="cut w-xs" title="${h(this._costcenterForRow(row))}">${this._costcenterForRow(row)}</td>
+          <td class="num${mangler ? ' alert' : ''}" title="${mangler ? 'Mangler fakturakladde' : forslag ? 'Beløb er et forslag baseret på registrerede timer' : ''}">${kr(beloeb)}</td>
           <td class="num">${timer ? n(timer) + ' t' : '–'}</td>
-          <td>${afsendt}</td>
-          <td><button class="tlink" data-vis="${h(k)}">Vis anmodning</button></td>
-          <td>${relId ? `<button class="tlink" data-aabn="${h(relId)}">Åbn projekt</button>` : ''}</td>
+          <td title="${afsendtAf}">${dato ? h(dato) : '–'}</td>
+          <td class="actions"><button class="tlink" data-vis="${h(k)}">Vis</button></td>
         </tr>`;
       }).join('');
     }
     const sumVis = rows.reduce((a, r) => a + this._beloebForRow(r).beloeb, 0);
-    $('#fkSum').innerHTML = `<td></td><td colspan="5">Sum, viste linjer (${rows.length})</td><td class="num">${kr(sumVis)}</td><td colspan="3"></td>`;
+    $('#fkSum').innerHTML = `<td></td><td colspan="7">Sum, viste linjer (${rows.length})</td><td class="num">${kr(sumVis)}</td><td colspan="3"></td>`;
+    App.applySort(this.table, 'fakturering-koe');
 
     $$('#fkRows [data-k]').forEach(cb => cb.addEventListener('change', () => {
       const k = cb.dataset.k;
@@ -3965,7 +4180,8 @@ App.registerPage({
 
     // Faktureret de seneste 30 dage
     const recent = this._recentRows();
-    $('#fkRecentRows').innerHTML = recent.map(r => `<tr><td>${h(r.sag)}</td><td>${h(r.kunde)}</td><td>${h(r.tekst)}</td><td class="num">${kr(r.beloeb)}</td><td class="muted">${h(r.dato)}</td><td>${h(r.init)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Ingen fakturerede linjer de seneste 30 dage.</td></tr>';
+    $('#fkRecentRows').innerHTML = recent.map(r => `<tr><td><b>${h(r.sag)}</b></td><td>${h(r.kunde)}</td><td>${h(r.site)}</td><td class="cut w-m" title="${h(r.tekst)}">${h(r.tekst)}</td><td class="num">${kr(r.beloeb)}</td><td>${h(r.dato)}</td><td>${h(r.init)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Ingen fakturerede linjer de seneste 30 dage.</td></tr>';
+    App.applySort(this.recentTable, 'fakturering-seneste');
   },
 });
 
@@ -4283,6 +4499,13 @@ App.registerPage({
   id: 'eftersyn', label: 'Eftersyn', group: 'Service', icon: 'time', order: 45,
   roles: ['Chef', 'PM', 'Service', 'Tekniker', 'Fakturering'],
   html: `
+    <style>
+      /* Sidste udvej (kun denne side, jf. PLAN-v2): 11 kolonner passer ikke i 1280 px med standard
+         table-dense-bredder. Tættere kunde/serviceaftale/UL/CAS-kolonner og trunkeret status (alle med
+         title) her, indtil kernen evt. gør main-området bredere. */
+      #efTable td.cut.w-xs { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+      #efTable td.st-cut { max-width: 116px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
     <div class="page-head">
       <div>
         <h1>Eftersyn</h1>
@@ -4307,10 +4530,12 @@ App.registerPage({
         <label class="field">Søg <input type="text" id="efSearch" placeholder="Site, kunde, installation" size="26"></label>
       </div>
       <div class="table-wrap" id="efListWrap">
-        <table>
+        <table class="table-dense" id="efTable">
           <thead><tr>
-            <th>Site og kunde</th><th>Adresse</th><th>Installation</th><th>Serviceaftale</th><th>UL</th>
-            <th>Sidste eftersyn</th><th>Næste eftersyn</th><th>Interval</th><th>Status</th><th>CAS-nr.</th><th></th>
+            <th data-sort="text">Kunde</th><th data-sort="text">Site</th><th data-sort="text">Installation</th>
+            <th data-sort="text">Serviceaftale</th><th data-sort="text">UL</th>
+            <th data-sort="date">Sidst</th><th data-sort="date">Næste</th><th data-sort="num">Interval</th>
+            <th data-sort="text">Status</th><th data-sort="text">CAS-nr.</th><th></th>
           </tr></thead>
           <tbody id="efRows"></tbody>
         </table>
@@ -4396,6 +4621,9 @@ App.registerPage({
       this.fView = b.dataset.v; this.render();
     }));
     $('#efSearch').addEventListener('input', () => this.render());
+
+    this.table = $('#efTable');
+    App.sortable(this.table, 'eftersyn-liste', { col: 7, dir: 'asc' });
 
     // ---------- rækkehandlinger ----------
     $('#efRows').addEventListener('click', e => {
@@ -4517,23 +4745,28 @@ App.registerPage({
         const s = r.site;
         const opg = opgaveFor(s);
         const iso = r.nextDate ? r.nextDate.getFullYear() + '-' + String(r.nextDate.getMonth() + 1).padStart(2, '0') + '-' + String(r.nextDate.getDate()).padStart(2, '0') : '';
+        const kort = siteLabel(s, true);
+        const siteCell = s.kode ? `<td>${h(kort)}</td>` : `<td class="cut w-xs" title="${h(siteLabel(s))}">${h(kort)}</td>`;
+        const casNr = opg ? opg.id : (s.casEftersyn || '–');
         return `<tr class="click" data-site="${h(s.id)}" tabindex="0">
-          <td><b>${h(s.kunde)}</b><br><span class="muted">${h(siteLabel(s))}</span></td>
-          <td>${h(s.adresse) || '–'}${s.postnr ? ', ' + h(s.postnr) + ' ' + h(s.by) : ''}</td>
+          <td class="cut w-xs" title="${h(s.kunde)}"><b>${h(s.kunde)}</b></td>
+          ${siteCell}
           <td>${h(s.installation) || '–'}</td>
-          <td>${h(s.serviceaftale) || '–'}</td>
-          <td>${h(s.ul) || '–'}</td>
+          <td class="cut w-xs" title="${h(s.serviceaftale || '')}">${h(s.serviceaftale) || '–'}</td>
+          <td class="cut w-xs" title="${h(s.ul || '')}">${h(s.ul) || '–'}</td>
           <td>${ddmm(s.sidsteEftersyn)}</td>
           <td>${iso ? ddmm(iso) : '–'}</td>
           <td>${s.interval ? s.interval + ' mdr.' : '–'}</td>
-          <td><span class="st ${r.cls}">${h(r.label)}</span></td>
-          <td>${h(opg ? opg.id : (s.casEftersyn || '–'))}</td>
+          <td class="st-cut" title="${h(r.label)}"><span class="st ${r.cls}">${h(r.label)}</span></td>
+          <td class="cut w-xs" title="${h(casNr)}">${h(casNr)}</td>
           <td class="actions">
-            ${!opg ? `<button class="tlink" data-act="opret" data-id="${h(s.id)}">Opret eftersynsopgave</button>` : ''}
-            <button class="tlink" data-act="udfoert" data-id="${h(s.id)}">Marker udført</button>
+            ${!opg ? `<button class="tlink" data-act="opret" data-id="${h(s.id)}" title="Opret eftersynsopgave">Opret</button>` : ''}
+            <button class="tlink" data-act="udfoert" data-id="${h(s.id)}" title="Marker eftersyn som udført">Udført</button>
           </td>
         </tr>`;
       }).join('') || '<tr><td colspan="11" class="empty">Ingen sites matcher filteret.</td></tr>';
+
+      App.applySort(this.table, 'eftersyn-liste');
     } else {
       // kalender – 12 måneder frem
       const months = [];
@@ -5253,6 +5486,14 @@ App.registerPage({
     id: 'kontering', label: 'Kontering', group: 'Økonomi', icon: 'time', order: 52,
     roles: ['Chef', 'PM', 'Fakturering', 'Tekniker'],
     html: `
+    <style>
+      /* Sidste udvej (kun denne side, jf. PLAN-v2): med BC-felterne slået til passer listen ikke i
+         1280 px med standard table-dense-bredder. Pinnes til den tætte bredde uanset skærmbredde
+         (standardklasserne udvider sig over 1440 px), så listen heller ikke får vandret scroll ved
+         fx 1920 px. */
+      #konTable td.cut.w-s { max-width: 120px; }
+      #konTable td.cut.w-m { max-width: 160px; }
+    </style>
     <div class="page-head">
       <div>
         <h1>Kontering</h1>
@@ -5264,6 +5505,7 @@ App.registerPage({
       <div class="toolbar">
         <label class="field">Tekniker <select id="konTekniker"></select></label>
         <label class="field">Måned <select id="konMaaned"></select></label>
+        <button class="ftab" id="konBc">Vis BC-felter</button>
         <span class="spacer"></span>
         <button class="btn" id="konPdf"><svg class="ico s"><use href="#i-download"/></svg>Gem som PDF</button>
         <button class="btn" id="konCsv"><svg class="ico s"><use href="#i-export"/></svg>Eksportér til Excel</button>
@@ -5271,12 +5513,8 @@ App.registerPage({
       <div class="card-body">
         <div class="stats" id="konStats"></div>
         <div class="table-wrap" id="konTableWrap">
-          <table id="konTable">
-            <thead><tr>
-              <th>Sag</th><th>Kunde og site</th><th>Beskrivelse</th>
-              <th class="num">Timer</th><th class="num">Overtid 1</th><th class="num">Overtid 2</th><th class="num">Kørsel</th>
-              <th>Sted nr.</th><th>Costcenter</th><th>TOS</th><th>CEP account</th><th>CEP site</th><th></th>
-            </tr></thead>
+          <table class="table-dense" id="konTable">
+            <thead></thead>
             <tbody id="konRows"></tbody>
             <tfoot id="konFoot"></tfoot>
           </table>
@@ -5287,6 +5525,10 @@ App.registerPage({
     init() {
       const { $, $$, D, S, save, emp, role } = App;
       this.expanded = new Set();
+      this.table = $('#konTable');
+      // thead genskabes ved hver render (BC-felterne kan slås til/fra), så App.sortable bindes der i stedet.
+
+      $('#konBc').addEventListener('click', () => { S.konteringBc = !S.konteringBc; save(); this.render(); });
 
       const teknikerSel = $('#konTekniker');
       D.medarbejdere.filter(m => m.rolle === 'Tekniker').forEach(m => teknikerSel.add(new Option(m.navn, m.id)));
@@ -5316,8 +5558,36 @@ App.registerPage({
         App.csvDownload(`kontering-${tech}-${mnd}.csv`, rows);
       });
     },
+    // Kolonneopsæt. BC-felterne (Sted nr., Costcenter, TOS, CEP account, CEP site) samles i filter-tab
+    // "Vis BC-felter" (til/fra, husk i S.konteringBc, standard fra), ligesom "Vis økonomi" på
+    // projektoverblikket – CSV-eksporten indeholder altid alle felter uanset visning.
+    columns() {
+      const { h, n } = App;
+      const base = [
+        { label: 'Sag', sort: 'text', cell: g => `<td><b>${h(g.label)}</b></td>`, day: d => `<td>${h(d.dato)}</td>` },
+        { label: 'Kunde', sort: 'text', cell: g => `<td>${h(g.kunde) || '–'}</td>`, day: () => '<td></td>' },
+        { label: 'Site', sort: 'text', cell: g => `<td>${h(g.site) || '–'}</td>`, day: () => '<td></td>' },
+        { label: 'Beskrivelse', sort: 'text', cell: g => `<td class="cut w-m" title="${h(g.beskrivelse)}">${h(g.beskrivelse)}</td>`, day: d => `<td class="cut w-m">${h(d.udfoert || '')}</td>` },
+        { label: 'Timer', sort: 'num', num: true, cell: g => `<td class="num">${n(g.timer)}</td>`, day: d => `<td class="num">${n(d.timer)}</td>` },
+        { label: 'Overtid 1', sort: 'num', num: true, cell: g => `<td class="num">${n(g.ot1)}</td>`, day: d => `<td class="num">${n(d.ot1)}</td>` },
+        { label: 'Overtid 2', sort: 'num', num: true, cell: g => `<td class="num">${n(g.ot2)}</td>`, day: d => `<td class="num">${n(d.ot2)}</td>` },
+        { label: 'Kørsel', sort: 'num', num: true, cell: g => `<td class="num">${n(g.koersel)}</td>`, day: d => `<td class="num">${n(d.koersel)}</td>` },
+      ];
+      const bc = [
+        { label: 'Sted nr.', sort: 'text', cell: g => `<td>${h(g.stedNr) || '–'}</td>`, day: () => '<td></td>' },
+        { label: 'Costcenter', sort: 'text', cell: g => `<td class="cut w-s" title="${h(g.costcenter)}">${h(g.costcenter) || '–'}</td>`, day: () => '<td></td>' },
+        { label: 'TOS', sort: 'text', cell: g => `<td class="cut w-s" title="${h(g.tos)}">${h(g.tos) || '–'}</td>`, day: () => '<td></td>' },
+        { label: 'CEP account', sort: 'text', cell: g => `<td>${h(g.account) || '–'}</td>`, day: () => '<td></td>' },
+        { label: 'CEP site', sort: 'text', cell: g => `<td>${h(g.cepSite) || '–'}</td>`, day: () => '<td></td>' },
+      ];
+      const tail = [
+        { label: '', sort: '', cell: (g, open) => `<td class="actions"><button type="button" class="tlink" data-toggle="${h(g.key)}">${open ? 'Skjul dage' : 'Vis dage'}</button></td>`, day: () => '<td></td>' },
+      ];
+      return App.S.konteringBc ? [...base, ...bc, ...tail] : [...base, ...tail];
+    },
     render() {
       const { $, $$, S, D, emp, role, siteLabel, n, h, expectedHours, workdays, isIntern, save } = App;
+      $('#konBc').classList.toggle('on', !!S.konteringBc);
       const teknikerSel = $('#konTekniker'), maanedSel = $('#konMaaned');
       const teknikere = D.medarbejdere.filter(m => m.rolle === 'Tekniker');
 
@@ -5359,36 +5629,31 @@ App.registerPage({
       `;
 
       // ---- tabel ----
+      const cols = this.columns();
+      // thead genskabes hver gang, så antal kolonner altid stemmer og App.sortable aldrig dobbeltbindes.
+      this.table.querySelector('thead').innerHTML = `<tr>${cols.map(c => {
+        const cls = c.num ? ' class="num"' : '';
+        return c.sort ? `<th${cls} data-sort="${c.sort}">${c.label}</th>` : `<th${cls}>${c.label}</th>`;
+      }).join('')}</tr>`;
+
       if (!groups.length) {
-        $('#konRows').innerHTML = '<tr><td colspan="13" class="empty">Ingen registreringer i den valgte måned.</td></tr>';
+        $('#konRows').innerHTML = `<tr><td colspan="${cols.length}" class="empty">Ingen registreringer i den valgte måned.</td></tr>`;
         $('#konFoot').innerHTML = '';
+        App.sortable(this.table, 'kontering-sager', { col: 0, dir: 'asc' });
         return;
       }
-      const dayRowFixed = d => `<tr class="konDay"><td>${h(d.dato)}</td><td></td><td>${h(d.udfoert || '')}</td><td class="num">${n(d.timer)}</td><td class="num">${n(d.ot1)}</td><td class="num">${n(d.ot2)}</td><td class="num">${n(d.koersel)}</td><td colspan="5"></td></tr>`;
       $('#konRows').innerHTML = groups.map(g => {
         const open = this.expanded.has(g.key);
-        const groupRow = `<tr class="konGroup">
-          <td>${h(g.label)}</td>
-          <td>${[g.kunde, g.site].filter(Boolean).map(h).join(' · ')}</td>
-          <td>${h(g.beskrivelse)}</td>
-          <td class="num">${n(g.timer)}</td>
-          <td class="num">${n(g.ot1)}</td>
-          <td class="num">${n(g.ot2)}</td>
-          <td class="num">${n(g.koersel)}</td>
-          <td>${h(g.stedNr) || '–'}</td>
-          <td>${h(g.costcenter) || '–'}</td>
-          <td>${h(g.tos) || '–'}</td>
-          <td>${h(g.account) || '–'}</td>
-          <td>${h(g.cepSite) || '–'}</td>
-          <td><button type="button" class="tlink" data-toggle="${h(g.key)}">${open ? 'Skjul dage' : 'Vis dage'}</button></td>
-        </tr>`;
-        const dayRows = open ? [...g.days].sort((a, b) => a.dato.localeCompare(b.dato)).map(dayRowFixed).join('') : '';
+        const groupRow = `<tr class="konGroup">${cols.map(c => c.cell(g, open)).join('')}</tr>`;
+        const dayRows = open ? [...g.days].sort((a, b) => a.dato.localeCompare(b.dato)).map(d => `<tr class="konDay" data-child="1">${cols.map(c => c.day(d)).join('')}</tr>`).join('') : '';
         return groupRow + dayRows;
       }).join('');
 
       const tTimer = groups.reduce((a, g) => a + g.timer, 0), tOt1 = groups.reduce((a, g) => a + g.ot1, 0),
         tOt2 = groups.reduce((a, g) => a + g.ot2, 0), tKoersel = groups.reduce((a, g) => a + g.koersel, 0);
-      $('#konFoot').innerHTML = `<tr class="konTotal"><td colspan="3"><b>I alt</b></td><td class="num"><b>${n(tTimer)}</b></td><td class="num"><b>${n(tOt1)}</b></td><td class="num"><b>${n(tOt2)}</b></td><td class="num"><b>${n(tKoersel)}</b></td><td colspan="6"></td></tr>`;
+      $('#konFoot').innerHTML = `<tr class="konTotal"><td colspan="4"><b>I alt</b></td><td class="num"><b>${n(tTimer)}</b></td><td class="num"><b>${n(tOt1)}</b></td><td class="num"><b>${n(tOt2)}</b></td><td class="num"><b>${n(tKoersel)}</b></td><td colspan="${cols.length - 8}"></td></tr>`;
+
+      App.sortable(this.table, 'kontering-sager', { col: 0, dir: 'asc' });
 
       $$('[data-toggle]').forEach(b => b.addEventListener('click', () => {
         const key = b.dataset.toggle;
