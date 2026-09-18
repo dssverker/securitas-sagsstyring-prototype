@@ -423,6 +423,9 @@
     .sidebar .user-mini { display: flex; }
   }
 
+  /* hidden-attributten skal altid vinde over komponenternes egen display (fx .btn og .rap-toolbar .grp) */
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+
   /* ---------- Økonomisk overblik (pages/oekonomi.js) – PLAN-v5 ---------- */
   .inline-form.cols-5 { grid-template-columns: 1fr 1.2fr 2fr 1fr 1fr auto; }
   .oek-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-5); } /* otte felter = to rækker à fire */
@@ -1737,9 +1740,27 @@ window.DEMO = {
     const n = subtasks(prdk).map(o => +(o.id.split('-')[1] || 0)).reduce((a, b) => Math.max(a, b), 0) + 1;
     return `${prdk}-${n}`;
   };
-  const csvDownload = (filename, rows) => {
+  // Fil-eksport. I Artifact-visningen m\u00e5 siden ikke selv downloade (et blob-link g\u00f8r ingenting d\u00e9r); filen g\u00e5r i stedet gennem
+  // platformens downloads-capability, som viser l\u00e6seren en bekr\u00e6ftelse. P\u00e5 testadressen og i DS-kittet findes window.claude
+  // ikke, og der bruges et almindeligt download-link som hidtil.
+  const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+  const dlReady = window.claude && typeof window.claude.use === 'function' ? window.claude.use('downloads').catch(() => null) : null;
+  // 'viewer' = gem via platformen \u00b7 'browser' = almindeligt download-link \u00b7 'none' = denne visning kan ikke gemme filer (skjul knappen)
+  const downloadMode = async () => !dlReady ? 'browser' : (await dlReady) ? 'viewer' : framed ? 'none' : 'browser';
+  const csvDownload = async (filename, rows) => {
     const esc = v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const csv = '\ufeff' + rows.map(r => r.map(esc).join(';')).join('\r\n');
+    const mode = await downloadMode();
+    if (mode === 'viewer') {
+      try { await (await dlReady).save({ filename, data: csv }); }
+      catch (e) {
+        const code = e && e.code;
+        if (code === 'declined') return; // l\u00e6seren sagde nej tak \u2013 det er ikke en fejl
+        toast(code === 'rate_limited' ? 'Der er allerede en gem-dialog \u00e5ben. Pr\u00f8v igen om lidt.' : 'Filen kan ikke gemmes i denne visning');
+      }
+      return;
+    }
+    if (mode === 'none') { toast('Filen kan ikke gemmes i denne visning'); return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
   };
   const printSection = (el, title) => {
@@ -1939,7 +1960,7 @@ window.DEMO = {
   window.App = {
     D, S, save, $, $$, kr, n, pct, h, today, now, icon, st, dgCell, site, bc, emp, proj, calc, role,
     toast, openModal, closeModal, confirmDialog, go, openProject, registerPage, getPage,
-    siteLabel, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, printSection,
+    siteLabel, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, downloadMode, printSection,
     sortable, applySort, lederFor, scopeOptions, resolveScope, inScope,
     get currentProj() { return currentProj; },
     icons: ['feed', 'screen', 'calendar-check', 'mobile', 'home', 'check', 'close', 'export', 'search', 'service', 'user', 'time', 'mail', 'notification', 'download', 'info', 'shield-check', 'location'],
@@ -6208,6 +6229,8 @@ App.registerPage({
         if (groups.length === 0) { App.toast('Ingen registreringer i den valgte måned'); return; }
         App.csvDownload(`kontering-${tech}-${mnd}.csv`, rows);
       });
+      // Kan visningen ikke gemme filer (Artifact uden downloads-adgang), skjules knappen i stedet for at gøre ingenting
+      App.downloadMode().then(mode => { $('#konCsv').hidden = mode === 'none'; });
     },
     // Kolonneopsæt. BC-felterne (Sted nr., Costcenter, TOS, CEP account, CEP site) samles i filter-tab
     // "Vis BC-felter" (til/fra, husk i S.konteringBc, standard fra), ligesom "Vis økonomi" på
