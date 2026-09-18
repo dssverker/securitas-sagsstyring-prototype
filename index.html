@@ -422,6 +422,47 @@
     .nav-btn.active { background: var(--ui-blue-700); border-radius: var(--radius-overlay); }
     .sidebar .user-mini { display: flex; }
   }
+
+  /* ---------- Økonomisk overblik (pages/oekonomi.js) – PLAN-v5 ---------- */
+  .inline-form.cols-5 { grid-template-columns: 1fr 1.2fr 2fr 1fr 1fr auto; }
+  .oek-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-5); } /* otte felter = to rækker à fire */
+  .oek-kpi { display: flex; flex-direction: column; gap: var(--space-1); }
+  .oek-kpi .oek-sub { font-size: 12px; line-height: 18px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .oek-delta { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+  .oek-delta.neg, .oek-neg { color: var(--ui-red-500); }
+  .oek-table th, .oek-table td { font-variant-numeric: tabular-nums; }
+  /* Valgt måned: neutral flade + lilla streg som mikro-accent (lilla bruges aldrig som baggrund) */
+  .oek-table tbody tr.on td { background: var(--surface-subtle); font-weight: 700; }
+  .oek-table tbody tr.on td:first-child { box-shadow: inset 3px 0 0 var(--sec-purple); }
+  .oek-table tbody tr.later td { color: var(--text-disabled); }
+  .oek-note { margin: var(--space-4) 0 0; }
+  .oek-def { margin-top: var(--space-3); }
+  .oek-def summary { cursor: pointer; font-weight: 700; color: var(--sec-navy-blue); }
+  .oek-def dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-4); margin: var(--space-3) 0 0; max-width: 88ch; }
+  .oek-def dt { font-weight: 700; }
+  .oek-def dd { margin: 0; color: var(--text-secondary); }
+  /* Ti kolonner: pinnes til den tætte bredde uanset skærmbredde, så tabellen heller ikke scroller vandret ved 1920 px (som #projTable) */
+  #oekDrill th, #oekDrill td { padding-left: 6px; padding-right: 6px; }
+  #oekDrill th.sortable { padding-right: 16px; }
+  #oekDrill td.cut.w-m { max-width: 160px; }
+  #oekDrill td.cut.w-s { max-width: 120px; }
+  #oekDrill.hide-pm thead th:nth-child(4), #oekDrill.hide-pm tbody td:nth-child(4):not(.empty) { display: none; }
+  #oekCharts h3 { margin: var(--space-4) 0 var(--space-2); }
+  #oekCharts .rap-chart { max-width: 820px; } /* støttediagram: må ikke skalere op og fylde mere end tabellen */
+  @media (max-width: 900px) {
+    .inline-form.cols-5 { grid-template-columns: 1fr; }
+    .oek-kpis { grid-template-columns: repeat(2, 1fr); }
+    .oek-def dl { grid-template-columns: 1fr; gap: 0; }
+    .oek-def dd { margin-bottom: var(--space-2); }
+  }
+  @media print {
+    .print-only h2 { font-size: 12px; line-height: 16px; margin: 14px 0 4px; }
+    .print-only tfoot td { font-weight: 700; }
+    .print-only tr { break-inside: avoid; }
+    .print-only .oek-print-meta { margin: 0 0 6px; color: #333; }
+    .print-only .oek-print-logo { position: absolute; top: 10mm; right: 12mm; width: 84px; color: #031F30; }
+    .print-only .oek-delta, .print-only .oek-neg { color: #000; }
+  }
 </style>
 </head>
 <body>
@@ -474,9 +515,10 @@ window.PROTO_CONFIG = {
 // Demo-data til prototypen. Udtaget og forenklet fra teamets egne Excel-filer.
 // Ingen persondata (telefon/mail) er taget med.
 window.DEMO = {
-  version: 5, // hæv tallet når demo-data ændres, så gemt browser-state nulstilles
+  version: 6, // hæv tallet når demo-data ændres, så gemt browser-state nulstilles
+  // lederFor: afdelingsleder for den nævnte afdeling. Rollen forbliver "PM", så alle sidernes roles-tjek virker uændret (PLAN-v5).
   medarbejdere: [
-    { id: "HERA", navn: "Henrik Rasmussen", rolle: "PM", afdeling: "Generel" },
+    { id: "HERA", navn: "Henrik Rasmussen", rolle: "PM", afdeling: "Generel", lederFor: "Generel" },
     { id: "BBN",  navn: "Brian Bo Nielsen", rolle: "PM", afdeling: "Generel" },
     { id: "MAHE", navn: "Matthias Herskind", rolle: "PM", afdeling: "Generel" },
     { id: "DO",   navn: "Dennis Olsen", rolle: "PM", afdeling: "Novo" },
@@ -686,12 +728,12 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2026-06-06", maaned: "2026-06", rekvirent: "Novo FM", ref: "PO 8002409305", wo: "",
       salgspris: 656000, ekstraArbejde: 0, salgKost: 416300,
       udgifter: [
-        { faktura: "16860", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 46663.78, dato: "" },
-        { faktura: "30451", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 34784.98, dato: "" },
-        { faktura: "45313", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 55741.24, dato: "" },
+        { faktura: "16860", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 46663.78, dato: "2026-07-04" },
+        { faktura: "30451", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 34784.98, dato: "2026-08-11" },
+        { faktura: "45313", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 55741.24, dato: "2026-09-08" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 262400, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 262400, status: "Faktureret", dato: "2026-07-18", initialer: "HH" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 393600, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -705,12 +747,12 @@ window.DEMO = {
       status: "Klar til fakturering", oprettet: "2025-03-17", maaned: "2025-03", rekvirent: "", ref: "", wo: "",
       salgspris: 532000, ekstraArbejde: 39000, salgKost: 315400,
       udgifter: [
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 32343.44, dato: "" },
-        { faktura: "2016911", leverandoer: "EET", ydelse: "3x Kamera", beloeb: 50447.04, dato: "" },
-        { faktura: "96448", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 50042.16, dato: "" },
-        { faktura: "15322", leverandoer: "Wood Security", ydelse: "Programmering af centraler", beloeb: 52396.19, dato: "" },
-        { faktura: "26112", leverandoer: "CC Installation", ydelse: "Installationstid + diverse", beloeb: 66594.88, dato: "" },
-        { faktura: "9997381", leverandoer: "ADI", ydelse: "SiPass læsere og controllere", beloeb: 63576.28, dato: "" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 32343.44, dato: "2025-04-04" },
+        { faktura: "2016911", leverandoer: "EET", ydelse: "3x Kamera", beloeb: 50447.04, dato: "2025-04-11" },
+        { faktura: "96448", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 50042.16, dato: "2025-05-18" },
+        { faktura: "15322", leverandoer: "Wood Security", ydelse: "Programmering af centraler", beloeb: 52396.19, dato: "2025-06-25" },
+        { faktura: "26112", leverandoer: "CC Installation", ydelse: "Installationstid + diverse", beloeb: 66594.88, dato: "2025-06-09" },
+        { faktura: "9997381", leverandoer: "ADI", ydelse: "SiPass læsere og controllere", beloeb: 63576.28, dato: "2025-07-16" },
       ],
       fakturering: [
         { tekst: "Slutfakturering jf. tilbud", rekv: "", beloeb: 532000, status: "Klar til fakturering", dato: "", initialer: "" },
@@ -728,13 +770,13 @@ window.DEMO = {
       status: "Faktureret", oprettet: "2025-02-02", maaned: "2025-02", rekvirent: "Facility Management", ref: "PO 8002424890", wo: "707665",
       salgspris: 130000, ekstraArbejde: 0, salgKost: 95600,
       udgifter: [
-        { faktura: "1282", leverandoer: "CC Installation", ydelse: "El-arbejde iht. aftale", beloeb: 31394.83, dato: "" },
-        { faktura: "35760", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 39633.08, dato: "" },
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 24572.09, dato: "" },
+        { faktura: "1282", leverandoer: "CC Installation", ydelse: "El-arbejde iht. aftale", beloeb: 31394.83, dato: "2025-03-04" },
+        { faktura: "35760", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 39633.08, dato: "2025-04-11" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 24572.09, dato: "2025-05-18" },
       ],
       fakturering: [
-        { tekst: "Aconto – etape 1", rekv: "", beloeb: 65000, status: "Faktureret", dato: "", initialer: "BD" },
-        { tekst: "Slutfakturering", rekv: "", beloeb: 65000, status: "Faktureret", dato: "", initialer: "BD" },
+        { tekst: "Aconto – etape 1", rekv: "", beloeb: 65000, status: "Faktureret", dato: "2025-03-18", initialer: "BD" },
+        { tekst: "Slutfakturering", rekv: "", beloeb: 65000, status: "Faktureret", dato: "2025-06-22", initialer: "BD" },
       ],
       log: [
         { dato: "2025-02-02 15:45", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
@@ -763,16 +805,16 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2026-07-08", maaned: "2026-07", rekvirent: "Driftsafdeling", ref: "PO 8002485717", wo: "787538",
       salgspris: 708000, ekstraArbejde: 0, salgKost: 472000,
       udgifter: [
-        { faktura: "14104", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 32573.72, dato: "" },
-        { faktura: "71468", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 22240.42, dato: "" },
-        { faktura: "9487336", leverandoer: "EET", ydelse: "Wallmount til kameraer", beloeb: 22690.24, dato: "" },
-        { faktura: "18361", leverandoer: "CC Installation", ydelse: "El-arbejde iht. aftale", beloeb: 34802.62, dato: "" },
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 15917.06, dato: "" },
-        { faktura: "33018", leverandoer: "Prosikring", ydelse: "Vagtassistance ved idriftsættelse", beloeb: 26640.94, dato: "" },
+        { faktura: "14104", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 32573.72, dato: "2026-08-04" },
+        { faktura: "71468", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 22240.42, dato: "2026-08-11" },
+        { faktura: "9487336", leverandoer: "EET", ydelse: "Wallmount til kameraer", beloeb: 22690.24, dato: "2026-08-18" },
+        { faktura: "18361", leverandoer: "CC Installation", ydelse: "El-arbejde iht. aftale", beloeb: 34802.62, dato: "2026-09-11" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 15917.06, dato: "2026-09-02" },
+        { faktura: "33018", leverandoer: "Prosikring", ydelse: "Vagtassistance ved idriftsættelse", beloeb: 26640.94, dato: "2026-09-05" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 283200, status: "Faktureret", dato: "", initialer: "BD" },
-        { tekst: "Aconto 2", rekv: "", beloeb: 212400, status: "Faktureret", dato: "", initialer: "BD" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 283200, status: "Faktureret", dato: "2026-08-18", initialer: "BD" },
+        { tekst: "Aconto 2", rekv: "", beloeb: 212400, status: "Faktureret", dato: "2026-09-11", initialer: "BD" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 212400, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -786,13 +828,13 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2025-05-09", maaned: "2025-05", rekvirent: "", ref: "", wo: "",
       salgspris: 601000, ekstraArbejde: 0, salgKost: 349200,
       udgifter: [
-        { faktura: "13097", leverandoer: "Prosikring", ydelse: "Vagtassistance ved idriftsættelse", beloeb: 48039.82, dato: "" },
-        { faktura: "56518", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 35700.51, dato: "" },
-        { faktura: "6778", leverandoer: "Lindpro", ydelse: "El-installation til centraler", beloeb: 26671.14, dato: "" },
-        { faktura: "6596150", leverandoer: "EET", ydelse: "3x Kamera", beloeb: 50001.53, dato: "" },
+        { faktura: "13097", leverandoer: "Prosikring", ydelse: "Vagtassistance ved idriftsættelse", beloeb: 48039.82, dato: "2025-06-04" },
+        { faktura: "56518", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 35700.51, dato: "2025-07-11" },
+        { faktura: "6778", leverandoer: "Lindpro", ydelse: "El-installation til centraler", beloeb: 26671.14, dato: "2025-08-18" },
+        { faktura: "6596150", leverandoer: "EET", ydelse: "3x Kamera", beloeb: 50001.53, dato: "2025-09-25" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 240400, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 240400, status: "Faktureret", dato: "2025-06-18", initialer: "HH" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 360600, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -828,9 +870,9 @@ window.DEMO = {
       status: "Klar til fakturering", oprettet: "2026-01-02", maaned: "2026-01", rekvirent: "Novo FM", ref: "PO 8002434237", wo: "734795",
       salgspris: 871000, ekstraArbejde: 17000, salgKost: 639000,
       udgifter: [
-        { faktura: "6891254", leverandoer: "ADI", ydelse: "Kamera + beslag", beloeb: 255563.04, dato: "" },
-        { faktura: "67768", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 221468.78, dato: "" },
-        { faktura: "9996207", leverandoer: "EET", ydelse: "Netværksswitch PoE", beloeb: 161968.18, dato: "" },
+        { faktura: "6891254", leverandoer: "ADI", ydelse: "Kamera + beslag", beloeb: 255563.04, dato: "2026-02-04" },
+        { faktura: "67768", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 221468.78, dato: "2026-03-11" },
+        { faktura: "9996207", leverandoer: "EET", ydelse: "Netværksswitch PoE", beloeb: 161968.18, dato: "2026-04-18" },
       ],
       fakturering: [
         { tekst: "Slutfakturering jf. tilbud", rekv: "", beloeb: 871000, status: "Klar til fakturering", dato: "", initialer: "" },
@@ -848,13 +890,13 @@ window.DEMO = {
       status: "Faktureret", oprettet: "2025-07-20", maaned: "2025-07", rekvirent: "", ref: "", wo: "",
       salgspris: 625000, ekstraArbejde: 30000, salgKost: 367500,
       udgifter: [
-        { faktura: "82678", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 143792.89, dato: "" },
-        { faktura: "87951", leverandoer: "Lindpro", ydelse: "El-installation til centraler", beloeb: 223707.11, dato: "" },
+        { faktura: "82678", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 143792.89, dato: "2025-08-04" },
+        { faktura: "87951", leverandoer: "Lindpro", ydelse: "El-installation til centraler", beloeb: 223707.11, dato: "2025-10-11" },
       ],
       fakturering: [
-        { tekst: "Aconto – etape 1", rekv: "", beloeb: 312500, status: "Faktureret", dato: "", initialer: "HH" },
-        { tekst: "Slutfakturering", rekv: "", beloeb: 312500, status: "Faktureret", dato: "", initialer: "BD" },
-        { tekst: "Ekstra arbejde jf. aftale", rekv: "", beloeb: 30000, status: "Faktureret", dato: "", initialer: "BD" },
+        { tekst: "Aconto – etape 1", rekv: "", beloeb: 312500, status: "Faktureret", dato: "2025-08-18", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "", beloeb: 312500, status: "Faktureret", dato: "2025-10-22", initialer: "BD" },
+        { tekst: "Ekstra arbejde jf. aftale", rekv: "", beloeb: 30000, status: "Faktureret", dato: "2025-12-26", initialer: "BD" },
       ],
       log: [
         { dato: "2025-07-20 13:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
@@ -869,18 +911,18 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2026-01-22", maaned: "2026-01", rekvirent: "Ejendomsservice", ref: "PO 8002431979", wo: "790128",
       salgspris: 343000, ekstraArbejde: 0, salgKost: 216500,
       udgifter: [
-        { faktura: "6623525", leverandoer: "ADI", ydelse: "Adgangskontrol-controllere", beloeb: 9563.76, dato: "" },
-        { faktura: "99453", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 8225.93, dato: "" },
-        { faktura: "89184", leverandoer: "CC Installation", ydelse: "Installationstid + diverse", beloeb: 10524.57, dato: "" },
-        { faktura: "4768844", leverandoer: "EET", ydelse: "ACAP-licens", beloeb: 11875.77, dato: "" },
-        { faktura: "20313", leverandoer: "Prosikring", ydelse: "Vagtassistance ved idriftsættelse", beloeb: 10054.58, dato: "" },
-        { faktura: "7057", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 9427.28, dato: "" },
-        { faktura: "63277", leverandoer: "Renta", ydelse: "Leje af lift", beloeb: 6376.12, dato: "" },
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 9467.98, dato: "" },
+        { faktura: "6623525", leverandoer: "ADI", ydelse: "Adgangskontrol-controllere", beloeb: 9563.76, dato: "2026-02-04" },
+        { faktura: "99453", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 8225.93, dato: "2026-02-11" },
+        { faktura: "89184", leverandoer: "CC Installation", ydelse: "Installationstid + diverse", beloeb: 10524.57, dato: "2026-03-18" },
+        { faktura: "4768844", leverandoer: "EET", ydelse: "ACAP-licens", beloeb: 11875.77, dato: "2026-03-25" },
+        { faktura: "20313", leverandoer: "Prosikring", ydelse: "Vagtassistance ved idriftsættelse", beloeb: 10054.58, dato: "2026-04-09" },
+        { faktura: "7057", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 9427.28, dato: "2026-04-16" },
+        { faktura: "63277", leverandoer: "Renta", ydelse: "Leje af lift", beloeb: 6376.12, dato: "2026-05-23" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 9467.98, dato: "2026-05-07" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 137200, status: "Faktureret", dato: "", initialer: "HH" },
-        { tekst: "Aconto 2", rekv: "", beloeb: 102900, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 137200, status: "Faktureret", dato: "2026-02-18", initialer: "HH" },
+        { tekst: "Aconto 2", rekv: "", beloeb: 102900, status: "Faktureret", dato: "2026-05-22", initialer: "HH" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 102900, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -894,12 +936,12 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2026-05-15", maaned: "2026-05", rekvirent: "", ref: "S2026032", wo: "",
       salgspris: 903000, ekstraArbejde: 0, salgKost: 518600,
       udgifter: [
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 85794.32, dato: "" },
-        { faktura: "67162", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 113565.11, dato: "" },
-        { faktura: "72810", leverandoer: "Renta", ydelse: "Leje af mandskabsvogn", beloeb: 108974.57, dato: "" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 85794.32, dato: "2026-06-04" },
+        { faktura: "67162", leverandoer: "Wood Security", ydelse: "Tekniker – idriftsættelse", beloeb: 113565.11, dato: "2026-07-11" },
+        { faktura: "72810", leverandoer: "Renta", ydelse: "Leje af mandskabsvogn", beloeb: 108974.57, dato: "2026-08-18" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 361200, status: "Faktureret", dato: "", initialer: "BD" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 361200, status: "Faktureret", dato: "2026-06-18", initialer: "BD" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 541800, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -913,13 +955,13 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2025-09-15", maaned: "2025-09", rekvirent: "Novo FM", ref: "PO 8002446105", wo: "751116",
       salgspris: 275000, ekstraArbejde: 0, salgKost: 166200,
       udgifter: [
-        { faktura: "7975534", leverandoer: "EET", ydelse: "Netværksswitch PoE", beloeb: 11237.03, dato: "" },
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Engineer – timer til konfig", beloeb: 12289.59, dato: "" },
-        { faktura: "56069", leverandoer: "CC Installation", ydelse: "Installationstid + diverse", beloeb: 15748.04, dato: "" },
-        { faktura: "77556", leverandoer: "Wood Security", ydelse: "Programmering af centraler", beloeb: 14302.34, dato: "" },
+        { faktura: "7975534", leverandoer: "EET", ydelse: "Netværksswitch PoE", beloeb: 11237.03, dato: "2025-10-04" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Engineer – timer til konfig", beloeb: 12289.59, dato: "2025-11-11" },
+        { faktura: "56069", leverandoer: "CC Installation", ydelse: "Installationstid + diverse", beloeb: 15748.04, dato: "2025-12-18" },
+        { faktura: "77556", leverandoer: "Wood Security", ydelse: "Programmering af centraler", beloeb: 14302.34, dato: "2026-01-25" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 110000, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 110000, status: "Faktureret", dato: "2025-10-18", initialer: "HH" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 165000, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -933,18 +975,18 @@ window.DEMO = {
       status: "Faktureret", oprettet: "2025-08-01", maaned: "2025-08", rekvirent: "", ref: "", wo: "",
       salgspris: 730000, ekstraArbejde: 0, salgKost: 518000,
       udgifter: [
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 84936.32, dato: "" },
-        { faktura: "8072684", leverandoer: "EET", ydelse: "ACAP-licens", beloeb: 47249.17, dato: "" },
-        { faktura: "11735", leverandoer: "Renta", ydelse: "Leje af mandskabsvogn", beloeb: 71479.46, dato: "" },
-        { faktura: "3540", leverandoer: "Wood Security", ydelse: "Programmering af centraler", beloeb: 40900.61, dato: "" },
-        { faktura: "1873851", leverandoer: "ADI", ydelse: "Adgangskontrol-controllere", beloeb: 65340.51, dato: "" },
-        { faktura: "30389", leverandoer: "CC Installation", ydelse: "El-arbejde iht. aftale", beloeb: 52895.06, dato: "" },
-        { faktura: "9993", leverandoer: "Prosikring", ydelse: "Alarmudrykning – test", beloeb: 61456.37, dato: "" },
-        { faktura: "99858", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 93742.5, dato: "" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 84936.32, dato: "2025-09-04" },
+        { faktura: "8072684", leverandoer: "EET", ydelse: "ACAP-licens", beloeb: 47249.17, dato: "2025-09-11" },
+        { faktura: "11735", leverandoer: "Renta", ydelse: "Leje af mandskabsvogn", beloeb: 71479.46, dato: "2025-10-18" },
+        { faktura: "3540", leverandoer: "Wood Security", ydelse: "Programmering af centraler", beloeb: 40900.61, dato: "2025-10-25" },
+        { faktura: "1873851", leverandoer: "ADI", ydelse: "Adgangskontrol-controllere", beloeb: 65340.51, dato: "2025-11-09" },
+        { faktura: "30389", leverandoer: "CC Installation", ydelse: "El-arbejde iht. aftale", beloeb: 52895.06, dato: "2025-11-16" },
+        { faktura: "9993", leverandoer: "Prosikring", ydelse: "Alarmudrykning – test", beloeb: 61456.37, dato: "2025-12-23" },
+        { faktura: "99858", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 93742.5, dato: "2025-12-07" },
       ],
       fakturering: [
-        { tekst: "Aconto – etape 1", rekv: "", beloeb: 365000, status: "Faktureret", dato: "", initialer: "HH" },
-        { tekst: "Slutfakturering", rekv: "", beloeb: 365000, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto – etape 1", rekv: "", beloeb: 365000, status: "Faktureret", dato: "2025-09-18", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "", beloeb: 365000, status: "Faktureret", dato: "2025-12-22", initialer: "HH" },
       ],
       log: [
         { dato: "2025-08-01 10:00", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "BBN", pmTid: 1, seTid: 0, ulTid: 0 },
@@ -959,16 +1001,16 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2025-07-15", maaned: "2025-07", rekvirent: "Ejendomsservice", ref: "PO 8002464251", wo: "747472",
       salgspris: 655000, ekstraArbejde: 0, salgKost: 439800,
       udgifter: [
-        { faktura: "2709620", leverandoer: "EET", ydelse: "Wallmount til kameraer", beloeb: 33925.03, dato: "" },
-        { faktura: "40529", leverandoer: "CC Installation", ydelse: "Kabelføring og opsætning", beloeb: 44401.81, dato: "" },
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 27602.62, dato: "" },
-        { faktura: "75177", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 45456.48, dato: "" },
-        { faktura: "6825112", leverandoer: "ADI", ydelse: "NOX centraler + detektorer", beloeb: 22021.68, dato: "" },
-        { faktura: "57148", leverandoer: "Renta", ydelse: "Leje af stillads", beloeb: 34439.08, dato: "" },
-        { faktura: "49571", leverandoer: "Prosikring", ydelse: "Alarmudrykning – test", beloeb: 41959.3, dato: "" },
+        { faktura: "2709620", leverandoer: "EET", ydelse: "Wallmount til kameraer", beloeb: 33925.03, dato: "2025-08-04" },
+        { faktura: "40529", leverandoer: "CC Installation", ydelse: "Kabelføring og opsætning", beloeb: 44401.81, dato: "2025-08-11" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 27602.62, dato: "2025-09-18" },
+        { faktura: "75177", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 45456.48, dato: "2025-09-25" },
+        { faktura: "6825112", leverandoer: "ADI", ydelse: "NOX centraler + detektorer", beloeb: 22021.68, dato: "2025-10-09" },
+        { faktura: "57148", leverandoer: "Renta", ydelse: "Leje af stillads", beloeb: 34439.08, dato: "2025-10-16" },
+        { faktura: "49571", leverandoer: "Prosikring", ydelse: "Alarmudrykning – test", beloeb: 41959.3, dato: "2025-11-23" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 262000, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 262000, status: "Faktureret", dato: "2025-08-18", initialer: "HH" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 393000, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -993,10 +1035,10 @@ window.DEMO = {
       status: "Klar til fakturering", oprettet: "2026-01-11", maaned: "2026-01", rekvirent: "Novo FM", ref: "PO 8002412196", wo: "753005",
       salgspris: 367000, ekstraArbejde: 19000, salgKost: 215200,
       udgifter: [
-        { faktura: "65038", leverandoer: "Renta", ydelse: "Leje af mandskabsvogn", beloeb: 64826.59, dato: "" },
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 62421.9, dato: "" },
-        { faktura: "91519", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 42431.53, dato: "" },
-        { faktura: "85659", leverandoer: "Lindpro", ydelse: "Stikledning til teknikrum", beloeb: 45519.98, dato: "" },
+        { faktura: "65038", leverandoer: "Renta", ydelse: "Leje af mandskabsvogn", beloeb: 64826.59, dato: "2026-02-04" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 62421.9, dato: "2026-03-11" },
+        { faktura: "91519", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 42431.53, dato: "2026-04-18" },
+        { faktura: "85659", leverandoer: "Lindpro", ydelse: "Stikledning til teknikrum", beloeb: 45519.98, dato: "2026-05-25" },
       ],
       fakturering: [
         { tekst: "Slutfakturering jf. tilbud", rekv: "", beloeb: 367000, status: "Klar til fakturering", dato: "", initialer: "" },
@@ -1014,15 +1056,15 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2026-05-12", maaned: "2026-05", rekvirent: "", ref: "", wo: "",
       salgspris: 373000, ekstraArbejde: 0, salgKost: 231400,
       udgifter: [
-        { faktura: "64464", leverandoer: "Renta", ydelse: "Leje af stillads", beloeb: 16613.03, dato: "" },
-        { faktura: "95972", leverandoer: "Lindpro", ydelse: "El-installation til centraler", beloeb: 25317.97, dato: "" },
-        { faktura: "69765", leverandoer: "CC Installation", ydelse: "Kabelføring og opsætning", beloeb: 29554.94, dato: "" },
-        { faktura: "5747930", leverandoer: "EET", ydelse: "Diverse beslag", beloeb: 24244.1, dato: "" },
-        { faktura: "4256752", leverandoer: "ADI", ydelse: "NOX centraler + detektorer", beloeb: 14086.96, dato: "" },
+        { faktura: "64464", leverandoer: "Renta", ydelse: "Leje af stillads", beloeb: 16613.03, dato: "2026-06-04" },
+        { faktura: "95972", leverandoer: "Lindpro", ydelse: "El-installation til centraler", beloeb: 25317.97, dato: "2026-06-11" },
+        { faktura: "69765", leverandoer: "CC Installation", ydelse: "Kabelføring og opsætning", beloeb: 29554.94, dato: "2026-07-18" },
+        { faktura: "5747930", leverandoer: "EET", ydelse: "Diverse beslag", beloeb: 24244.1, dato: "2026-08-25" },
+        { faktura: "4256752", leverandoer: "ADI", ydelse: "NOX centraler + detektorer", beloeb: 14086.96, dato: "2026-09-02" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 149200, status: "Faktureret", dato: "", initialer: "BD" },
-        { tekst: "Aconto 2", rekv: "", beloeb: 111900, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 149200, status: "Faktureret", dato: "2026-06-18", initialer: "BD" },
+        { tekst: "Aconto 2", rekv: "", beloeb: 111900, status: "Faktureret", dato: "2026-08-22", initialer: "HH" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 111900, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
@@ -1036,15 +1078,15 @@ window.DEMO = {
       status: "Faktureret", oprettet: "2025-11-25", maaned: "2025-11", rekvirent: "Teknisk afdeling", ref: "PO 8002477139", wo: "",
       salgspris: 47000, ekstraArbejde: 0, salgKost: 31200,
       udgifter: [
-        { faktura: "20555", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 4320.41, dato: "" },
-        { faktura: "6097514", leverandoer: "EET", ydelse: "Diverse beslag", beloeb: 3977.48, dato: "" },
-        { faktura: "5163953", leverandoer: "ADI", ydelse: "NOX centraler + detektorer", beloeb: 6977.44, dato: "" },
-        { faktura: "74147", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 7577.39, dato: "" },
-        { faktura: "80471", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 8347.28, dato: "" },
+        { faktura: "20555", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 4320.41, dato: "2025-12-04" },
+        { faktura: "6097514", leverandoer: "EET", ydelse: "Diverse beslag", beloeb: 3977.48, dato: "2025-12-11" },
+        { faktura: "5163953", leverandoer: "ADI", ydelse: "NOX centraler + detektorer", beloeb: 6977.44, dato: "2026-01-18" },
+        { faktura: "74147", leverandoer: "Lindpro", ydelse: "Kabeltræk etape 1", beloeb: 7577.39, dato: "2026-02-25" },
+        { faktura: "80471", leverandoer: "Prosikring", ydelse: "Nøgleboks + opsætning", beloeb: 8347.28, dato: "2026-03-09" },
       ],
       fakturering: [
-        { tekst: "Aconto – etape 1", rekv: "", beloeb: 23500, status: "Faktureret", dato: "", initialer: "HH" },
-        { tekst: "Slutfakturering", rekv: "", beloeb: 23500, status: "Faktureret", dato: "", initialer: "BD" },
+        { tekst: "Aconto – etape 1", rekv: "", beloeb: 23500, status: "Faktureret", dato: "2025-12-18", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "", beloeb: 23500, status: "Faktureret", dato: "2026-03-22", initialer: "BD" },
       ],
       log: [
         { dato: "2025-11-25 14:45", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
@@ -1059,17 +1101,193 @@ window.DEMO = {
       status: "Under udførsel", oprettet: "2025-07-21", maaned: "2025-07", rekvirent: "", ref: "S2026029", wo: "",
       salgspris: 118000, ekstraArbejde: 0, salgKost: 68600,
       udgifter: [
-        { faktura: "5743227", leverandoer: "EET", ydelse: "ACAP-licens", beloeb: 10118.34, dato: "" },
-        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 8251.34, dato: "" },
-        { faktura: "2194198", leverandoer: "ADI", ydelse: "Diverse beslag og kabinetter", beloeb: 4531.33, dato: "" },
+        { faktura: "5743227", leverandoer: "EET", ydelse: "ACAP-licens", beloeb: 10118.34, dato: "2025-08-04" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 8251.34, dato: "2025-09-11" },
+        { faktura: "2194198", leverandoer: "ADI", ydelse: "Diverse beslag og kabinetter", beloeb: 4531.33, dato: "2025-10-18" },
       ],
       fakturering: [
-        { tekst: "Aconto 1", rekv: "", beloeb: 47200, status: "Faktureret", dato: "", initialer: "HH" },
+        { tekst: "Aconto 1", rekv: "", beloeb: 47200, status: "Faktureret", dato: "2025-08-18", initialer: "HH" },
         { tekst: "Slutfakturering", rekv: "", beloeb: 70800, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
         { dato: "2025-07-21 10:45", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2025-07-21 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "HERA", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+      ],
+    },
+    // v5: afsluttede, færdigfakturerede projekter – giver sammenligningsgrundlag for år til dato (PLAN-v5.md)
+    {
+      id: "PRDK001102", navn: "Telenor adm. – udskiftning af ADK-central", siteId: "DK-S-023537", stedNr: "3201",
+      opportunity: "DK-O-008412", type: "ADK", model: "Kontant", pm: "HERA", se: "", ul: "Jansson", afdeling: "Generel",
+      status: "Faktureret", oprettet: "2024-12-09", maaned: "2024-12", rekvirent: "", ref: "", wo: "",
+      salgspris: 412000, ekstraArbejde: 0, salgKost: 278000,
+      udgifter: [
+        { faktura: "5098812", leverandoer: "EET", ydelse: "ADK-central og dørcontrollere", beloeb: 118400, dato: "2025-01-14" },
+        { faktura: "2291", leverandoer: "Jansson", ydelse: "Installationstid", beloeb: 96500, dato: "2025-02-11" },
+        { faktura: "5255011872", leverandoer: "ADI", ydelse: "Læsere og strømforsyninger", beloeb: 38200, dato: "2025-02-20" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 21546, dato: "2025-03-05" },
+      ],
+      fakturering: [
+        { tekst: "Aconto ved opstart", rekv: "", beloeb: 164800, status: "Faktureret", dato: "2025-01-24", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "", beloeb: 247200, status: "Faktureret", dato: "2025-03-21", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2024-12-09 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2025-01-24 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "HERA", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2025-03-21 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
+      ],
+    },
+    {
+      id: "PRDK001118", navn: "DHL Greve – TVO udvidelse lagerhal 3", siteId: "DK-S-003341", stedNr: "2729",
+      opportunity: "DK-O-008790", type: "TVO", model: "Kontant", pm: "MAHE", se: "", ul: "Lindpro", afdeling: "Generel",
+      status: "Faktureret", oprettet: "2025-02-03", maaned: "2025-02", rekvirent: "", ref: "PO 4500218834", wo: "",
+      salgspris: 486000, ekstraArbejde: 18500, salgKost: 331000,
+      udgifter: [
+        { faktura: "5104377", leverandoer: "EET", ydelse: "14 × kamera og optageserver", beloeb: 142800, dato: "2025-03-12" },
+        { faktura: "41877", leverandoer: "Lindpro", ydelse: "Kabeltræk og montage", beloeb: 118300, dato: "2025-04-16" },
+        { faktura: "1598230", leverandoer: "Renta", ydelse: "Leje af lift, 6 dage", beloeb: 9450, dato: "2025-04-22" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 46125, dato: "2025-05-30" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 19152, dato: "2025-06-10" },
+      ],
+      fakturering: [
+        { tekst: "Aconto ved opstart", rekv: "4500218834", beloeb: 194400, status: "Faktureret", dato: "2025-03-20", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "4500218834", beloeb: 291600, status: "Faktureret", dato: "2025-06-18", initialer: "HH" },
+        { tekst: "Ekstra arbejde: to kameraer ved port 7", rekv: "4500218834", beloeb: 18500, status: "Faktureret", dato: "2025-06-18", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2025-02-03 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "MAHE", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2025-03-20 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "MAHE", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2025-06-18 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "MAHE", pmTid: 1, seTid: 0, ulTid: 0 },
+      ],
+    },
+    {
+      id: "PRDK001131", navn: "Odense Kommune Ejendomme – AIA til fire institutioner", siteId: "DK-S-050108", stedNr: "4600",
+      opportunity: "DK-O-009105", type: "AIA", model: "Kontant", pm: "BBN", se: "", ul: "UL Fyn", afdeling: "Generel",
+      status: "Faktureret", oprettet: "2025-04-07", maaned: "2025-04", rekvirent: "Rasmus Bech", ref: "", wo: "",
+      salgspris: 538000, ekstraArbejde: 0, salgKost: 371000,
+      udgifter: [
+        { faktura: "5111940", leverandoer: "EET", ydelse: "SPC-centraler og detektorer", beloeb: 164200, dato: "2025-05-08" },
+        { faktura: "5255102233", leverandoer: "ADI", ydelse: "Sirener, betjeningspaneler og kabel", beloeb: 41300, dato: "2025-05-27" },
+        { faktura: "9034", leverandoer: "UL Fyn", ydelse: "Installationstid fire adresser", beloeb: 139800, dato: "2025-06-19" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 28728, dato: "2025-07-03" },
+      ],
+      fakturering: [
+        { tekst: "Aconto ved opstart", rekv: "", beloeb: 215200, status: "Faktureret", dato: "2025-05-22", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "", beloeb: 322800, status: "Faktureret", dato: "2025-08-14", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2025-04-07 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "BBN", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2025-05-22 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "BBN", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2025-08-14 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "BBN", pmTid: 1, seTid: 0, ulTid: 0 },
+      ],
+    },
+    {
+      id: "PRDK001109", navn: "Novo Nordisk Måløv (NNM) – ADK til nye laboratorier", siteId: "DK-S-050104", stedNr: "3306",
+      opportunity: "DK-O-008533", type: "ADK", model: "Kontant", pm: "DO", se: "", ul: "", afdeling: "Novo",
+      status: "Faktureret", oprettet: "2025-01-13", maaned: "2025-01", rekvirent: "Novo FM", ref: "PO 8002388107", wo: "",
+      salgspris: 742000, ekstraArbejde: 0, salgKost: 512000,
+      udgifter: [
+        { faktura: "5100268", leverandoer: "EET", ydelse: "SiPass-controllere og læsere", beloeb: 224600, dato: "2025-02-18" },
+        { faktura: "1522", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 168400, dato: "2025-03-25" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Teknikertimer PEBO/CG (fra tidsregistrering)", beloeb: 86100, dato: "2025-04-30" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 31122, dato: "2025-05-08" },
+      ],
+      fakturering: [
+        { tekst: "Aconto 1", rekv: "8002388107", beloeb: 296800, status: "Faktureret", dato: "2025-02-20", initialer: "HH" },
+        { tekst: "Aconto 2", rekv: "8002388107", beloeb: 222600, status: "Faktureret", dato: "2025-04-24", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "8002388107", beloeb: 222600, status: "Faktureret", dato: "2025-06-26", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2025-01-13 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2025-02-20 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "DO", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2025-06-26 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
+      ],
+    },
+    {
+      id: "PRDK001142", navn: "Novo Nordisk Hillerød (NNH) – TVO i parkeringshus", siteId: "DK-S-050103", stedNr: "3305",
+      opportunity: "DK-O-009011", type: "TVO", model: "Kontant", pm: "DO", se: "", ul: "Lindpro", afdeling: "Novo",
+      status: "Faktureret", oprettet: "2025-03-10", maaned: "2025-03", rekvirent: "Novo FM", ref: "PO 8002391560", wo: "",
+      salgspris: 586000, ekstraArbejde: 0, salgKost: 398000,
+      udgifter: [
+        { faktura: "5108451", leverandoer: "EET", ydelse: "22 × kamera, switche og licenser", beloeb: 176300, dato: "2025-04-15" },
+        { faktura: "42390", leverandoer: "Lindpro", ydelse: "Kabeltræk og montage", beloeb: 128900, dato: "2025-05-20" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Teknikertimer VA/SB (fra tidsregistrering)", beloeb: 71750, dato: "2025-06-30" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 23940, dato: "2025-07-08" },
+      ],
+      fakturering: [
+        { tekst: "Aconto 1", rekv: "8002391560", beloeb: 234400, status: "Faktureret", dato: "2025-04-24", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "8002391560", beloeb: 351600, status: "Faktureret", dato: "2025-08-21", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2025-03-10 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2025-04-24 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "DO", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2025-08-21 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
+      ],
+    },
+    {
+      id: "PRDK001338", navn: "Aalborg Rådhus – ADK opgradering etape 1", siteId: "DK-S-050107", stedNr: "4500",
+      opportunity: "DK-O-012210", type: "ADK", model: "Kontant", pm: "HERA", se: "", ul: "Jansson", afdeling: "Generel",
+      status: "Faktureret", oprettet: "2025-12-01", maaned: "2025-12", rekvirent: "Mette Holm", ref: "", wo: "",
+      salgspris: 624000, ekstraArbejde: 0, salgKost: 418000,
+      udgifter: [
+        { faktura: "5149902", leverandoer: "EET", ydelse: "Lenel-controllere og læsere", beloeb: 186400, dato: "2026-01-15" },
+        { faktura: "5255288410", leverandoer: "ADI", ydelse: "Dørmiljø, el-slutblik og strømforsyninger", beloeb: 52300, dato: "2026-02-05" },
+        { faktura: "2518", leverandoer: "Jansson", ydelse: "Installationstid", beloeb: 148200, dato: "2026-02-19" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 33516, dato: "2026-03-12" },
+      ],
+      fakturering: [
+        { tekst: "Aconto ved opstart", rekv: "", beloeb: 249600, status: "Faktureret", dato: "2026-01-22", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "", beloeb: 374400, status: "Faktureret", dato: "2026-03-26", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2025-12-01 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2026-01-22 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "HERA", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2026-03-26 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
+      ],
+    },
+    {
+      id: "PRDK001352", navn: "Grundfos Bjerringbro – TVO perimeter", siteId: "DK-S-050106", stedNr: "1600",
+      opportunity: "DK-O-012544", type: "TVO", model: "Kontant", pm: "MAHE", se: "", ul: "Lindpro", afdeling: "Generel",
+      status: "Faktureret", oprettet: "2026-01-19", maaned: "2026-01", rekvirent: "Jesper Toft", ref: "PO 7100452210", wo: "",
+      salgspris: 468000, ekstraArbejde: 22400, salgKost: 318000,
+      udgifter: [
+        { faktura: "5153318", leverandoer: "EET", ydelse: "16 × kamera med perimeter-analyse", beloeb: 139600, dato: "2026-02-24" },
+        { faktura: "44102", leverandoer: "Lindpro", ydelse: "Master, kabeltræk og montage", beloeb: 104800, dato: "2026-04-09" },
+        { faktura: "1633507", leverandoer: "Renta", ydelse: "Leje af lift, 5 dage", beloeb: 7850, dato: "2026-04-14" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Tekniker – timer fra tidsregistrering", beloeb: 48175, dato: "2026-05-29" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 23940, dato: "2026-06-04" },
+      ],
+      fakturering: [
+        { tekst: "Aconto ved opstart", rekv: "7100452210", beloeb: 187200, status: "Faktureret", dato: "2026-02-26", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "7100452210", beloeb: 280800, status: "Faktureret", dato: "2026-06-11", initialer: "HH" },
+        { tekst: "Ekstra arbejde: mast ved nordport", rekv: "7100452210", beloeb: 22400, status: "Faktureret", dato: "2026-06-11", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2026-01-19 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "MAHE", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2026-02-26 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "MAHE", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2026-06-11 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "MAHE", pmTid: 1, seTid: 0, ulTid: 0 },
+      ],
+    },
+    {
+      id: "PRDK001346", navn: "Novo Nordisk Kalundborg (NNK) – AIA og ADK bygning JA", siteId: "DK-S-050102", stedNr: "3304",
+      opportunity: "DK-O-012398", type: "KOMBI", model: "Kontant", pm: "DO", se: "", ul: "", afdeling: "Novo",
+      status: "Faktureret", oprettet: "2025-12-08", maaned: "2025-12", rekvirent: "Novo FM", ref: "PO 8002402918", wo: "",
+      salgspris: 864000, ekstraArbejde: 36000, salgKost: 594000,
+      udgifter: [
+        { faktura: "5150377", leverandoer: "EET", ydelse: "NOX-central, SiPass-controllere og læsere", beloeb: 262400, dato: "2026-01-20" },
+        { faktura: "1704", leverandoer: "Wood Security", ydelse: "Installationstid", beloeb: 186200, dato: "2026-03-17" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Teknikertimer PEBO/VA (fra tidsregistrering)", beloeb: 112750, dato: "2026-04-30" },
+        { faktura: "—", leverandoer: "Securitas", ydelse: "Projektleder – timer til sag", beloeb: 38304, dato: "2026-05-07" },
+      ],
+      fakturering: [
+        { tekst: "Aconto 1", rekv: "8002402918", beloeb: 345600, status: "Faktureret", dato: "2026-01-29", initialer: "HH" },
+        { tekst: "Aconto 2", rekv: "8002402918", beloeb: 259200, status: "Faktureret", dato: "2026-03-26", initialer: "HH" },
+        { tekst: "Slutfakturering", rekv: "8002402918", beloeb: 259200, status: "Faktureret", dato: "2026-05-28", initialer: "HH" },
+        { tekst: "Ekstra arbejde: fire ekstra døre", rekv: "8002402918", beloeb: 36000, status: "Faktureret", dato: "2026-05-28", initialer: "HH" },
+      ],
+      log: [
+        { dato: "2025-12-08 09:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
+        { dato: "2026-01-29 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "DO", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
+        { dato: "2026-05-28 13:15", tekst: "Projekt afsluttet og slutfaktureret", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
       ],
     },
   ],
@@ -1473,6 +1691,22 @@ window.DEMO = {
     const timer = (S.tid || []).filter(t => t.sag === p.id || (t.sag || '').startsWith(p.id + '-')).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
     return { salg, udg, fakt, rest: salg - fakt, dgB, dgF, timer };
   };
+  // ---------- økonomisk scope (PLAN-v5) ----------
+  // Én sandhed om, hvilke projekters tal en bruger må se: Chef ser alt, afdelingsleder (lederFor) sin afdeling, PM egne projekter.
+  const lederFor = () => emp(S.user).lederFor || '';
+  const scopeOptions = () => {
+    if (role() === 'Chef') return [{ v: 'alle', label: 'Alle afdelinger' }, { v: 'afd:Novo', label: 'Novo' }, { v: 'afd:Generel', label: 'Generel' }];
+    if (lederFor()) return [{ v: 'afd:' + lederFor(), label: 'Min afdeling' }, { v: 'pm:' + S.user, label: 'Mine projekter' }];
+    return [{ v: 'pm:' + S.user, label: 'Mine projekter' }];
+  };
+  // Et gemt scope fra en anden bruger falder tilbage til brugerens eget første valg
+  const resolveScope = scope => { const o = scopeOptions(); return (o.find(x => x.v === scope) || o[0]).v; };
+  const inScope = (p, scope) => {
+    const s = resolveScope(scope);
+    if (s === 'alle') return true;
+    return s.startsWith('afd:') ? p.afdeling === s.slice(4) : p.pm === s.slice(3);
+  };
+
   const dgCell = v => v == null ? '<td class="num">–</td>' : `<td class="num dg ${v >= 30 ? 'good' : v >= 15 ? 'warn' : 'bad'}">${pct(v)}</td>`;
   const STATUS_CLASS = { 'Opstart': 'opstart', 'Under udførsel': 'udf', 'Klar til fakturering': 'klar', 'Faktureret': 'fakt', 'Åben': 'aaben', 'Lukket til fakturering': 'klar', 'Afsluttet': 'fakt' };
   const st = s => `<span class="st ${STATUS_CLASS[s] || ''}">${h(s)}</span>`;
@@ -1658,7 +1892,7 @@ window.DEMO = {
   // ---------- bruger / roller ----------
   function initUser() {
     const us = $('#userSel'); us.innerHTML = '';
-    D.medarbejdere.forEach(m => us.add(new Option(`${m.navn} (${m.rolle})`, m.id)));
+    D.medarbejdere.forEach(m => us.add(new Option(`${m.navn} (${m.rolle}${m.lederFor ? ', afdelingsleder' : ''})`, m.id)));
     us.value = S.user;
     us.addEventListener('change', () => { S.user = us.value; save(); renderNav(); go(defaultPage()); });
     $('#resetDemo').addEventListener('click', () => { try { localStorage.removeItem(STATE_KEY); } catch (e) {} location.reload(); });
@@ -1706,7 +1940,7 @@ window.DEMO = {
     D, S, save, $, $$, kr, n, pct, h, today, now, icon, st, dgCell, site, bc, emp, proj, calc, role,
     toast, openModal, closeModal, confirmDialog, go, openProject, registerPage, getPage,
     siteLabel, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, printSection,
-    sortable, applySort,
+    sortable, applySort, lederFor, scopeOptions, resolveScope, inScope,
     get currentProj() { return currentProj; },
     icons: ['feed', 'screen', 'calendar-check', 'mobile', 'home', 'check', 'close', 'export', 'search', 'service', 'user', 'time', 'mail', 'notification', 'download', 'info', 'shield-check', 'location'],
   };
@@ -2138,11 +2372,12 @@ App.registerPage({
           </div>
           <div class="scan-result" id="scanResult" hidden></div>
         </div>
-        <form class="inline-form" id="udgForm" novalidate>
+        <form class="inline-form cols-5" id="udgForm" novalidate>
           <label>Faktura nr. <input type="text" name="faktura" required></label>
           <label>Leverandør <input type="text" name="leverandoer" list="levList" required></label>
           <label>Ydelse <input type="text" name="ydelse" required></label>
           <label>Beløb (kr.) <input type="number" name="beloeb" step="0.01" required></label>
+          <label>Bogføringsdato <input type="date" name="dato" required></label>
           <button class="btn primary" type="submit">Bogfør udgift</button>
         </form>
         <datalist id="levList"><option>ADI</option><option>EET</option><option>Renta</option><option>Lindpro</option><option>Prosikring</option><option>Wood Security</option><option>CC Installation</option><option>Securitas</option></datalist>
@@ -2338,9 +2573,12 @@ App.registerPage({
     });
     $('#udgForm').addEventListener('submit', e => {
       e.preventDefault(); const fd = new FormData(e.target); const p = cur();
-      const rec = { faktura: fd.get('faktura'), leverandoer: fd.get('leverandoer'), ydelse: fd.get('ydelse'), beloeb: +fd.get('beloeb'), dato: today() };
+      // Bogføringsdatoen afgør, hvilken måned udgiften tæller i på Økonomisk overblik (PLAN-v5)
+      const rec = { faktura: fd.get('faktura'), leverandoer: fd.get('leverandoer'), ydelse: fd.get('ydelse'), beloeb: +fd.get('beloeb'), dato: fd.get('dato') || today() };
       if (udgEditIdx != null) {
-        rec.dato = p.udgifter[udgEditIdx].dato; p.udgifter[udgEditIdx] = rec; udgEditIdx = null;
+        const old = p.udgifter[udgEditIdx];
+        if (old.bilag) { rec.bilag = old.bilag; rec.fakturadato = old.fakturadato; }
+        p.udgifter[udgEditIdx] = rec; udgEditIdx = null;
         e.target.querySelector('button[type=submit]').textContent = 'Bogfør udgift';
         toast('Udgift opdateret');
       } else {
@@ -2393,7 +2631,7 @@ App.registerPage({
       });
       $('#scToForm').addEventListener('click', () => {
         const rec = take(); const form = $('#udgForm');
-        form.faktura.value = rec.faktura; form.leverandoer.value = rec.leverandoer; form.ydelse.value = rec.ydelse; form.beloeb.value = rec.beloeb;
+        form.faktura.value = rec.faktura; form.leverandoer.value = rec.leverandoer; form.ydelse.value = rec.ydelse; form.beloeb.value = rec.beloeb; form.dato.value = rec.dato;
         res.hidden = true; form.faktura.focus(); toast('Felter overført. Kontrollér og bogfør.');
       });
       $('#scCancel').addEventListener('click', () => { res.hidden = true; });
@@ -2541,10 +2779,11 @@ App.registerPage({
     $('#udgRows').innerHTML = p.udgifter.map((u, i) => `<tr><td>${h(u.faktura)}${u.bilag ? `<br><span class="caption muted">Bilag: ${h(u.bilag)}</span>` : ''}</td><td>${h(u.leverandoer)}</td><td>${h(u.ydelse)}</td><td class="num">${kr(u.beloeb)}</td><td class="muted">${h(u.dato)}</td>
       <td><button class="tlink" data-udgedit="${i}">Rediger</button> <button class="tlink" data-udgdel="${i}">Slet</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Ingen udgifter endnu.</td></tr>';
     $('#udgSum').innerHTML = `<td colspan="3">Total</td><td class="num">${kr(c.udg)}</td><td></td><td></td>`;
+    if (udgEditIdx == null && !$('#udgForm').dato.value) $('#udgForm').dato.value = App.today();
     $$('[data-udgedit]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.udgedit; const u = p.udgifter[i]; udgEditIdx = i;
       const form = $('#udgForm');
-      form.faktura.value = u.faktura; form.leverandoer.value = u.leverandoer; form.ydelse.value = u.ydelse; form.beloeb.value = u.beloeb;
+      form.faktura.value = u.faktura; form.leverandoer.value = u.leverandoer; form.ydelse.value = u.ydelse; form.beloeb.value = u.beloeb; form.dato.value = u.dato || App.today();
       form.querySelector('button[type=submit]').textContent = 'Gem ændring';
     }));
     $$('[data-udgdel]').forEach(b => b.addEventListener('click', () => {
@@ -4899,27 +5138,37 @@ App.registerPage({
   }
 
   // Linjediagram – timer pr. måned, én linje pr. tekniker (op til 6 serier)
-  function linesChart(months, series, { title, valueFmt = v => App.n(Math.round(v)) } = {}) {
-    const W = Math.max(560, 46 + months.length * 54), H = 240, ML = 44, MR = 16, MT = 16, MB = 34;
+  // Valgfrit (PLAN-v5): unit = endelse i tooltip, labelFmt = x-akse-etiket, ML = venstre marg, serie.dash = stiplet linje,
+  // serie.endLabel = direkte etiket ved sidste punkt. Værdier må være negative, og null giver et hul i linjen.
+  function linesChart(months, series, { title, valueFmt = v => App.n(Math.round(v)), unit = ' t.', labelFmt = monthLabel, ML = 44 } = {}) {
+    const W = Math.max(560, 46 + months.length * 54), H = 240, MR = series.some(s => s.endLabel) ? 84 : 16, MT = 16, MB = 34;
     const plotW = W - ML - MR, plotH = H - MT - MB;
-    const maxV = niceCeil(Math.max(1, ...series.flatMap(s => s.values)));
+    const all = series.flatMap(s => s.values).filter(v => v != null);
+    // Pæne trin, der altid rammer nul – også når serien går under nul
+    const hi = Math.max(1, ...all), lo = Math.min(0, ...all);
+    const step = niceCeil((hi - lo) / 5);
+    const minV = Math.floor(lo / step) * step, maxV = Math.ceil(hi / step) * step;
+    const span = maxV - minV;
+    const yOf = v => MT + plotH - ((v - minV) / span) * plotH;
     const xStep = months.length > 1 ? plotW / (months.length - 1) : 0;
     let grid = '', xlabels = '';
-    for (let i = 0; i <= 4; i++) {
-      const v = maxV / 4 * i, y = MT + plotH - (v / maxV) * plotH;
-      grid += `<line x1="${ML}" y1="${y.toFixed(1)}" x2="${ML + plotW}" y2="${y.toFixed(1)}" stroke="var(--ui-grey-300)" stroke-width="1"/>`;
-      grid += `<text x="${ML - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--text-secondary)" font-variant-numeric="tabular-nums">${valueFmt(v)}</text>`;
+    for (let v = minV; v <= maxV + step / 1000; v += step) {
+      const y = yOf(v), zero = Math.abs(v) < step / 1000;
+      grid += `<line x1="${ML}" y1="${y.toFixed(1)}" x2="${ML + plotW}" y2="${y.toFixed(1)}" stroke="${zero && minV < 0 ? 'var(--ui-grey-600)' : 'var(--ui-grey-300)'}" stroke-width="1"/>`;
+      grid += `<text x="${ML - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--text-secondary)" font-variant-numeric="tabular-nums">${valueFmt(zero ? 0 : v)}</text>`;
     }
-    months.forEach((m, i) => { xlabels += `<text x="${(ML + i * xStep).toFixed(1)}" y="${MT + plotH + 18}" text-anchor="middle" font-size="12" fill="var(--text-secondary)">${monthLabel(m)}</text>`; });
+    months.forEach((m, i) => { xlabels += `<text x="${(ML + i * xStep).toFixed(1)}" y="${MT + plotH + 18}" text-anchor="middle" font-size="12" fill="var(--text-secondary)">${labelFmt(m)}</text>`; });
     let paths = '';
     series.forEach(s => {
-      let d = '', dots = '';
+      let d = '', dots = '', pen = false, last = null;
       s.values.forEach((v, i) => {
-        const x = ML + i * xStep, y = MT + plotH - (v / maxV) * plotH;
-        d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
-        dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="${s.color}"><title>${App.h(s.label)}, ${monthLabel(months[i])}: ${valueFmt(v)} t.</title></circle>`;
+        if (v == null) { pen = false; return; }
+        const x = ML + i * xStep, y = yOf(v);
+        d += (pen ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) + ' '; pen = true; last = { x, y };
+        dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${s.color}" stroke="var(--surface-card)" stroke-width="2"><title>${App.h(s.label)}, ${labelFmt(months[i])}: ${valueFmt(v)}${unit}</title></circle>`;
       });
-      paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2"/>${dots}`;
+      paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2"${s.dash ? ' stroke-dasharray="5,4"' : ''}/>${dots}`;
+      if (s.endLabel && last) paths += `<text x="${(last.x + 10).toFixed(1)}" y="${(last.y + 4).toFixed(1)}" font-size="12" fill="var(--text-secondary)">${App.h(s.endLabel)}</text>`;
     });
     return svgWrap(W, H, title, grid + paths + xlabels);
   }
@@ -4927,6 +5176,9 @@ App.registerPage({
   function legendHtml(items) {
     return `<div class="rap-legend">${items.map(it => `<span class="rap-lg"><i style="background:${it.color}"></i>${App.h(it.label)}</span>`).join('')}</div>`;
   }
+
+  // Diagram-byggeklodserne deles med pages/oekonomi.js, så der kun findes én udgave (PLAN-v5)
+  window.RapCharts = { barsChart, linesChart, legendHtml, krShort, MONTH_ABBR };
 
   // ---------- rapport-datalogik ----------
   function afdOk(afd) { return !App.S.rapAfd || afd === App.S.rapAfd; }
@@ -5067,7 +5319,7 @@ App.registerPage({
     <div class="card rap-card">
       <div class="card-body">
         <h2>Omsætning pr. måned</h2>
-        <p class="rap-sub" id="rapRevSub"></p>
+        <p class="rap-sub"><span id="rapRevSub"></span><span id="rapTilOekWrap"> · <button class="tlink" type="button" id="rapTilOek">Se økonomisk overblik med år til dato</button></span></p>
         <div class="ftabs" id="rapMode" role="group" aria-label="Visning">
           <button class="ftab" data-v="fakt">Faktureret</button>
           <button class="ftab" data-v="salg">Salg total</button>
@@ -5119,6 +5371,7 @@ App.registerPage({
       $$('#rapAfd .ftab').forEach(b => b.addEventListener('click', () => { S.rapAfd = b.dataset.v; save(); this.render(); }));
       $$('#rapMode .ftab').forEach(b => b.addEventListener('click', () => { S.rapMode = b.dataset.v; save(); this.render(); }));
       $('#rapExport').addEventListener('click', () => toast('Kun i den færdige løsning: her downloades rapporten som Excel-fil'));
+      $('#rapTilOek').addEventListener('click', () => App.go('oekonomi'));
     },
     render() {
       const { $, $$, S, kr, pct, h, emp } = App;
@@ -5128,6 +5381,9 @@ App.registerPage({
 
       const months = periodMonths(S.rapPeriode);
       $('#rapRevSub').textContent = `Periode: ${periodLabel(S.rapPeriode)} · Afdeling: ${S.rapAfd || 'Alle'}`;
+      // Fakturering har Rapporter, men ikke Økonomisk overblik – linket skjules, når siden ikke er tilgængelig for rollen
+      const oek = App.getPage('oekonomi');
+      $('#rapTilOekWrap').hidden = !(oek && oek.roles.includes(App.role()));
 
       // 1) Omsætning pr. måned
       const rev = revenueData(months);
@@ -5166,6 +5422,401 @@ App.registerPage({
       }
       $('#rapUlTable').innerHTML = ul.table.map(r => `<tr><td>${h(r.leverandoer)}</td><td class="num">${kr(r.total)}</td></tr>`).join('')
         || '<tr><td colspan="2" class="empty">Ingen udgifter til underleverandører i perioden.</td></tr>';
+    },
+  });
+})();
+
+</script>
+<script>
+// Økonomisk overblik (PLAN-v5). Månedens tal og år til dato for projekterne, afgrænset efter rolle via App.inScope.
+// Periodisering på transaktionsdato: omsætning på fakturadato, udgifter på bogføringsdato, ordreindgang på oprettelsesmåned.
+// Afsluttede projekter udledes af tallene og ikke af p.status, som senere deles op (KRAV-GAP-v6 afsnit 2.2).
+(function () {
+  const MONTHS = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
+  const FAKTURERET = 'Faktureret';
+  const KLAR = ['Klar til fakturering']; // krav C9: tilføj 'Sendt til fakturering' her, når trinnet indføres
+  const INTERN_LEV = 'Securitas';        // intern kost = udgiftslinjer fra Securitas selv (indgår allerede i DG)
+  // Diagramfarver: bedste par i design-systemets skalaer (CVD- og kontrasttjek bestået). Den blå skala er bevidst afdæmpet,
+  // så identitet bæres også af signaturforklaring, direkte etiketter og månedstabellen som tabelvisning.
+  const COL_FAKT = 'var(--ui-blue-500)', COL_UDG = 'var(--ui-purple-300)';
+  const COL_AAR = 'var(--sec-navy-blue)', COL_SIDSTE = 'var(--ui-grey-700)';
+
+  // ---------- dato-helpers ----------
+  const ym = d => (d || '').slice(0, 7);
+  const addM = (m, delta) => { const [y, mm] = m.split('-').map(Number); const d = new Date(y, mm - 1 + delta, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const monthsOfYear = y => Array.from({ length: 12 }, (_, i) => y + '-' + String(i + 1).padStart(2, '0'));
+  const monthName = m => MONTHS[+m.slice(5) - 1] + ' ' + m.slice(0, 4);
+  const monthShort = m => MONTHS[+m.slice(5) - 1].slice(0, 3);
+  const lastClosedMonth = () => addM(App.today().slice(0, 7), -1);
+
+  // ---------- talformat ----------
+  const num = v => Math.round(v || 0).toLocaleString('da-DK');          // tabeller: uden "kr."
+  const hrs = v => App.n((Math.round((v || 0) * 10) / 10).toFixed(1));
+  const delta = (cur, prev) => prev ? (cur - prev) / Math.abs(prev) * 100 : null;
+  const deltaTxt = d => d == null ? '–' : (d > 0 ? '+' : d < 0 ? '−' : '') + App.n(Math.abs(d).toFixed(1)) + ' %';
+  // neutral: en stigning er ikke i sig selv god eller dårlig (fx udgifter) – så farves afvigelsen ikke
+  const deltaHtml = (cur, prev, neutral) => { const d = delta(cur, prev); return `<span class="oek-delta${!neutral && d != null && d < 0 ? ' neg' : ''}">${deltaTxt(d)}</span>`; };
+
+  // ---------- beregning ----------
+  function flows(p, m) { // bevægelser i måneden
+    let fakt = 0, udg = 0, intern = 0;
+    (p.fakturering || []).forEach(f => { if (f.status === FAKTURERET && ym(f.dato) === m) fakt += +f.beloeb || 0; });
+    (p.udgifter || []).forEach(u => {
+      if (ym(u.dato) !== m) return;
+      udg += +u.beloeb || 0;
+      if ((u.leverandoer || '').trim() === INTERN_LEV) intern += +u.beloeb || 0;
+    });
+    return { fakt, udg, intern, ordre: p.maaned === m ? App.calc(p).salg : 0 };
+  }
+  function saldi(p, m) { // saldi ultimo måneden
+    const salg = App.calc(p).salg;
+    let faktTil = 0, udgTil = 0;
+    (p.fakturering || []).forEach(f => { if (f.status === FAKTURERET && f.dato && ym(f.dato) <= m) faktTil += +f.beloeb || 0; });
+    (p.udgifter || []).forEach(u => { if (u.dato && ym(u.dato) <= m) udgTil += +u.beloeb || 0; });
+    const faerdig = salg > 0 && faktTil >= salg;
+    return { beholdning: (p.maaned || '9999') <= m ? Math.max(0, salg - faktTil) : 0, wip: faerdig ? 0 : Math.max(0, udgTil - faktTil) };
+  }
+  function timer(projs, m) { // teknikertimer på projektsager (ikke intern tid) + PM- og SE-tid fra projektloggen
+    const ids = projs.map(p => p.id);
+    const mine = sag => ids.some(id => sag === id || (sag || '').startsWith(id + '-'));
+    let tek = 0, pm = 0;
+    (App.S.tid || []).forEach(t => { if (ym(t.dato) === m && !App.isIntern(t) && mine(t.sag)) tek += (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0); });
+    projs.forEach(p => (p.log || []).forEach(l => { if (ym(l.dato) === m) pm += (+l.pmTid || 0) + (+l.seTid || 0); }));
+    return { tek, pm };
+  }
+  function monthRow(projs, m) {
+    const r = { m, fakt: 0, udg: 0, intern: 0, ordre: 0, beholdning: 0, wip: 0 };
+    projs.forEach(p => {
+      const f = flows(p, m), s = saldi(p, m);
+      r.fakt += f.fakt; r.udg += f.udg; r.intern += f.intern; r.ordre += f.ordre; r.beholdning += s.beholdning; r.wip += s.wip;
+    });
+    const t = timer(projs, m);
+    r.db = r.fakt - r.udg; r.timerTek = t.tek; r.timerPm = t.pm; r.timer = t.tek + t.pm;
+    return r;
+  }
+  function yearToDate(rows, idx) { // bevægelser summeres, saldi tages ultimo den valgte måned
+    const s = { fakt: 0, udg: 0, intern: 0, ordre: 0, timer: 0, timerTek: 0, timerPm: 0 };
+    rows.slice(0, idx + 1).forEach(r => Object.keys(s).forEach(k => { s[k] += r[k]; }));
+    s.db = s.fakt - s.udg; s.dg = s.fakt ? s.db / s.fakt * 100 : null;
+    s.beholdning = rows[idx].beholdning; s.wip = rows[idx].wip;
+    return s;
+  }
+  function afsluttede(projs, from, to) { // færdigfakturerede projekter, hvis sidste faktura faldt i perioden
+    let n = 0, salg = 0, udg = 0;
+    projs.forEach(p => {
+      const c = App.calc(p);
+      if (!(c.salg > 0) || c.rest > 0) return;
+      const last = (p.fakturering || []).filter(f => f.status === FAKTURERET && f.dato).map(f => f.dato).sort().pop();
+      if (!last || ym(last) < from || ym(last) > to) return;
+      n++; salg += c.salg; udg += c.udg;
+    });
+    return { n, dg: salg ? (salg - udg) / salg * 100 : null };
+  }
+  function klarNu(projs) { // øjebliksbillede – linjerne har ingen dato, før de er faktureret
+    return projs.reduce((a, p) => a + (p.fakturering || []).filter(f => KLAR.includes(f.status)).reduce((b, f) => b + (+f.beloeb || 0), 0), 0);
+  }
+  function serviceFakt(scope, from, to) {
+    // Serviceopgaver har hverken afdeling eller PM. Delopgaver følger deres projekt; øvrige henføres til afdeling ud fra kunden.
+    const { S } = App; const s = App.resolveScope(scope);
+    return (S.serviceopgaver || []).reduce((a, o) => {
+      if (o.status !== FAKTURERET) return a;
+      const d = ym(o.dato || o.lukket); if (!d || d < from || d > to) return a;
+      const parent = o.parent && App.proj(o.parent);
+      const ok = parent ? App.inScope(parent, s)
+        : s === 'alle' || (s.startsWith('afd:') && (/novo/i.test(App.site(o.siteId).kunde || '') ? 'Novo' : 'Generel') === s.slice(4));
+      return ok ? a + (+o.pris || 0) : a;
+    }, 0);
+  }
+  function projRows(projs, from, to) { // drill-down: ét projekt pr. række for perioden from..to
+    const months = []; for (let m = from; m <= to; m = addM(m, 1)) months.push(m);
+    return projs.map(p => {
+      const r = { p, fakt: 0, udg: 0, ordre: 0 };
+      months.forEach(m => { const f = flows(p, m); r.fakt += f.fakt; r.udg += f.udg; r.ordre += f.ordre; });
+      const s = saldi(p, to); r.wip = s.wip; r.rest = s.beholdning; r.db = r.fakt - r.udg;
+      return r;
+    }).filter(r => r.fakt || r.udg || r.ordre || r.wip || r.rest);
+  }
+
+  // Samlet model for den valgte måned og det valgte scope – bruges af både skærm og print, så tallene altid er ens
+  function model() {
+    const { S } = App;
+    const scope = App.resolveScope(S.oekScope);
+    const m = S.oekMaaned || lastClosedMonth();
+    const year = m.slice(0, 4), prevYear = String(+year - 1), idx = +m.slice(5) - 1;
+    const projs = (S.projekter || []).filter(p => App.inScope(p, scope));
+    const rows = monthsOfYear(year).map(x => monthRow(projs, x));
+    const prevRows = monthsOfYear(prevYear).map(x => monthRow(projs, x));
+    const aatd = yearToDate(rows, idx), prevAatd = yearToDate(prevRows, idx);
+    const jan = year + '-01', prevJan = prevYear + '-01', prevM = prevYear + m.slice(4);
+    return {
+      scope, m, year, prevYear, idx, projs, rows, prevRows, aatd, prevAatd, md: rows[idx], prevMd: prevRows[idx],
+      afslMd: afsluttede(projs, m, m), afslAatd: afsluttede(projs, jan, m), klar: klarNu(projs),
+      svcMd: serviceFakt(scope, m, m), svcAatd: serviceFakt(scope, jan, m),
+      drillMd: projRows(projs, m, m), drillAatd: projRows(projs, jan, m),
+      scopeLabel: (App.scopeOptions().find(o => o.v === scope) || {}).label || '',
+      jan, prevJan, prevM,
+    };
+  }
+  function perPm(M) {
+    const by = {};
+    M.drillAatd.forEach(r => {
+      const b = by[r.p.pm] || (by[r.p.pm] = { pm: r.p.pm, navn: App.emp(r.p.pm).navn, n: 0, fakt: 0, udg: 0, rest: 0, wip: 0 });
+      b.n++; b.fakt += r.fakt; b.udg += r.udg; b.rest += r.rest; b.wip += r.wip;
+    });
+    return Object.values(by).sort((a, b) => b.fakt - a.fakt);
+  }
+
+  // ---------- HTML-byggeklodser ----------
+  const scopeTitle = M => M.scope === 'alle' ? 'Alle afdelinger' : M.scope.startsWith('afd:') ? 'Afdeling ' + M.scope.slice(4) : 'Projektleder ' + App.emp(M.scope.slice(3)).navn;
+  const periodTxt = M => M.idx === 0 ? 'januar' : `januar–${MONTHS[M.idx]}`;
+
+  function kpiHtml(M) {
+    const { kr, pct, h } = App;
+    const tile = (label, main, subs) => `<div class="stat oek-kpi"><small>${h(label)}</small><b>${main}</b>${subs.map(s => `<span class="oek-sub">${s}</span>`).join('')}</div>`;
+    const aatdLine = (cur, prev, neutral) => [`År til dato ${kr(cur)}`, `${M.prevYear}: ${kr(prev)} ${deltaHtml(cur, prev, neutral)}`];
+    return [
+      tile(`Faktureret · ${monthName(M.m)}`, kr(M.md.fakt), aatdLine(M.aatd.fakt, M.prevAatd.fakt)),
+      tile(`Udgifter · ${monthName(M.m)}`, kr(M.md.udg), aatdLine(M.aatd.udg, M.prevAatd.udg, true)),
+      tile(`Dækningsbidrag · ${monthName(M.m)}`, kr(M.md.db), aatdLine(M.aatd.db, M.prevAatd.db)),
+      tile('Dækningsgrad · år til dato', pct(M.aatd.dg), [
+        `${M.prevYear}: ${pct(M.prevAatd.dg)}`,
+        M.afslAatd.n ? `Færdigfaktureret i år: ${M.afslAatd.n} projekter, DG ${pct(M.afslAatd.dg)}` : 'Ingen projekter færdigfaktureret i år',
+      ]),
+      tile(`Ordreindgang · ${monthName(M.m)}`, kr(M.md.ordre), aatdLine(M.aatd.ordre, M.prevAatd.ordre)),
+      tile('Ordrebeholdning · ultimo', kr(M.md.beholdning), ['Solgt, men endnu ikke faktureret', `${M.prevYear}: ${kr(M.prevMd.beholdning)} ${deltaHtml(M.md.beholdning, M.prevMd.beholdning, true)}`]),
+      tile('Igangværende arbejde · ultimo', kr(M.md.wip), ['Udgifter, der endnu ikke er dækket af fakturering', `Klar til fakturering nu: ${kr(M.klar)}`]),
+      tile(`Timer · ${monthName(M.m)}`, hrs(M.md.timer) + ' t.', [`År til dato ${hrs(M.aatd.timer)} t. (tekniker ${hrs(M.aatd.timerTek)}, PM og SE ${hrs(M.aatd.timerPm)})`, `Intern kost år til dato ${kr(M.aatd.intern)}`]),
+    ].join('');
+  }
+
+  // Timer sammenlignes kun med sidste år, når der også dengang er registreret teknikertid – ellers sammenlignes to forskellige ting
+  const timerComparable = M => M.prevAatd.timerTek > 0;
+
+  const MONTH_COLS = [['fakt', 'Faktureret'], ['udg', 'Udgifter'], ['intern', 'Heraf intern kost'], ['db', 'DB'], ['ordre', 'Ordreindgang'], ['beholdning', 'Ordrebeholdning'], ['wip', 'Igangv. arbejde']];
+  function monthBodyHtml(M, { onlyToSelected } = {}) {
+    return M.rows.map((r, i) => {
+      if (onlyToSelected && i > M.idx) return '';
+      const empty = i > M.idx && !r.fakt && !r.udg && !r.ordre && !r.timer;
+      const cells = MONTH_COLS.map(([k]) => `<td class="num${k === 'db' && r.db < 0 ? ' oek-neg' : ''}">${empty ? '–' : num(r[k])}</td>`).join('');
+      return `<tr class="click${i === M.idx ? ' on' : ''}${i > M.idx ? ' later' : ''}" data-m="${r.m}" tabindex="0" aria-label="Vis ${monthName(r.m)}"><td>${monthName(r.m)}</td>${cells}<td class="num">${empty ? '–' : hrs(r.timer)}</td></tr>`;
+    }).join('');
+  }
+  function monthFootHtml(M) {
+    const a = M.aatd, b = M.prevAatd;
+    const line = (label, s) => `<tr><td>${label}</td>${MONTH_COLS.map(([k]) => `<td class="num">${num(s[k])}</td>`).join('')}<td class="num">${s === b && !timerComparable(M) ? '–' : hrs(s.timer)}</td></tr>`;
+    const dev = `<tr><td>Afvigelse</td>${MONTH_COLS.map(([k]) => `<td class="num">${deltaHtml(a[k], b[k], k === 'udg' || k === 'intern' || k === 'beholdning' || k === 'wip')}</td>`).join('')}<td class="num">${timerComparable(M) ? deltaHtml(a.timer, b.timer, true) : '–'}</td></tr>`;
+    return line(`År til dato (${periodTxt(M)} ${M.year})`, a) + line(`Samme periode ${M.prevYear}`, b) + dev;
+  }
+  function drillBodyHtml(rows) {
+    const { h } = App;
+    return rows.map(r => {
+      const s = App.site(r.p.siteId);
+      return `<tr class="click" data-id="${h(r.p.id)}" tabindex="0"><td><b>${h(r.p.id)}</b></td><td class="cut w-m" title="${h(r.p.navn)}">${h(r.p.navn)}</td><td class="cut w-s" title="${h(s.kunde || '')}">${h(s.kunde || '')}</td><td>${h(r.p.pm)}</td>
+        <td class="num">${num(r.fakt)}</td><td class="num">${num(r.udg)}</td><td class="num${r.db < 0 ? ' oek-neg' : ''}">${num(r.db)}</td><td class="num">${num(r.ordre)}</td><td class="num">${num(r.wip)}</td><td class="num">${num(r.rest)}</td></tr>`;
+    }).join('');
+  }
+  const sum = (rows, k) => rows.reduce((a, r) => a + r[k], 0);
+  const drillFootHtml = (rows, span) => `<td colspan="${span}">I alt, ${rows.length} projekter</td>${['fakt', 'udg', 'db', 'ordre', 'wip', 'rest'].map(k => `<td class="num">${num(sum(rows, k))}</td>`).join('')}`;
+
+  function chartsHtml(M) {
+    const C = window.RapCharts; if (!C) return '';
+    const bars = M.rows.map(r => ({ label: monthShort(r.m), values: { fakt: r.fakt, udg: r.udg } }));
+    const acc = rows => { let a = 0; return rows.map(r => (a += r.db)); };
+    const cur = acc(M.rows).map((v, i) => i <= M.idx ? v : null), prev = acc(M.prevRows);
+    return `
+      <h3>Faktureret og udgifter pr. måned, ${M.year}</h3>
+      <div class="rap-chart">${C.barsChart(bars, [{ key: 'fakt', label: 'Faktureret', color: COL_FAKT }, { key: 'udg', label: 'Udgifter', color: COL_UDG }], { title: `Faktureret og udgifter pr. måned ${M.year}`, stacked: false })}</div>
+      ${C.legendHtml([{ label: 'Faktureret', color: COL_FAKT }, { label: 'Udgifter', color: COL_UDG }])}
+      <h3>Akkumuleret dækningsbidrag</h3>
+      <div class="rap-chart">${C.linesChart(M.rows.map(r => r.m), [
+        { label: M.prevYear, color: COL_SIDSTE, values: prev, dash: true, endLabel: M.prevYear },
+        { label: M.year, color: COL_AAR, values: cur, endLabel: M.year },
+      ], { title: `Akkumuleret dækningsbidrag ${M.year} mod ${M.prevYear}`, valueFmt: C.krShort, unit: ' kr.', labelFmt: monthShort, ML: 64 })}</div>
+      ${C.legendHtml([{ label: `${M.year} (til og med ${MONTHS[M.idx]})`, color: COL_AAR }, { label: `${M.prevYear} (stiplet)`, color: COL_SIDSTE }])}`;
+  }
+
+  const DEFS = [
+    ['Faktureret', 'Fakturalinjer med status Faktureret, henført til fakturadatoen.'],
+    ['Udgifter', 'Alle udgiftslinjer på projekterne, henført til bogføringsdatoen. Intern kost er linjerne fra Securitas selv.'],
+    ['DB og DG', 'Dækningsbidrag er faktureret minus udgifter i perioden. Dækningsgrad vises kun for år til dato og for færdigfakturerede projekter, fordi udgifter og faktura sjældent falder i samme måned.'],
+    ['Ordreindgang', 'Salg total for projekter oprettet i måneden.'],
+    ['Ordrebeholdning', 'Salg total minus faktureret ved månedens udgang – det, der er solgt, men ikke faktureret endnu.'],
+    ['Igangværende arbejde', 'Udgifter ved månedens udgang, som endnu ikke er dækket af fakturering, på projekter der ikke er færdigfakturerede.'],
+    ['Timer', 'Teknikertimer registreret på projektsager plus projektleder- og engineer-tid fra projektloggen. Intern tid tæller ikke med.'],
+  ];
+
+  function printReport(M) {
+    const { h, kr, pct, emp, S, today } = App;
+    const k = (label, md, a, b, dev = '') => `<tr><td>${label}</td><td class="num">${md}</td><td class="num">${a}</td><td class="num">${b}</td><td class="num">${dev}</td></tr>`;
+    const money = (label, key) => k(label, kr(M.md[key]), kr(M.aatd[key]), kr(M.prevAatd[key]), deltaTxt(delta(M.aatd[key], M.prevAatd[key])));
+    const pm = perPm(M);
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <svg class="oek-print-logo" viewBox="0 0 304 164" aria-label="Securitas"><use href="#logo-white"/></svg>
+      <p class="oek-print-meta">${h(scopeTitle(M))} · ${h(monthName(M.m))} · udskrevet ${today()} af ${h(emp(S.user).navn)}<br>Alle beløb i kr. ekskl. moms. Omsætning efter fakturadato, udgifter efter bogføringsdato. Kun projekter – service er ikke med.</p>
+      <h2>Nøgletal</h2>
+      <table><thead><tr><th></th><th class="num">${h(monthName(M.m))}</th><th class="num">År til dato</th><th class="num">Samme periode ${M.prevYear}</th><th class="num">Afvigelse</th></tr></thead><tbody>
+        ${money('Faktureret', 'fakt')}${money('Udgifter', 'udg')}${money('Heraf intern kost', 'intern')}${money('Dækningsbidrag', 'db')}
+        ${k('Dækningsgrad', '', pct(M.aatd.dg), pct(M.prevAatd.dg))}
+        ${money('Ordreindgang', 'ordre')}
+        ${k('Ordrebeholdning, ultimo', kr(M.md.beholdning), '', kr(M.prevMd.beholdning), deltaTxt(delta(M.md.beholdning, M.prevMd.beholdning)))}
+        ${k('Igangværende arbejde, ultimo', kr(M.md.wip), '', kr(M.prevMd.wip), deltaTxt(delta(M.md.wip, M.prevMd.wip)))}
+        ${k('Klar til fakturering, dags dato', kr(M.klar), '', '')}
+        ${k('Timer', hrs(M.md.timer), hrs(M.aatd.timer), timerComparable(M) ? hrs(M.prevAatd.timer) : '–')}
+      </tbody></table>
+      <h2>Måned for måned, ${M.year}</h2>
+      <table><thead><tr><th>Måned</th>${MONTH_COLS.map(c => `<th class="num">${c[1]}</th>`).join('')}<th class="num">Timer</th></tr></thead><tbody>${monthBodyHtml(M, { onlyToSelected: true })}</tbody><tfoot>${monthFootHtml(M)}</tfoot></table>
+      ${M.scope.startsWith('pm:') ? '' : `<h2>Pr. projektleder, år til dato</h2>
+      <table><thead><tr><th>Projektleder</th><th class="num">Projekter</th><th class="num">Faktureret</th><th class="num">Udgifter</th><th class="num">DB</th><th class="num">DG</th><th class="num">Ordrebeholdning</th><th class="num">Igangv. arbejde</th></tr></thead>
+      <tbody>${pm.map(r => `<tr><td>${h(r.navn)}</td><td class="num">${r.n}</td><td class="num">${num(r.fakt)}</td><td class="num">${num(r.udg)}</td><td class="num">${num(r.fakt - r.udg)}</td><td class="num">${r.fakt ? pct((r.fakt - r.udg) / r.fakt * 100) : '–'}</td><td class="num">${num(r.rest)}</td><td class="num">${num(r.wip)}</td></tr>`).join('')}</tbody></table>`}
+      <h2>Projekter, år til dato</h2>
+      <table><thead><tr><th>Projekt</th><th>Navn</th><th>PM</th><th class="num">Faktureret</th><th class="num">Udgifter</th><th class="num">DB</th><th class="num">Igangv. arbejde</th><th class="num">Rest til fakturering</th></tr></thead>
+      <tbody>${M.drillAatd.map(r => `<tr><td>${h(r.p.id)}</td><td>${h(r.p.navn)}</td><td>${h(r.p.pm)}</td><td class="num">${num(r.fakt)}</td><td class="num">${num(r.udg)}</td><td class="num">${num(r.db)}</td><td class="num">${num(r.wip)}</td><td class="num">${num(r.rest)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="3">I alt, ${M.drillAatd.length} projekter</td>${['fakt', 'udg', 'db', 'wip', 'rest'].map(x => `<td class="num">${num(sum(M.drillAatd, x))}</td>`).join('')}</tr></tfoot></table>
+      <p class="oek-print-meta">Faktureret service uden for nøgletallene: ${h(monthName(M.m))} ${kr(M.svcMd)}, år til dato ${kr(M.svcAatd)}.</p>`;
+    App.printSection(el, `Økonomisk overblik – ${monthName(M.m)}`);
+  }
+
+  // ---------- side ----------
+  App.registerPage({
+    id: 'oekonomi', label: 'Økonomisk overblik', group: 'Økonomi', icon: 'screen', order: 48,
+    roles: ['Chef', 'PM'],
+    model, // eksponeret til afstemning i konsollen: App.getPage('oekonomi').model()
+    html: `
+    <div class="page-head">
+      <div>
+        <h1>Økonomisk overblik</h1>
+        <p>Månedens tal og år til dato for projekterne, sammenlignet med samme periode sidste år. Tallene følger faktura- og bogføringsdato.</p>
+      </div>
+      <div class="replaces">Bygger på <b>Udgifter</b> og <b>Fakturering</b> fra projektkortene</div>
+    </div>
+    <div class="rap-toolbar">
+      <div class="grp">
+        <label class="lbl" for="oekMaaned">Måned</label>
+        <select id="oekMaaned"></select>
+      </div>
+      <div class="grp" id="oekScopeGrp">
+        <span class="lbl">Visning</span>
+        <div class="ftabs" id="oekScope" role="group" aria-label="Visning"></div>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn primary" id="oekPrint">Udskriv månedsrapport</button>
+      <button class="btn" id="oekExport"><svg class="ico s"><use href="#i-export"/></svg>Eksportér til Excel</button>
+    </div>
+
+    <div class="oek-kpis" id="oekKpis"></div>
+
+    <div class="card rap-card">
+      <div class="card-body">
+        <h2 id="oekTableTitle">Måned for måned</h2>
+        <p class="rap-sub">Alle beløb i kr. ekskl. moms. Vælg en måned i tabellen for at se projekterne bag tallene. Ordrebeholdning og igangværende arbejde er saldi ved månedens udgang.</p>
+        <div class="table-wrap">
+          <table class="table-dense oek-table" id="oekTable">
+            <thead><tr><th>Måned</th><th class="num">Faktureret</th><th class="num">Udgifter</th><th class="num">Heraf intern kost</th><th class="num">DB</th><th class="num">Ordreindgang</th><th class="num">Ordrebeholdning</th><th class="num">Igangv. arbejde</th><th class="num">Timer</th></tr></thead>
+            <tbody id="oekRows"></tbody>
+            <tfoot id="oekFoot"></tfoot>
+          </table>
+        </div>
+        <p class="rap-sub oek-note" id="oekService"></p>
+        <details class="oek-def">
+          <summary>Sådan er tallene opgjort</summary>
+          <dl>${DEFS.map(d => `<dt>${d[0]}</dt><dd>${d[1]}</dd>`).join('')}</dl>
+        </details>
+      </div>
+    </div>
+
+    <div class="card rap-card" id="oekPmCard">
+      <div class="card-body">
+        <h2>Pr. projektleder</h2>
+        <p class="rap-sub" id="oekPmSub"></p>
+        <div class="table-wrap">
+          <table class="table-dense" id="oekPmTable">
+            <thead><tr><th data-sort="text">Projektleder</th><th class="num" data-sort="num">Projekter</th><th class="num" data-sort="num">Faktureret</th><th class="num" data-sort="num">Udgifter</th><th class="num" data-sort="num">DB</th><th class="num" data-sort="num">DG</th><th class="num" data-sort="num">Ordrebeholdning</th><th class="num" data-sort="num">Igangv. arbejde</th></tr></thead>
+            <tbody id="oekPmRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card rap-card">
+      <div class="card-body">
+        <h2>Projekterne bag tallene</h2>
+        <p class="rap-sub" id="oekDrillSub"></p>
+        <div class="ftabs" id="oekDrillMode" role="group" aria-label="Periode">
+          <button class="ftab" data-v="md">Måneden</button>
+          <button class="ftab" data-v="aatd">År til dato</button>
+        </div>
+        <div class="table-wrap" style="margin-top:var(--space-4)">
+          <table class="table-dense" id="oekDrill">
+            <thead><tr><th data-sort="text">Projekt</th><th data-sort="text">Navn</th><th data-sort="text">Kunde</th><th data-sort="text">PM</th><th class="num" data-sort="num">Faktureret</th><th class="num" data-sort="num">Udgifter</th><th class="num" data-sort="num">DB</th><th class="num" data-sort="num">Ordreindgang</th><th class="num" data-sort="num">Igangv. arbejde</th><th class="num" data-sort="num">Rest til fakturering</th></tr></thead>
+            <tbody id="oekDrillRows"></tbody>
+            <tfoot><tr id="oekDrillSum"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card rap-card">
+      <div class="card-body">
+        <h2>Udvikling</h2>
+        <p class="rap-sub">Månedstabellen ovenfor viser de samme tal. Peg på en søjle eller et punkt for at se beløbet.</p>
+        <div id="oekCharts"></div>
+      </div>
+    </div>
+  `,
+    init() {
+      const { $, $$, S, save, toast } = App;
+      const sel = $('#oekMaaned'), cur = App.today().slice(0, 7);
+      for (let i = 0; i < 24; i++) { const m = addM(cur, -i); sel.add(new Option(monthName(m) + (i === 0 ? ' (igangværende)' : ''), m)); }
+      sel.addEventListener('change', () => { S.oekMaaned = sel.value; save(); this.render(); });
+      $('#oekScope').addEventListener('click', e => { const b = e.target.closest('.ftab'); if (!b) return; S.oekScope = b.dataset.v; save(); this.render(); });
+      $$('#oekDrillMode .ftab').forEach(b => b.addEventListener('click', () => { S.oekDrill = b.dataset.v; save(); this.render(); }));
+      $('#oekRows').addEventListener('click', e => { const tr = e.target.closest('tr[data-m]'); if (!tr) return; S.oekMaaned = tr.dataset.m; S.oekDrill = 'md'; save(); this.render(); });
+      $('#oekDrillRows').addEventListener('click', e => { const tr = e.target.closest('tr[data-id]'); if (tr) App.openProject(tr.dataset.id); });
+      $('#oekPrint').addEventListener('click', () => printReport(model()));
+      $('#oekExport').addEventListener('click', () => toast('Kun i den færdige løsning: her downloades overblikket som Excel-fil'));
+      App.sortable($('#oekPmTable'), 'oekPm', { col: 2, dir: 'desc' });
+      App.sortable($('#oekDrill'), 'oekDrill', { col: 4, dir: 'desc' });
+    },
+    render() {
+      const { $, $$, S, h, pct } = App;
+      if (!S.oekMaaned || ![...$('#oekMaaned').options].some(o => o.value === S.oekMaaned)) S.oekMaaned = lastClosedMonth();
+      if (!S.oekDrill) S.oekDrill = 'md';
+      const M = model();
+      $('#oekMaaned').value = M.m;
+
+      // scope-omskifter: kun de valg brugeren har ret til (App.scopeOptions)
+      const opts = App.scopeOptions();
+      $('#oekScopeGrp').hidden = opts.length < 2;
+      $('#oekScope').innerHTML = opts.map(o => `<button class="ftab${o.v === M.scope ? ' on' : ''}" data-v="${h(o.v)}">${h(o.label)}</button>`).join('');
+
+      $('#oekKpis').innerHTML = kpiHtml(M);
+      $('#oekTableTitle').textContent = `Måned for måned, ${M.year} · ${scopeTitle(M)}`;
+      $('#oekRows').innerHTML = monthBodyHtml(M);
+      $('#oekFoot').innerHTML = monthFootHtml(M);
+      $('#oekService').textContent = `Faktureret service er ikke med i nøgletallene: ${monthName(M.m)} ${App.kr(M.svcMd)} · år til dato ${App.kr(M.svcAatd)}.`;
+
+      // pr. projektleder – kun når visningen dækker flere projektledere
+      const single = M.scope.startsWith('pm:');
+      $('#oekPmCard').hidden = single;
+      if (!single) {
+        $('#oekPmSub').textContent = `År til dato (${periodTxt(M)} ${M.year}). Saldi er ved udgangen af ${monthName(M.m)}.`;
+        $('#oekPmRows').innerHTML = perPm(M).map(r => `<tr><td>${h(r.navn)}</td><td class="num">${r.n}</td><td class="num">${num(r.fakt)}</td><td class="num">${num(r.udg)}</td><td class="num${r.fakt - r.udg < 0 ? ' oek-neg' : ''}">${num(r.fakt - r.udg)}</td><td class="num">${r.fakt ? pct((r.fakt - r.udg) / r.fakt * 100) : '–'}</td><td class="num">${num(r.rest)}</td><td class="num">${num(r.wip)}</td></tr>`).join('')
+          || '<tr><td colspan="8" class="empty">Ingen projekter med tal i perioden.</td></tr>';
+        App.applySort($('#oekPmTable'), 'oekPm');
+      }
+
+      // drill-down
+      const aatd = S.oekDrill === 'aatd', rows = aatd ? M.drillAatd : M.drillMd;
+      $$('#oekDrillMode .ftab').forEach(b => b.classList.toggle('on', b.dataset.v === S.oekDrill));
+      $('#oekDrillSub').textContent = (aatd ? `År til dato (${periodTxt(M)} ${M.year})` : monthName(M.m).replace(/^./, c => c.toUpperCase()))
+        + '. Summen svarer til tallene ovenfor. Igangværende arbejde og rest til fakturering er saldi ved månedens udgang. Vælg et projekt for at åbne projektkortet.';
+      $('#oekDrill').classList.toggle('hide-pm', single);
+      $('#oekDrillRows').innerHTML = drillBodyHtml(rows) || '<tr><td colspan="10" class="empty">Ingen projekter med tal i perioden.</td></tr>';
+      $('#oekDrillSum').innerHTML = drillFootHtml(rows, single ? 3 : 4);
+      App.applySort($('#oekDrill'), 'oekDrill');
+
+      $('#oekCharts').innerHTML = chartsHtml(M);
     },
   });
 })();
