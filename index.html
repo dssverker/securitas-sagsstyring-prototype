@@ -1828,6 +1828,18 @@ window.DEMO = {
   S.navOpen = S.navOpen || {};
   // colFilter = kolonnefiltre pr. tabelnøgle og kolonne-ETIKET (F8/B3, PLAN-v6-spor2 §F8).
   S.colFilter = S.colFilter || {};
+  // v7: er den gemte bruger ukendt (fx slettet i et ældre datasæt) eller deaktiveret, må prototypen ikke
+  // starte op som en bruger, der ikke findes. Falder tilbage til første aktive chef, ellers første aktive.
+  // Ligger ved state-indlæsningen, så det også gælder i Node-sandkassen, hvor DOMContentLoaded aldrig affyres.
+  {
+    const alle = S.medarbejdere || [];
+    const gyldig = alle.find(m => m.id === S.user && m.aktiv !== false);
+    if (!gyldig && alle.length) {
+      const aktive = alle.filter(m => m.aktiv !== false);
+      const valg = aktive.find(m => m.rolle === 'Chef') || aktive[0];
+      if (valg) S.user = valg.id;
+    }
+  }
   const save = () => {
     try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {}
     const c = $('#inboxCount'); if (c) c.textContent = (S.indbakke || []).length;
@@ -1836,7 +1848,9 @@ window.DEMO = {
   // ---------- opslag ----------
   const site = id => (S.sites || []).find(s => s.id === id) || {};
   const bc = nr => (D.bcMapping || []).find(m => m.stedNr === String(nr || '').trim()) || null;
-  const emp = id => (D.medarbejdere || []).find(m => m.id === id) || { navn: id, id, rolle: '' };
+  // v7: medarbejdere bor i state (de kan oprettes, rettes og deaktiveres). Opslaget tager ALLE med,
+  // også deaktiverede, så navne på gamle sager ikke forsvinder.
+  const emp = id => (S.medarbejdere || []).find(m => m.id === id) || { navn: id, id, rolle: '' };
   const proj = id => (S.projekter || []).find(p => p.id === id);
   const role = () => emp(S.user).rolle || 'PM';
 
@@ -2060,6 +2074,207 @@ window.DEMO = {
   };
   // Samme forbehold tre steder (kunde-, site- og UL-panelet), så det står ét sted og lyder ens.
   const PROTOTYPE_FORBEHOLD = 'I prototypen ligger historik og rettigheder i din egen browser. I den færdige løsning er de fælles for alle og bindende.';
+
+  // ---------- brugeradministration (PLAN-v7, bølge 1a) ----------
+  // Al forretningslogik ligger her, ikke på siden: så kan spærringerne afprøves i Node, og både
+  // formularen (låste felter) og gemme-funktionen bygger på præcis de samme regler.
+  // "Service" er med vilje IKKE i listen – ingen har rollen, og den afventer Securitas' spørgsmål 14.
+  const BRUGER_ROLLER = ['Chef', 'PM', 'Tekniker', 'Fakturering'];
+  const BRUGER_ID_RE = /^[A-ZÆØÅ]{2,5}$/;
+  const BOGSTAV_RE = /[A-Za-zÆØÅæøå]/;
+  const brugerFejl = t => ({ ok: false, fejl: t });
+  const brugerOk = m => ({ ok: true, medarbejder: m });
+  const alleMed = () => (S.medarbejdere = S.medarbejdere || []);
+  const erAktivMed = m => !!m && m.aktiv !== false;   // manglende felt = aktiv (planens beslutning 11)
+
+  // Én fælles indgang til medarbejderlisten. Returnerer altid et NYT array, så kaldstedet kan sortere frit.
+  // medId: en navngiven (evt. deaktiveret) bruger kommer med alligevel – som kopi mærket "(deaktiveret)",
+  // så en valgliste på en konkret sag aldrig ser tom ud. Originalen i state røres ikke.
+  const medarbejdere = ({ aktive, rolle, medId } = {}) => {
+    const alle = alleMed();
+    const liste = alle.filter(m => (!aktive || erAktivMed(m)) && (!rolle || m.rolle === rolle));
+    if (medId) {
+      const m = alle.find(x => x.id === medId);
+      if (m && !erAktivMed(m) && !liste.includes(m) && (!rolle || m.rolle === rolle)) {
+        liste.push(Object.assign({}, m, { navn: (m.navn || m.id) + ' (deaktiveret)' }));
+      }
+    }
+    return liste;
+  };
+  // Én sandhed om, hvem der må administrere brugere: chefen og afdelingslederne (planens beslutning 2).
+  const maaAdministrereBrugere = () => { const m = emp(S.user); return m.rolle === 'Chef' || !!m.lederFor; };
+  const afdelinger = () => [...new Set(alleMed().map(m => String(m.afdeling || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'da'));
+
+  // Forbogstaver, store bogstaver, mindst to tegn. Ved sammenfald forlænges med næste bogstav(er) fra
+  // efternavnet (planens feltregel), højst fem tegn. Et navn uden brugbare bogstaver giver "".
+  const foreslaaInitialer = navn => {
+    const dele = String(navn || '').trim().split(/\s+/).filter(d => d && BOGSTAV_RE.test(d[0]));
+    if (!dele.length) return '';
+    const rens = s => s.toUpperCase().split('').filter(c => /[A-ZÆØÅ]/.test(c)).join('');
+    let id = rens(dele.map(d => d[0]).join(''));
+    if (!id) return '';
+    const rest = rens(dele[dele.length - 1].slice(1)).split('');
+    const optaget = k => alleMed().some(m => m.id === k);
+    while ((id.length < 2 || optaget(id)) && id.length < 5 && rest.length) id += rest.shift();
+    return id;
+  };
+
+  // Feltlåse. "" = den aktuelle bruger må rette feltet på den medarbejder, ellers én forklarende sætning
+  // i samme tone som retteForklaring(). maal = null betyder "en ny bruger". Både opret/ret/deaktivér og
+  // App.medarbejderLaase() spørger herind, så formular og gemme-funktion aldrig kan komme ud af trit.
+  const brugerLaase = maal => {
+    const jeg = emp(S.user);
+    const jegTekst = `${jeg.navn} (${jeg.rolle || role()})`;
+    if (!maaAdministrereBrugere()) {
+      const t = `Brugere oprettes og rettes af chefen og afdelingslederne. Du er logget ind som ${jegTekst}.`;
+      return { rolle: t, lederFor: t, aktiv: t, alt: t };
+    }
+    const erChef = jeg.rolle === 'Chef';
+    const erMig = !!maal && maal.id === S.user;
+    // alt = hele posten er låst (fx en chefs oplysninger set af en afdelingsleder). De tre andre felter
+    // er uændrede, så siden kan låse enten hele formularen eller kun de enkelte felter.
+    const laase = { rolle: '', lederFor: '', aktiv: '', alt: '' };
+    if (erMig) {
+      laase.rolle = 'Du kan ikke ændre din egen rolle. Bed en anden chef eller afdelingsleder om det.';
+      laase.lederFor = 'Du kan ikke ændre, hvilken afdeling du selv er afdelingsleder for.';
+      laase.aktiv = 'Du kan ikke deaktivere dig selv.';
+    }
+    if (!erChef) {
+      if (!laase.lederFor) laase.lederFor = `Kun en chef kan sætte, hvem der er afdelingsleder. Du er logget ind som ${jegTekst}.`;
+      // En afdelingsleder må slet ikke røre en chef: at deaktivere chefen eller tage stamdata-retten fra
+      // ham er i praksis at fratage ham rollen, og den spærring må ikke kunne gås uden om.
+      if (maal && maal.rolle === 'Chef') {
+        if (!laase.rolle) laase.rolle = 'Kun en chef kan rette en chefs rolle.';
+        if (!laase.aktiv) laase.aktiv = 'Kun en chef kan deaktivere eller genaktivere en chef.';
+        laase.alt = 'Kun en chef kan rette en chefs oplysninger.';
+      }
+    }
+    return laase;
+  };
+  // Værdiregel oven på feltlåsen: en afdelingsleder må hverken give eller fratage rollen Chef.
+  const rolleFejl = (maal, rolle) => {
+    const laas = brugerLaase(maal).rolle;
+    if (laas) return laas;
+    if (emp(S.user).rolle !== 'Chef' && (rolle === 'Chef' || (maal && maal.rolle === 'Chef'))) {
+      return 'Kun en chef kan tildele eller fjerne rollen chef.';
+    }
+    return '';
+  };
+  const medarbejderLaase = id => brugerLaase(alleMed().find(m => m.id === id) || null);
+
+  const rolleTekst = 'Vælg en rolle: ' + BRUGER_ROLLER.join(', ') + '.';
+  const afdTekst = () => 'Vælg en afdeling fra listen: ' + afdelinger().join(', ') + '.';
+  const opretMedarbejder = felter => {
+    try {
+      if (!maaAdministrereBrugere()) return brugerFejl(brugerLaase(null).rolle);
+      const f = felter || {};
+      const navn = String(f.navn == null ? '' : f.navn).trim();
+      if (!navn) return brugerFejl('Skriv et navn på brugeren.');
+      const id = String(f.id == null ? '' : f.id).trim().toUpperCase() || foreslaaInitialer(navn);
+      if (!BRUGER_ID_RE.test(id)) return brugerFejl('Initialer skal være 2-5 bogstaver (A-Å) uden tal, mellemrum eller tegn.');
+      if (alleMed().some(m => m.id === id)) return brugerFejl(`Initialerne ${id} er allerede i brug. Vælg nogle andre.`);
+      const rolle = String(f.rolle == null ? '' : f.rolle).trim();
+      if (!BRUGER_ROLLER.includes(rolle)) return brugerFejl(rolleTekst);
+      const rFejl = rolleFejl(null, rolle);
+      if (rFejl) return brugerFejl(rFejl);
+      const afdeling = String(f.afdeling == null ? '' : f.afdeling).trim();
+      if (!afdelinger().includes(afdeling)) return brugerFejl(afdTekst());
+      const lederFor = String(f.lederFor == null ? '' : f.lederFor).trim();
+      if (lederFor) {
+        const laas = brugerLaase(null).lederFor;
+        if (laas) return brugerFejl(laas);
+        if (!afdelinger().includes(lederFor)) return brugerFejl('Afdelingsleder for skal være en af afdelingerne: ' + afdelinger().join(', ') + '.');
+      }
+      const m = { id, navn, rolle, afdeling };
+      if (lederFor) m.lederFor = lederFor;
+      if (typeof f.maaRedigereStamdata === 'boolean') m.maaRedigereStamdata = f.maaRedigereStamdata;
+      alleMed().push(m);
+      // Oprettelsen er ÉN post i historikken – ikke et felt ad gangen (planens beslutning 9).
+      log('medarbejder', id, 'oprettet', '', `${navn} · ${rolle} · ${afdeling}${lederFor ? ' · afdelingsleder for ' + lederFor : ''}`);
+      save();
+      return brugerOk(m);
+    } catch (e) { return brugerFejl('Brugeren kunne ikke oprettes.'); }
+  };
+
+  const retMedarbejder = (id, aendringer) => {
+    try {
+      if (!maaAdministrereBrugere()) return brugerFejl(brugerLaase(null).rolle);
+      const m = alleMed().find(x => x.id === id);
+      if (!m) return brugerFejl('Brugeren findes ikke.');
+      const a = aendringer || {};
+      const laase = brugerLaase(m);
+      // Id'et er nøgle på projekter, timer og historik og kan derfor aldrig ændres (planens beslutning 5).
+      if ('id' in a && String(a.id == null ? '' : a.id).trim().toUpperCase() !== m.id) {
+        return brugerFejl('Initialer kan ikke ændres, når brugeren først er oprettet.');
+      }
+      if ('aktiv' in a) return brugerFejl('Status ændres med knapperne Deaktivér og Genaktivér.');
+      // Hele posten låst (en afdelingsleder mod en chef): enhver REEL ændring afvises – en uændret
+      // rettelse går stille igennem, så siden kan gemme en formular, brugeren ikke har rørt.
+      if (laase.alt) {
+        const uaendret = (felt, vaerdi) => !(felt in a) || vaerdi;
+        const reel = !(uaendret('navn', String(a.navn == null ? '' : a.navn).trim() === m.navn)
+          && uaendret('rolle', String(a.rolle == null ? '' : a.rolle).trim() === m.rolle)
+          && uaendret('afdeling', String(a.afdeling == null ? '' : a.afdeling).trim() === m.afdeling)
+          && uaendret('lederFor', String(a.lederFor == null ? '' : a.lederFor).trim() === (m.lederFor || ''))
+          && uaendret('maaRedigereStamdata', (a.maaRedigereStamdata === true || a.maaRedigereStamdata === false)
+            ? a.maaRedigereStamdata === m.maaRedigereStamdata
+            : !('maaRedigereStamdata' in m)));
+        if (reel) return brugerFejl(laase.alt);
+      }
+      const navn = 'navn' in a ? String(a.navn == null ? '' : a.navn).trim() : null;
+      if (navn !== null && !navn) return brugerFejl('Skriv et navn på brugeren.');
+      const rolle = 'rolle' in a ? String(a.rolle == null ? '' : a.rolle).trim() : null;
+      if (rolle !== null) {
+        if (!BRUGER_ROLLER.includes(rolle)) return brugerFejl(rolleTekst);
+        if (rolle !== m.rolle) { const f = rolleFejl(m, rolle); if (f) return brugerFejl(f); }
+      }
+      const afdeling = 'afdeling' in a ? String(a.afdeling == null ? '' : a.afdeling).trim() : null;
+      if (afdeling !== null && !afdelinger().includes(afdeling)) return brugerFejl(afdTekst());
+      const lederFor = 'lederFor' in a ? String(a.lederFor == null ? '' : a.lederFor).trim() : null;
+      if (lederFor !== null && lederFor !== (m.lederFor || '')) {
+        if (laase.lederFor) return brugerFejl(laase.lederFor);
+        if (lederFor && !afdelinger().includes(lederFor)) return brugerFejl('Afdelingsleder for skal være en af afdelingerne: ' + afdelinger().join(', ') + '.');
+      }
+      const stamdata = 'maaRedigereStamdata' in a ? a.maaRedigereStamdata : undefined;
+      // Alt er godkendt – først nu skrives der, og kun reelle ændringer logges (saetFelt gør det selv).
+      if (navn !== null) saetFelt(m, 'medarbejder', m.id, 'navn', navn);
+      if (rolle !== null) saetFelt(m, 'medarbejder', m.id, 'rolle', rolle);
+      if (afdeling !== null) saetFelt(m, 'medarbejder', m.id, 'afdeling', afdeling);
+      if (lederFor !== null) {
+        if (lederFor) saetFelt(m, 'medarbejder', m.id, 'lederFor', lederFor);
+        else if ('lederFor' in m) { log('medarbejder', m.id, 'lederFor', m.lederFor, ''); delete m.lederFor; }
+      }
+      if (stamdata !== undefined) {
+        // Tre trin: true/false gemmes som boolean, alt andet betyder "følger rollen" = feltet slettes,
+        // så maaRette() igen falder tilbage på rollen (den tjekker typeof … === 'boolean').
+        if (stamdata === true || stamdata === false) saetFelt(m, 'medarbejder', m.id, 'maaRedigereStamdata', stamdata);
+        else if ('maaRedigereStamdata' in m) { log('medarbejder', m.id, 'maaRedigereStamdata', m.maaRedigereStamdata, 'følger rollen'); delete m.maaRedigereStamdata; }
+      }
+      save();
+      return brugerOk(m);
+    } catch (e) { return brugerFejl('Ændringen kunne ikke gemmes.'); }
+  };
+
+  // Ingen sletning: id'er er nøgler på gamle sager. Genaktivering fjerner feltet igen, så "ingen aktiv-felt"
+  // altid betyder aktiv – uanset om brugeren kommer fra data.js eller er oprettet i browseren.
+  const saetMedarbejderAktiv = (id, aktiv) => {
+    try {
+      if (!maaAdministrereBrugere()) return brugerFejl(brugerLaase(null).aktiv);
+      const m = alleMed().find(x => x.id === id);
+      if (!m) return brugerFejl('Brugeren findes ikke.');
+      const vil = !!aktiv;
+      if (vil === erAktivMed(m)) return brugerOk(m);   // ingen ændring, intet logges
+      const laas = brugerLaase(m).aktiv;
+      if (laas) return brugerFejl(laas);
+      if (vil) { log('medarbejder', m.id, 'aktiv', 'Deaktiveret', 'Aktiv'); delete m.aktiv; }
+      else { m.aktiv = false; log('medarbejder', m.id, 'aktiv', 'Aktiv', 'Deaktiveret'); }
+      save();
+      return brugerOk(m);
+    } catch (e) { return brugerFejl('Status kunne ikke ændres.'); }
+  };
+  // Til advarslen ved deaktivering og tabellens kolonne: hvor mange igangværende projekter står brugeren på?
+  const aktiveProjekterFor = id => !id ? 0 : (S.projekter || []).filter(p => p.pm === id && erIgangvaerende(p)).length;
 
 
   // ---------- Jobstyring-inspirerede helpers (PLAN-v3) ----------
@@ -2472,9 +2687,12 @@ window.DEMO = {
   function registerPage(p) { pages.push(p); }
   const getPage = id => pages.find(p => p.id === id) || null;
 
+  // v7: sideregistreringen kan ud over roles have et valgfrit synligFor(medarbejder) – fx Brugere, der
+  // kun er for chefen og afdelingslederne. Sider uden synligFor opfører sig præcis som før.
+  const sideSynlig = (p, m) => (!p.roles || p.roles.includes(m.rolle || 'PM')) && (typeof p.synligFor !== 'function' || !!p.synligFor(m));
   function visiblePages() {
-    const r = role();
-    return pages.filter(p => !p.roles || p.roles.includes(r)).sort((a, b) => (a.order || 99) - (b.order || 99));
+    const m = emp(S.user);
+    return pages.filter(p => sideSynlig(p, m)).sort((a, b) => (a.order || 99) - (b.order || 99));
   }
 
   function mount() {
@@ -2647,7 +2865,8 @@ window.DEMO = {
   function go(pageId) {
     const p = pages.find(x => x.id === pageId);
     if (!p) return;
-    if (p.roles && !p.roles.includes(role())) { toast('Denne visning er ikke tilgængelig for din rolle'); return; }
+    // Samme tjek som menulisten, så en skjult side heller ikke kan nås via adresselinjen (#brugere)
+    if (!sideSynlig(p, emp(S.user))) { toast('Denne visning er ikke tilgængelig for din rolle'); return; }
     $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + pageId));
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
     revealNavGroup(pageId, p.group || 'Projekter');
@@ -2666,11 +2885,19 @@ window.DEMO = {
   }
 
   // ---------- bruger / roller ----------
+  // Brugerskifteren viser kun aktive brugere og bygges op igen, når brugerlisten ændres (Brugere-siden
+  // kalder App.opdaterBrugerskifter() efter oprettelse og (de)aktivering). Tåler at feltet ikke findes.
+  function opdaterBrugerskifter() {
+    const us = $('#userSel'); if (!us) return;
+    const valgt = S.user;
+    us.innerHTML = '';
+    medarbejdere({ aktive: true }).forEach(m => us.add(new Option(`${m.navn} (${m.rolle}${m.lederFor ? ', afdelingsleder' : ''})`, m.id)));
+    us.value = valgt;
+  }
   function initUser() {
-    const us = $('#userSel'); us.innerHTML = '';
-    D.medarbejdere.forEach(m => us.add(new Option(`${m.navn} (${m.rolle}${m.lederFor ? ', afdelingsleder' : ''})`, m.id)));
-    us.value = S.user;
-    us.addEventListener('change', () => { S.user = us.value; save(); renderNav(); go(defaultPage()); });
+    const us = $('#userSel');
+    opdaterBrugerskifter();
+    if (us) us.addEventListener('change', () => { S.user = us.value; save(); renderNav(); go(defaultPage()); });
 
     // Feedback hører til prototypen, ikke til produktet (B6/F1): flyttet fra menuens grupper ned i
     // foden, på samme linje som "Nulstil demo-data". Siden er stadig registreret (feedback.js) og
@@ -2771,6 +2998,10 @@ window.DEMO = {
     kunde, kundeAf, kundeNavn, installation, installationer, installationTyper, serviceaftaler, eftersynSite,
     ul, ulNavn, ulAf, stedNr, projStatus, erIgangvaerende, igangvaerendeProjekter,
     saetFelt, log, historikFor, maaRette, maaRetteRoller, retteForklaring, PROTOTYPE_FORBEHOLD, RETTIGHEDER,
+    // v7 brugeradministration (PLAN-v7, bølge 1a) – kontrakt for pages/brugere.js og de 12 læsesteder
+    medarbejdere, maaAdministrereBrugere, afdelinger, foreslaaInitialer, medarbejderLaase,
+    opretMedarbejder, retMedarbejder, saetMedarbejderAktiv, aktiveProjekterFor,
+    opdaterBrugerskifter, visiblePages, allePages: () => pages.slice(), BRUGER_ROLLER,
     UDFOERELSE_STATUS, FAKTURALINJE_STATUS, FAKTURERING_STATUS, INSTALLATION_STATUS, INSTALLATION_TYPER,
     get currentProj() { return S.currentProj || null; },
     icons: ['feed', 'screen', 'calendar-check', 'mobile', 'home', 'check', 'close', 'export', 'search', 'service', 'user', 'time', 'mail', 'notification', 'download', 'info', 'shield-check', 'location'],
@@ -2908,7 +3139,7 @@ App.registerPage({
       $('#aPrdk').value = 'PRDK00' + S.nextPrdk;
       $('#aAfd').value = this.afdelingForSite(s.id);
       const pm = $('#aPm'); pm.innerHTML = '';
-      D.medarbejdere.filter(m => m.rolle === 'PM').forEach(m => pm.add(new Option(`${m.navn} (${m.afdeling})`, m.id)));
+      App.medarbejdere({ aktive: true, rolle: 'PM' }).forEach(m => pm.add(new Option(`${m.navn} (${m.afdeling})`, m.id)));
       $('#aType').value = ['AIA', 'ADK', 'TVO'].includes(assigning.produkt) ? assigning.produkt : 'KOMBI';
       openModal('modalAssign');
     };
@@ -3101,10 +3332,7 @@ App.registerPage({
   init() {
     const { $, $$, D, S, site, bc, save, toast, openModal, closeModal, openProject, h, kr, siteLabel } = App;
     const fPm = $('#fPm');
-    D.medarbejdere.filter(m => m.rolle === 'PM').forEach(m => fPm.add(new Option(m.navn, m.id)));
-    // Rollen PM: filteret forudindstilles til brugeren selv, men først når rollen er kendt (render), og
-    // kun hvis brugeren ikke allerede har valgt noget andet (huskes i S.fPm, se render()).
-    if (S.fPm && [...fPm.options].some(o => o.value === S.fPm)) fPm.value = S.fPm;
+    // Listen genopbygges i render() (kaldes hver gang siden vises), så en (de)aktivering af en PM ikke kræver genindlæsning.
     fPm.addEventListener('input', () => { S.fPm = fPm.value; save(); this.render(); });
     App.UDFOERELSE_STATUS.forEach(v => $('#fStatus').add(new Option(v, v)));
     App.FAKTURERING_STATUS.forEach(v => $('#fFakStatus').add(new Option(v, v)));
@@ -3115,7 +3343,6 @@ App.registerPage({
     this.table = $('#projTable');
 
     const ncPm = $('#ncPm');
-    D.medarbejdere.filter(m => m.rolle === 'PM').forEach(m => ncPm.add(new Option(`${m.navn} (${m.afdeling})`, m.id)));
 
     const siteSel = $('#ncSiteSel');
     const refreshSiteOptions = () => {
@@ -3231,6 +3458,9 @@ App.registerPage({
       $('#ncKunde').value = ''; $('#ncSiteNavn').value = ''; $('#ncSiteKode').value = ''; $('#ncAdresse').value = ''; $('#ncPostnr').value = ''; $('#ncBy').value = '';
       $('#ncOpportunity').value = ''; $('#ncBeskrivelse').value = ''; $('#ncSalgspris').value = ''; $('#ncKostpris').value = '';
       sidsteKalk = null; $('#kalkResult').hidden = true; kalkFileIn.value = '';
+      // Genopbygges ved hvert åbn, så en nyoprettet eller (de)aktiveret PM er med uden genindlæsning.
+      ncPm.innerHTML = '';
+      App.medarbejdere({ aktive: true, rolle: 'PM' }).forEach(m => ncPm.add(new Option(`${m.navn} (${m.afdeling})`, m.id)));
       openModal('modalNewCase');
     });
 
@@ -3366,6 +3596,10 @@ App.registerPage({
   },
   render() {
     const { $, $$, S, site, emp, calc, openProject, role, save } = App;
+    // PM-filteret genopbygges her (render() kører hver gang siden vises), så en (de)aktiveret PM slår
+    // igennem uden genindlæsning. "Alle" er sidens faste førsteoption og røres ikke.
+    $('#fPm').querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+    App.medarbejdere({ rolle: 'PM' }).forEach(m => $('#fPm').add(new Option(m.navn, m.id)));
     // Forudindstillingen følger brugeren: PM ser egne projekter, øvrige roller alle. Skifter man bruger (demoens
     // rollevælger), nulstilles filteret – ellers så Chef kun den forrige projektleders sager. Brugerens eget valg
     // står i S.fPm og røres ikke, så længe brugeren er den samme.
@@ -3672,7 +3906,8 @@ App.registerPage({
   init() {
     const { $, $$, D, S, proj, save, toast, today, now, site, bc, emp, kr, h, openModal, closeModal, nextSubtaskId } = App;
     const cur = () => proj(App.currentProj);
-    const teknikere = () => D.medarbejdere.filter(m => m.rolle === 'Tekniker');
+    // medId: giver en allerede gemt (evt. deaktiveret) tekniker med, så feltet ikke bliver tomt ved redigering.
+    const teknikere = medId => App.medarbejdere({ aktive: true, rolle: 'Tekniker', medId });
     $$('#page-projekt .tab').forEach(t => t.addEventListener('click', () => {
       $$('#page-projekt .tab').forEach(x => x.classList.toggle('active', x === t));
       $$('#page-projekt .tabpane').forEach(x => x.classList.toggle('active', x.id === 'tab-' + t.dataset.tab));
@@ -3724,7 +3959,7 @@ App.registerPage({
       } else if (btn.dataset.act === 'rediger') {
         delopgEditId = o.id;
         const tekSel = $('#delopgRedTekniker'); tekSel.innerHTML = '';
-        teknikere().forEach(t => tekSel.add(new Option(t.navn, t.id)));
+        teknikere(o.tekniker).forEach(t => tekSel.add(new Option(t.navn, t.id)));
         $('#delopgRedType').value = o.type || 'Service';
         $('#delopgRedTekniker').value = o.tekniker;
         $('#delopgRedPo').value = o.po || '';
@@ -4197,8 +4432,8 @@ App.registerPage({
   `,
   init() {
     const { $, $$, D, S, save, toast, today, h } = App;
+    // Listen genopbygges i render() (kører hver gang siden vises), se dér.
     const techSel = $('#techSel');
-    D.medarbejdere.filter(m => m.rolle === 'Tekniker').forEach(m => techSel.add(new Option(m.navn, m.id)));
     this.mode = 'sag'; this.selCase = null; this.selKat = null;
     $('#tDato').value = today();
     const mType = $('#mType'), mModel = $('#mModel');
@@ -4252,6 +4487,12 @@ App.registerPage({
   render() {
     const { $, $$, S, site, siteLabel, emp, h, n, isIntern, INTERN_KATEGORIER, expectedHours } = App;
     const techSel = $('#techSel');
+    // Genopbygges ved hver visning, så en nyoprettet/(de)aktiveret tekniker slår igennem. Det aktuelle
+    // valg bevares, hvis teknikeren stadig findes – ellers falder valget tilbage til den første i listen.
+    const techSelCur = techSel.value;
+    techSel.innerHTML = '';
+    App.medarbejdere({ aktive: true, rolle: 'Tekniker' }).forEach(m => techSel.add(new Option(m.navn, m.id)));
+    if ([...techSel.options].some(o => o.value === techSelCur)) techSel.value = techSelCur;
     // Er den aktuelle bruger tekniker, vælges vedkommende automatisk
     if (emp(S.user).rolle === 'Tekniker' && techSel.value !== S.user) { techSel.value = S.user; this.selCase = null; this.selKat = null; }
     const tech = techSel.value; $('#techName').textContent = emp(tech).navn;
@@ -5761,11 +6002,10 @@ App.registerPage({
   init() {
     const { $, $$, D, S, save, toast, today, h, kr, n, role, openModal, closeModal, emp, site } = App;
 
-    const teknikere = () => D.medarbejdere.filter(m => m.rolle === 'Tekniker');
+    const teknikere = aktive => App.medarbejdere({ aktive, rolle: 'Tekniker' });
 
-    // filterrække
+    // filterrække – listen genopbygges i render() (kører hver gang siden vises), se dér.
     const tekSel = $('#svcTekniker');
-    teknikere().forEach(t => tekSel.add(new Option(t.navn, t.id)));
     $$('#svcTabs .ftab').forEach(b => b.addEventListener('click', () => {
       $$('#svcTabs .ftab').forEach(x => x.classList.toggle('on', x === b));
       this.fStatus = b.dataset.v; this.render();
@@ -5781,7 +6021,7 @@ App.registerPage({
       const siteSel = $('#svcSite'); siteSel.innerHTML = '';
       (S.sites || []).forEach(s => siteSel.add(new Option(`${App.kundeNavn(s)} – ${App.siteLabel(s)}`, s.id)));
       const tekAssign = $('#svcTekAssign'); tekAssign.innerHTML = '';
-      teknikere().forEach(t => tekAssign.add(new Option(t.navn, t.id)));
+      teknikere(true).forEach(t => tekAssign.add(new Option(t.navn, t.id)));
       $('#svcType').value = 'Service'; $('#svcPo').value = ''; $('#svcPris').value = ''; $('#svcBeskrivelse').value = '';
       openModal('modalSvcNy');
     });
@@ -6059,7 +6299,12 @@ App.registerPage({
 
     const timerFor = id => (S.tid || []).filter(t => t.sag === id).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
 
-    // filtre
+    // filtre – teknikerlisten genopbygges her, så en (de)aktiveret tekniker slår igennem uden genindlæsning.
+    // "Alle" er sidens faste førsteoption og røres ikke; det aktuelle valg bevares, hvis det stadig findes.
+    const tekSelCur = $('#svcTekniker').value;
+    $('#svcTekniker').querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+    App.medarbejdere({ rolle: 'Tekniker' }).forEach(t => $('#svcTekniker').add(new Option(t.navn, t.id)));
+    if ([...$('#svcTekniker').options].some(o => o.value === tekSelCur)) $('#svcTekniker').value = tekSelCur;
     const status = this.fStatus || '';
     const tek = isTekniker ? '' : $('#svcTekniker').value;
     const q = $('#svcSearch').value.trim().toLowerCase();
@@ -7257,6 +7502,434 @@ App.registerPage({
 
 </script>
 <script>
+// Brugere. Simuleret brugeradministration for chef og afdelingsleder (PLAN-v7, bølge 2).
+// Ingen rigtig autentificering: al forretningslogik (spærringer, initialer, låse) ligger i kernen
+// (App.opretMedarbejder/retMedarbejder/saetMedarbejderAktiv/medarbejderLaase) – denne fil validerer
+// aldrig selv, den viser kun kernens fejlsætning og feltlåse.
+// Navnesammenfald (AGENT-REGLER): alt herunder ligger i én IIFE, så intet lækker til andre sidefiler.
+(function () {
+  const RET_TYPE_LABEL = {
+    kunde: 'Kunder', site: 'Sites', installation: 'Installationer',
+    underleverandoer: 'Underleverandører', projekt: 'Projekter', fakturalinje: 'Fakturalinjer',
+  };
+  const RET_CELL_LABEL = { ret: 'Rette', egne: 'Egne sager', laes: 'Læse', '': '–' };
+  const RET_ROLE_ORDER = ['Chef', 'PM', 'Tekniker', 'Fakturering', 'Service'];
+
+  const BRU_LABEL = { navn: 'Navn', rolle: 'Rolle', afdeling: 'Afdeling', lederFor: 'Afdelingsleder for' };
+  const bruStamdataTekst = v => v === true ? 'Ja' : v === false ? 'Nej' : 'Følger rollen';
+  const bruHistTekst = p => {
+    if (p.felt === 'oprettet') return `Oprettet: ${p.til}`;
+    if (p.felt === 'aktiv') return `Status: ${p.fra} → ${p.til}`;
+    if (p.felt === 'maaRedigereStamdata') return `Må redigere stamdata: ${bruStamdataTekst(p.fra)} → ${bruStamdataTekst(p.til)}`;
+    return `${BRU_LABEL[p.felt] || p.felt}: ${p.fra || '–'} → ${p.til || '–'}`;
+  };
+  const bruTomLi = tekst => `<li style="display:block; padding:12px 0; color:var(--text-secondary)">${tekst}</li>`;
+  const bruLogListe = poster => poster.length
+    ? poster.map(p => `<li><time>${App.h(p.dato)}</time><span>${App.h(bruHistTekst(p))}</span><span class="who">${App.h(p.af)}</span></li>`).join('')
+    : bruTomLi('Ingen ændringer registreret endnu.');
+
+  // Kun chefen kan tildele/beholde rollen Chef i valglisten (feltreglen). Den bruger, der VISES, må
+  // dog altid stå med sin faktiske rolle, ellers lyver feltet om, hvad brugeren rent faktisk er.
+  const rolleValgmuligheder = m => {
+    let liste = App.BRUGER_ROLLER.slice();
+    if (App.role() !== 'Chef') liste = liste.filter(r => r !== 'Chef');
+    if (m && m.rolle === 'Chef' && !liste.includes('Chef')) liste.push('Chef');
+    return liste;
+  };
+  const bruForbehold = 'Brugerne i denne prototype ligger kun i din egen browser. I det rigtige system kommer de fra Securitas\' login (SSO), og administrationen er fælles for alle.';
+
+  App.registerPage({
+    id: 'brugere', label: 'Brugere', group: 'Stamdata', icon: 'user', order: 68,
+    roles: ['Chef', 'PM'],
+    synligFor: () => App.maaAdministrereBrugere(),
+    html: `
+    <div class="page-head">
+      <div>
+        <h1>Brugere</h1>
+        <p>Opret, ret, deaktivér og genaktivér brugere. Kun chefen og afdelingslederne kan administrere – de administrerer alle brugere, ikke kun egen afdeling.</p>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center">
+        <button class="btn primary" id="bruBtnNy">Opret bruger</button>
+      </div>
+    </div>
+
+    <div id="bruIngenAdgang" class="card" style="display:none; padding:var(--space-5)">
+      <p id="bruIngenAdgangTekst"></p>
+    </div>
+
+    <div id="bruIndhold">
+      <div class="card">
+        <div class="toolbar">
+          <label class="field">Søg <input type="text" id="bruSearch" placeholder="Navn eller initialer" size="24"></label>
+          <label class="field">Rolle
+            <select id="bruFilterRolle"><option value="">Alle roller</option></select>
+          </label>
+          <label class="field">Afdeling
+            <select id="bruFilterAfdeling"><option value="">Alle afdelinger</option></select>
+          </label>
+          <label class="field" style="flex-direction:row; align-items:center; gap:6px">
+            <input type="checkbox" id="bruVisDeaktiverede"> Vis deaktiverede
+          </label>
+          <span class="spacer"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="table-dense" id="bruTable">
+            <thead><tr>
+              <th data-sort="text" scope="col">Navn</th>
+              <th data-sort="text" scope="col">Initialer</th>
+              <th data-sort="text" scope="col">Rolle</th>
+              <th data-sort="text" scope="col">Afdeling</th>
+              <th data-sort="text" scope="col">Afdelingsleder</th>
+              <th data-sort="text" scope="col">Stamdata</th>
+              <th class="num" data-sort="num" scope="col">Aktive projekter</th>
+              <th data-sort="text" scope="col">Status</th>
+            </tr></thead>
+            <tbody id="bruRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="bruRollerCard" style="margin-top:var(--space-4)">
+        <div class="toolbar">
+          <button class="ftab" type="button" id="bruRollerToggle" aria-expanded="false" aria-controls="bruRollerBody">Vis "Hvad må rollerne?"</button>
+          <span class="caption muted">Foreløbig – afventer Securitas' beslutning</span>
+        </div>
+        <div id="bruRollerBody" hidden style="padding:0 var(--space-5) var(--space-5)">
+          <h3 style="margin:var(--space-4) 0 12px">Sider pr. rolle</h3>
+          <div class="table-wrap">
+            <table class="table-dense">
+              <thead><tr>
+                <th scope="col">Side</th><th scope="col">Chef</th><th scope="col">PM</th><th scope="col">Tekniker</th>
+                <th scope="col">Fakturering</th><th scope="col">Service</th><th scope="col">Bemærkning</th>
+              </tr></thead>
+              <tbody id="bruRollerSider"></tbody>
+            </table>
+          </div>
+          <h3 style="margin:24px 0 12px">Rettigheder pr. objekttype</h3>
+          <div class="table-wrap">
+            <table class="table-dense">
+              <thead><tr>
+                <th scope="col">Objekttype</th><th scope="col">Chef</th><th scope="col">PM</th><th scope="col">Tekniker</th>
+                <th scope="col">Fakturering</th><th scope="col">Service</th>
+              </tr></thead>
+              <tbody id="bruRollerRettigheder"></tbody>
+            </table>
+          </div>
+          <p class="caption muted" style="margin-top:12px">Ingen brugere har rollen Service – afklares med Securitas.</p>
+          <p class="caption muted">En bruger med Må redigere stamdata sat til Ja eller Nej følger ikke tabellen for kunder, sites, installationer og underleverandører.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ny/rediger bruger -->
+    <div class="modal-bg" id="modalBruger">
+      <div class="modal" role="dialog" aria-labelledby="bruTitle">
+        <header><h2 id="bruTitle">Ny bruger</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <p class="caption" id="bruAltLaas" style="display:none; margin-bottom:var(--space-3)"></p>
+          <p class="caption" id="bruFejl" style="display:none; margin-bottom:var(--space-3); color:var(--sec-red)"></p>
+          <form class="form-grid" id="bruForm" novalidate>
+            <label for="bruNavn">Navn
+              <input type="text" id="bruNavn" name="navn" required>
+              <span class="caption muted" id="bruNavnHint"></span>
+            </label>
+            <label for="bruInitialer">Initialer
+              <input type="text" id="bruInitialer" name="id" maxlength="5">
+              <span class="caption muted" id="bruInitialerHint"></span>
+            </label>
+            <label for="bruRolle">Rolle
+              <select id="bruRolle" name="rolle" required></select>
+              <span class="caption muted" id="bruRolleHint"></span>
+            </label>
+            <label for="bruAfdeling">Afdeling
+              <select id="bruAfdeling" name="afdeling" required></select>
+              <span class="caption muted" id="bruAfdelingHint"></span>
+            </label>
+            <label for="bruLederFor">Afdelingsleder for
+              <select id="bruLederFor" name="lederFor"></select>
+              <span class="caption muted" id="bruLederForHint"></span>
+            </label>
+            <label for="bruStamdata">Må redigere stamdata
+              <select id="bruStamdata" name="maaRedigereStamdata">
+                <option value="">Følger rollen</option>
+                <option value="true">Ja</option>
+                <option value="false">Nej</option>
+              </select>
+              <span class="caption muted">Følger rollen betyder, at rettighederne i tabellen nedenfor gælder.</span>
+            </label>
+            <label for="bruMail">Mail
+              <input type="text" id="bruMail" disabled value="">
+              <span class="caption muted">Hentes fra Securitas' brugerkatalog i det rigtige system.</span>
+            </label>
+          </form>
+          <p id="bruKvittering" class="caption" style="display:none; margin-top:var(--space-3)"></p>
+          <div id="bruHistorikWrap" style="margin-top:24px">
+            <h3 style="margin-bottom:12px">Historik</h3>
+            <ul class="log" id="bruHistorik"></ul>
+          </div>
+          <p class="caption muted" style="margin-top:12px">${bruForbehold}</p>
+        </div>
+        <footer>
+          <p class="caption muted" id="bruAktivLaas" style="margin-right:auto; max-width:36ch; display:none"></p>
+          <button class="btn" data-close type="button">Annullér</button>
+          <button class="btn" id="bruBtnAktiv" type="button" style="display:none"></button>
+          <button class="btn cta" id="bruBtnGem" type="button">Gem</button>
+        </footer>
+      </div>
+    </div>
+  `,
+    init() {
+      const { $, $$ } = App;
+      let curId = null;       // null = opret ny bruger
+      let idRedigeretManuelt = false; // brugeren har selv skrevet i initialer-feltet (opret-flowet)
+
+      const list = () => App.medarbejdere();
+      const cur = () => list().find(m => m.id === curId) || null;
+
+      // ---------- adgang ----------
+      const opdaterAdgang = () => {
+        const maa = App.maaAdministrereBrugere();
+        $('#bruIndhold').style.display = maa ? '' : 'none';
+        $('#bruIngenAdgang').style.display = maa ? 'none' : '';
+        $('#bruBtnNy').style.display = maa ? '' : 'none';
+        if (!maa) $('#bruIngenAdgangTekst').textContent = App.medarbejderLaase().rolle;
+        return maa;
+      };
+
+      // ---------- filterlister (rolle/afdeling) ----------
+      const opdaterFilterValg = () => {
+        const rSel = $('#bruFilterRolle'), aSel = $('#bruFilterAfdeling');
+        const rVal = rSel.value, aVal = aSel.value;
+        rSel.innerHTML = '<option value="">Alle roller</option>' + App.BRUGER_ROLLER.map(r => `<option value="${App.h(r)}">${App.h(r)}</option>`).join('');
+        aSel.innerHTML = '<option value="">Alle afdelinger</option>' + App.afdelinger().map(a => `<option value="${App.h(a)}">${App.h(a)}</option>`).join('');
+        rSel.value = App.BRUGER_ROLLER.includes(rVal) ? rVal : '';
+        aSel.value = App.afdelinger().includes(aVal) ? aVal : '';
+      };
+
+      // ---------- tabellen ----------
+      const render = () => {
+        if (!opdaterAdgang()) return;
+        opdaterFilterValg();
+        const q = $('#bruSearch').value.trim().toLowerCase();
+        const rolle = $('#bruFilterRolle').value;
+        const afdeling = $('#bruFilterAfdeling').value;
+        const visDeaktiverede = $('#bruVisDeaktiverede').checked;
+        const alle = list();
+        const rows = alle.filter(m => {
+          const aktiv = m.aktiv !== false;
+          if (!aktiv && !visDeaktiverede) return false;
+          if (rolle && m.rolle !== rolle) return false;
+          if (afdeling && m.afdeling !== afdeling) return false;
+          if (q && !(`${m.navn} ${m.id}`.toLowerCase().includes(q))) return false;
+          return true;
+        });
+        $('#bruRows').innerHTML = rows.map(m => {
+          const aktiv = m.aktiv !== false;
+          const aktiveProj = App.aktiveProjekterFor(m.id);
+          return `<tr class="click${aktiv ? '' : ' muted'}" data-open="${App.h(m.id)}" tabindex="0">
+            <td><b>${App.h(m.navn)}</b></td>
+            <td>${App.h(m.id)}</td>
+            <td>${App.h(m.rolle)}</td>
+            <td>${App.h(m.afdeling) || '–'}</td>
+            <td>${App.h(m.lederFor) || '–'}</td>
+            <td>${App.h(bruStamdataTekst(m.maaRedigereStamdata))}</td>
+            <td class="num">${aktiveProj}</td>
+            <td>${App.st(aktiv ? 'Aktiv' : 'Deaktiveret')}</td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="8" class="empty">${alle.length ? 'Ingen brugere matcher filteret.' : 'Ingen brugere er oprettet endnu.'}</td></tr>`;
+        App.applySort($('#bruTable'), 'bruTabel');
+        renderRollePanel();
+      };
+
+      // ---------- "Hvad må rollerne?" ----------
+      const renderRollePanel = () => {
+        const sider = App.allePages().filter(p => !p.hidden).sort((a, b) => (a.order || 99) - (b.order || 99));
+        $('#bruRollerSider').innerHTML = sider.map(p => {
+          const note = p.id === 'brugere' ? 'Kun chef og afdelingsledere' : '';
+          const celler = RET_ROLE_ORDER.map(r => `<td>${(!p.roles || p.roles.includes(r)) ? 'Ja' : '–'}</td>`).join('');
+          return `<tr><th scope="row">${App.h(p.label)}</th>${celler}<td class="caption muted">${App.h(note)}</td></tr>`;
+        }).join('') || '<tr><td colspan="7" class="empty">Ingen sider registreret.</td></tr>';
+        $('#bruRollerRettigheder').innerHTML = Object.keys(RET_TYPE_LABEL).map(type => {
+          const rad = (App.RETTIGHEDER || {})[type] || {};
+          const celler = RET_ROLE_ORDER.map(r => `<td>${App.h(RET_CELL_LABEL[rad[r] || ''] || '–')}</td>`).join('');
+          return `<tr><th scope="row">${App.h(RET_TYPE_LABEL[type])}</th>${celler}</tr>`;
+        }).join('');
+      };
+
+      $('#bruRollerToggle').addEventListener('click', () => {
+        const body = $('#bruRollerBody');
+        const visNu = body.hidden;
+        body.hidden = !visNu;
+        $('#bruRollerToggle').textContent = visNu ? 'Skjul "Hvad må rollerne?"' : 'Vis "Hvad må rollerne?"';
+        $('#bruRollerToggle').setAttribute('aria-expanded', String(visNu));
+      });
+
+      // ---------- panel (opret/rediger) ----------
+      const visFejl = tekst => {
+        $('#bruFejl').style.display = tekst ? '' : 'none';
+        $('#bruFejl').textContent = tekst || '';
+      };
+      const laasTekst = (laase, specifik) => laase.alt || specifik || '';
+      const saetFeltLaas = (inputId, hintId, tekst) => {
+        $(inputId).disabled = !!tekst;
+        // Er hele formularen låst, står forklaringen én gang øverst (#bruAltLaas) – ikke gentaget under hvert felt.
+        $(hintId).textContent = tekst && tekst !== $('#bruAltLaas').textContent ? tekst : '';
+      };
+
+      const openForm = () => {
+        visFejl(''); $('#bruKvittering').style.display = 'none';
+        const m = curId ? cur() : null;
+        const laase = curId ? App.medarbejderLaase(curId) : App.medarbejderLaase();
+        $('#bruTitle').textContent = curId ? 'Rediger bruger' : 'Ny bruger';
+
+        $('#bruAltLaas').style.display = laase.alt ? '' : 'none';
+        $('#bruAltLaas').textContent = laase.alt || '';
+
+        $('#bruNavn').value = m ? m.navn : '';
+        saetFeltLaas('#bruNavn', '#bruNavnHint', laasTekst(laase, ''));
+
+        $('#bruInitialer').value = m ? m.id : '';
+        const idTekst = curId ? 'Initialer kan ikke ændres, når brugeren er oprettet.' : '';
+        saetFeltLaas('#bruInitialer', '#bruInitialerHint', laasTekst(laase, idTekst));
+        idRedigeretManuelt = !!curId;
+
+        $('#bruRolle').innerHTML = '<option value="">Vælg rolle</option>' + rolleValgmuligheder(m).map(r => `<option value="${App.h(r)}">${App.h(r)}</option>`).join('');
+        $('#bruRolle').value = m ? m.rolle : '';
+        saetFeltLaas('#bruRolle', '#bruRolleHint', laasTekst(laase, laase.rolle));
+
+        $('#bruAfdeling').innerHTML = '<option value="">Vælg afdeling</option>' + App.afdelinger().map(a => `<option value="${App.h(a)}">${App.h(a)}</option>`).join('');
+        $('#bruAfdeling').value = m ? m.afdeling : '';
+        saetFeltLaas('#bruAfdeling', '#bruAfdelingHint', laasTekst(laase, ''));
+
+        $('#bruLederFor').innerHTML = '<option value="">Ikke afdelingsleder</option>' + App.afdelinger().map(a => `<option value="${App.h(a)}">${App.h(a)}</option>`).join('');
+        $('#bruLederFor').value = m && m.lederFor ? m.lederFor : '';
+        saetFeltLaas('#bruLederFor', '#bruLederForHint', laasTekst(laase, laase.lederFor));
+
+        const stamVal = m && typeof m.maaRedigereStamdata === 'boolean' ? String(m.maaRedigereStamdata) : '';
+        $('#bruStamdata').value = stamVal;
+        $('#bruStamdata').disabled = !!laase.alt;
+
+        $('#bruBtnGem').style.display = laase.alt ? 'none' : '';
+
+        // Deaktiver/genaktiver findes kun for eksisterende brugere
+        const btnAktiv = $('#bruBtnAktiv');
+        if (curId && m) {
+          const aktiv = m.aktiv !== false;
+          btnAktiv.style.display = '';
+          btnAktiv.textContent = aktiv ? 'Deaktivér' : 'Genaktivér';
+          btnAktiv.disabled = !!laase.aktiv;
+          $('#bruAktivLaas').style.display = laase.aktiv ? '' : 'none';
+          $('#bruAktivLaas').textContent = laase.aktiv || '';
+        } else {
+          btnAktiv.style.display = 'none';
+          $('#bruAktivLaas').style.display = 'none';
+        }
+
+        $('#bruHistorikWrap').style.display = curId ? '' : 'none';
+        if (curId) $('#bruHistorik').innerHTML = bruLogListe(App.historikFor('medarbejder', curId));
+      };
+
+      $('#bruNavn').addEventListener('input', () => {
+        if (curId || idRedigeretManuelt) return;
+        $('#bruInitialer').value = App.foreslaaInitialer($('#bruNavn').value);
+      });
+      $('#bruInitialer').addEventListener('input', () => { idRedigeretManuelt = true; });
+
+      $('#bruBtnNy').addEventListener('click', () => {
+        curId = null; idRedigeretManuelt = false;
+        openForm();
+        App.openModal('modalBruger');
+      });
+
+      $('#bruRows').addEventListener('click', e => {
+        const tr = e.target.closest('[data-open]'); if (!tr) return;
+        curId = tr.dataset.open; openForm(); App.openModal('modalBruger');
+      });
+      $('#bruRows').addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        const tr = e.target.closest('[data-open]'); if (!tr || tr.matches('tr.click[tabindex]')) return; // kernen håndterer tr.click
+        curId = tr.dataset.open; openForm(); App.openModal('modalBruger');
+      });
+
+      $('#bruBtnGem').addEventListener('click', () => {
+        const fd = new FormData($('#bruForm'));
+        const res = this.gemBruger(curId, fd);
+        if (!res.ok) { visFejl(res.fejl); return; }
+        if (!curId) {
+          App.toast(`${res.medarbejder.navn} er oprettet. Skift til brugeren i menuen nederst for at se prototypen som ${res.medarbejder.rolle}. I det rigtige system får brugeren adgang med sit Securitas-login.`);
+          App.closeModal('modalBruger');
+        } else {
+          App.toast('Bruger opdateret');
+          curId = res.medarbejder.id;
+          openForm();
+        }
+        render();
+      });
+
+      $('#bruBtnAktiv').addEventListener('click', () => {
+        const m = cur(); if (!m) return;
+        const aktiv = m.aktiv !== false;
+        const udfoer = () => {
+          const res = this.saetAktiv(m.id, !aktiv);
+          if (!res.ok) { visFejl(res.fejl); return; }
+          App.toast(aktiv ? 'Bruger deaktiveret' : 'Bruger genaktiveret');
+          openForm(); render();
+        };
+        if (aktiv) {
+          const n = App.aktiveProjekterFor(m.id);
+          if (n > 0) {
+            App.confirmDialog(`${m.navn} står som projektleder på ${n} igangværende projekter. De bliver stående på brugeren – husk at flytte dem.`).then(ok => { if (ok) udfoer(); });
+            return;
+          }
+        }
+        udfoer();
+      });
+
+      ['#bruSearch', '#bruFilterRolle', '#bruFilterAfdeling', '#bruVisDeaktiverede'].forEach(sel => {
+        $(sel).addEventListener('input', () => render());
+      });
+
+      App.sortable($('#bruTable'), 'bruTabel', { col: 'Navn', dir: 'asc' });
+      this.render = render;
+    },
+    // ---------- skrivevejene ----------
+    // Ligger på siden (ikke inde i init), så tools/test-brugere.js kan kalde dem direkte med en fake
+    // fd ({ get, has }) – samme greb som ul.js' gemUl. fd = FormData eller et objekt med samme facade.
+    gemBruger(id, fd) {
+      const has = n => (typeof fd.has === 'function' ? fd.has(n) : fd.get(n) != null);
+      let res;
+      if (id) {
+        const aendringer = {};
+        if (has('navn')) aendringer.navn = fd.get('navn');
+        if (has('rolle')) aendringer.rolle = fd.get('rolle');
+        if (has('afdeling')) aendringer.afdeling = fd.get('afdeling');
+        if (has('lederFor')) aendringer.lederFor = fd.get('lederFor') || '';
+        if (has('maaRedigereStamdata')) {
+          const raw = fd.get('maaRedigereStamdata');
+          aendringer.maaRedigereStamdata = raw === 'true' ? true : raw === 'false' ? false : null;
+        }
+        res = App.retMedarbejder(id, aendringer);
+      } else {
+        const raw = fd.get('maaRedigereStamdata');
+        res = App.opretMedarbejder({
+          navn: fd.get('navn'), id: fd.get('id'), rolle: fd.get('rolle'), afdeling: fd.get('afdeling'),
+          lederFor: fd.get('lederFor') || '', maaRedigereStamdata: raw === 'true' ? true : raw === 'false' ? false : null,
+        });
+      }
+      if (!res.ok) App.toast(res.fejl); else App.opdaterBrugerskifter();
+      return res;
+    },
+    saetAktiv(id, vil) {
+      const res = App.saetMedarbejderAktiv(id, vil);
+      if (!res.ok) App.toast(res.fejl); else App.opdaterBrugerskifter();
+      return res;
+    },
+    render() { /* sættes af init() – App.registerPage kalder page.render() ved navigation */ },
+  });
+})();
+
+</script>
+<script>
 // Eftersyn – kalender og status for alle sites med eftersynsaftale.
 // Erstatter kolonnerne Eftersyn, ES-måned, interval, "Eftersyn til kunden" og "CAS eftersyn 2025/2026" i Kundekartotek.
 
@@ -7398,7 +8071,7 @@ App.registerPage({
         // Aktive installationer på sitet – begge handlinger skriver på dem (§4), ikke på sitets spejlfelter alene.
         const aktive = App.installationer(s.id).filter(i => i.eftersyn && i.eftersyn.aktiv);
         if (btn.dataset.act === 'opret') {
-          const forsteTekniker = (D.medarbejdere.find(m => m.rolle === 'Tekniker') || {}).id || '';
+          const forsteTekniker = (App.medarbejdere({ aktive: true, rolle: 'Tekniker' })[0] || {}).id || '';
           const id = genCasId();
           S.serviceopgaver = S.serviceopgaver || [];
           S.serviceopgaver.push({ id, siteId: s.id, beskrivelse: `Eftersyn – ${App.siteLabel(s)}`, tekniker: forsteTekniker, status: 'Åben', type: 'Eftersyn', oprettet: today(), lukket: '', po: '', pris: 0 });
@@ -7755,7 +8428,7 @@ App.registerPage({
   function techData(months) {
     const { S, emp } = App;
     const from30 = daysAgo(30), today = App.today();
-    const techs = (S.medarbejdere || App.D.medarbejdere).filter(m => m.rolle === 'Tekniker' && afdOk(m.afdeling));
+    const techs = App.medarbejdere({ rolle: 'Tekniker' }).filter(m => afdOk(m.afdeling));
     const rows = techs.map(t => {
       const openCases = S.serviceopgaver.filter(c => c.tekniker === t.id && c.status === 'Åben').length;
       const projSet = new Set();
@@ -8728,8 +9401,8 @@ App.registerPage({
 
       $('#konBc').addEventListener('click', () => { S.konteringBc = !S.konteringBc; save(); this.render(); });
 
+      // Listen genopbygges i render() (kører hver gang siden vises), se dér.
       const teknikerSel = $('#konTekniker');
-      D.medarbejdere.filter(m => m.rolle === 'Tekniker').forEach(m => teknikerSel.add(new Option(m.navn, m.id)));
       teknikerSel.addEventListener('change', () => { S.konTekniker = teknikerSel.value; this.expanded.clear(); save(); this.render(); });
 
       const maanedSel = $('#konMaaned');
@@ -8789,7 +9462,11 @@ App.registerPage({
       const { $, $$, S, D, emp, role, siteLabel, n, h, expectedHours, workdays, isIntern, save } = App;
       $('#konBc').classList.toggle('on', !!S.konteringBc);
       const teknikerSel = $('#konTekniker'), maanedSel = $('#konMaaned');
-      const teknikere = D.medarbejdere.filter(m => m.rolle === 'Tekniker');
+      const teknikere = App.medarbejdere({ rolle: 'Tekniker' });
+      // Genopbygges her, så en nyoprettet/(de)aktiveret tekniker slår igennem uden genindlæsning.
+      // Valget ligger i S.konTekniker og sættes tilbage på selecten lige nedenfor.
+      teknikerSel.innerHTML = '';
+      teknikere.forEach(m => teknikerSel.add(new Option(m.navn, m.id)));
 
       // Rollen Tekniker ser kun sig selv, og vælgeren er låst
       const lockedToSelf = role() === 'Tekniker';
