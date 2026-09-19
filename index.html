@@ -51,7 +51,10 @@
   }
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  /* body må ikke have fast højde: sidebaren er sticky inden for body, og med height:100% slap den sit greb og
+     rullede væk, så snart en side var højere end vinduet (menuen forsvandt på alle lange sider). */
+  html, body { margin: 0; }
+  html { height: 100%; }
   body {
     font-family: var(--font-brand); font-size: 15px; line-height: 24px; font-weight: 400;
     color: var(--text-primary); background: var(--surface-page);
@@ -1929,7 +1932,12 @@ window.DEMO = {
     'Udført': 'aaben', 'Ikke klar': 'opstart', 'Sendt til fakturering': 'sendt', 'Delvist faktureret': 'delvis', 'Overdraget': 'fakt',
     'Under installation': 'udf', 'I drift': 'fakt', 'Nedtaget': '',
   };
-  const st = s => `<span class="st ${STATUS_CLASS[s] || ''}">${h(s)}</span>`;
+  // label: valgfri kort tekst til de tætte tabeller – prikkens farve følger stadig den fulde status
+  const st = (s, label) => `<span class="st ${STATUS_CLASS[s] || ''}">${h(label ?? s)}</span>`;
+  // Korte statusnavne til smalle kolonner. "Under udførsel" og "Sendt til fakturering" blev klippet til "Under u" og
+  // "Sendt til fa" i 72–88 px. Cellen bærer den fulde tekst som title og data-value (sortering og kolonnefilter).
+  const STATUS_KORT = { 'Under udførsel': 'I gang', 'Klar til fakturering': 'Klar', 'Sendt til fakturering': 'Sendt', 'Delvist faktureret': 'Delvist', 'Lukket til fakturering': 'Lukket' };
+  const stKort = s => st(s, STATUS_KORT[s] || s);
 
   // ---------- statusmodellen (PLAN-v6-spor1 §2) ----------
   // Tre dimensioner: udførelse gemmes på projektet, faktureringsstatus regnes ud af linjerne hver gang
@@ -2752,7 +2760,7 @@ window.DEMO = {
   }, true);
 
   window.App = {
-    D, S, save, $, $$, kr, n, pct, h, today, now, icon, st, dgCell, site, bc, emp, proj, calc, role,
+    D, S, save, $, $$, kr, n, pct, h, today, now, icon, st, stKort, dgCell, site, bc, emp, proj, calc, role,
     toast, openModal, closeModal, confirmDialog, trapFocus, go, openProject, registerPage, getPage,
     siteLabel, siteAddress, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, downloadMode, printSection,
     sortable, applySort, lederFor, scopeOptions, resolveScope, inScope,
@@ -2999,11 +3007,12 @@ App.registerPage({
       /* To statuskolonner (udførelse og fakturering) i stedet for én, jf. PLAN-v6-spor1 §2.6 – begge
          holdes smalle (72 px, bredere end kolonneoverskrifterne), og den fulde tekst står som title.
          Sammen med den kortere navnekolonne holder standardvisningen 1280 px uden vandret scroll. */
-      #projTable td.st-cut { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #projTable td.st-cut { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #projTable td.st-cut.st-udf { max-width: 110px; } /* "Overdraget" med prik fylder 108 px */
       /* Pinnes til den tætte bredde uanset skærmbredde (standardklasserne udvider sig over 1440 px),
          så listen heller ikke får vandret scroll ved fx 1920 px. */
-      #projTable td.cut.w-s { max-width: 120px; }
-      #projTable td.cut.w-m { max-width: 140px; }
+      #projTable td.cut.w-s { max-width: 98px; }
+      #projTable td.cut.w-m { max-width: 132px; }
     </style>
     <div class="page-head">
       <div>
@@ -3324,10 +3333,10 @@ App.registerPage({
           const ps = App.projStatus(p);
           const v = ps.overdraget ? 'Overdraget' : ps.udfoerelse;
           const titel = ps.overdraget ? `${ps.udfoerelse} · overdraget ${p.overdragelse.dato}` : ps.udfoerelse;
-          return `<td class="st-cut" title="${h(titel)}">${st(v)}</td>`;
+          return `<td class="st-cut st-udf" title="${h(titel)}" data-value="${h(v)}">${App.stKort(v)}</td>`;
         },
       },
-      { label: 'Fakturering', sort: 'text', cell: p => { const v = App.projStatus(p).fakturering; return `<td class="st-cut" title="${h(v)}">${st(v)}</td>`; } },
+      { label: 'Fakturering', sort: 'text', cell: p => { const v = App.projStatus(p).fakturering; return `<td class="st-cut" title="${h(v)}" data-value="${h(v)}">${App.stKort(v)}</td>`; } },
       { label: 'Salg total', sort: 'num', num: true, cell: (p, c) => `<td class="num" data-value="${c.salg}">${kr(c.salg)}</td>`, sum: t => `<td class="num" data-value="${t.salg}">${kr(t.salg)}</td>` },
     ];
     const oekonomi = [
@@ -3491,7 +3500,7 @@ App.registerPage({
         <button class="btn cta" id="btnAfslut">Afslut projekt og overdrag til service</button>
       </div>
     </div>
-    <div class="stats" id="pStats"></div>
+    <div class="stats" id="pStats" style="grid-template-columns: repeat(4, 1fr)"></div>
     <div class="card">
       <div class="tabs" role="tablist">
         <button class="tab active" data-tab="stam">Stamdata</button>
@@ -4441,46 +4450,7 @@ App.registerPage({
       </div>
       <div class="stats" id="kdStats"></div>
 
-      <div class="card" id="kdStamdata">
-        <div class="toolbar">
-          <div>
-            <b>Stamdata</b>
-            <p class="caption muted" id="kdStamdataHvem" style="margin-top:var(--space-1); max-width:70ch"></p>
-          </div>
-          <span class="spacer"></span>
-          <button class="ftab" id="kdHistorikToggle" aria-expanded="false" aria-controls="kdHistorikBody">Vis historik</button>
-          <button class="btn" id="kdBtnRediger">Rediger</button>
-          <button class="btn" id="kdBtnAnnuller" style="display:none">Annullér</button>
-          <button class="btn cta" id="kdBtnGem" style="display:none">Gem ændringer</button>
-        </div>
-        <div class="card-body">
-          <div class="form-grid" id="kdStamdataFelter"></div>
-          <div id="kdHistorikBody" style="display:none; margin-top:var(--space-5)">
-            <label class="field" style="margin-bottom:var(--space-3); max-width:320px">Søg i historik
-              <input type="text" id="kdHistorikSoeg" placeholder="Felt, værdi eller initialer">
-            </label>
-            <ul class="log" id="kdHistorikListe"></ul>
-            <p class="caption muted" id="kdHistorikForbehold" style="margin-top:var(--space-3)"></p>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" id="kdNoter">
-        <div class="toolbar">
-          <div>
-            <b>Noter</b>
-            <p class="caption muted" style="margin-top:var(--space-1); max-width:70ch">Fritekst om aftaler, adgangsforhold og andet, alle på kunden skal kende. Alle, der kan se kunden, må skrive en note; du kan kun slette dine egne.</p>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="kdNoteForm">
-            <label class="field">Ny note<textarea id="kdNoteTekst" rows="2" placeholder="Skriv en note om kunden"></textarea></label>
-            <button class="btn" id="kdNoteAdd">Tilføj note</button>
-          </div>
-          <ul class="log" id="kdNoteListe"></ul>
-        </div>
-      </div>
-
+      <!-- Rækkefølge: forløbet og sitelisten først (det er kundebilledet), derefter noter og til sidst stamdata med historik -->
       <div class="card" id="kdForloeb">
         <div class="toolbar">
           <div>
@@ -4516,6 +4486,46 @@ App.registerPage({
             </tr></thead>
             <tbody id="kdSiteRows"></tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="card" id="kdNoter">
+        <div class="toolbar">
+          <div>
+            <b>Noter</b>
+            <p class="caption muted" style="margin-top:var(--space-1); max-width:70ch">Fritekst om aftaler, adgangsforhold og andet, alle på kunden skal kende. Alle, der kan se kunden, må skrive en note; du kan kun slette dine egne.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="kdNoteForm">
+            <label class="field">Ny note<textarea id="kdNoteTekst" rows="2" placeholder="Skriv en note om kunden"></textarea></label>
+            <button class="btn" id="kdNoteAdd">Tilføj note</button>
+          </div>
+          <ul class="log" id="kdNoteListe"></ul>
+        </div>
+      </div>
+
+      <div class="card" id="kdStamdata">
+        <div class="toolbar">
+          <div>
+            <b>Stamdata</b>
+            <p class="caption muted" id="kdStamdataHvem" style="margin-top:var(--space-1); max-width:70ch"></p>
+          </div>
+          <span class="spacer"></span>
+          <button class="ftab" id="kdHistorikToggle" aria-expanded="false" aria-controls="kdHistorikBody">Vis historik</button>
+          <button class="btn" id="kdBtnRediger">Rediger</button>
+          <button class="btn" id="kdBtnAnnuller" style="display:none">Annullér</button>
+          <button class="btn cta" id="kdBtnGem" style="display:none">Gem ændringer</button>
+        </div>
+        <div class="card-body">
+          <div class="form-grid" id="kdStamdataFelter"></div>
+          <div id="kdHistorikBody" style="display:none; margin-top:var(--space-5)">
+            <label class="field" style="margin-bottom:var(--space-3); max-width:320px">Søg i historik
+              <input type="text" id="kdHistorikSoeg" placeholder="Felt, værdi eller initialer">
+            </label>
+            <ul class="log" id="kdHistorikListe"></ul>
+            <p class="caption muted" id="kdHistorikForbehold" style="margin-top:var(--space-3)"></p>
+          </div>
         </div>
       </div>
     </div>
@@ -5375,6 +5385,10 @@ App.registerPage({
         this.siOpenId = id;
         this.renderSitePanel();
         openModal('modalSite');
+        // openModal fokuserer første indtastningsfelt – i læsevisning er det historik-søgningen nederst, så panelet
+        // åbnede scrollet til bunden. Start øverst med fokus på lukkeknappen; redigering flytter selv fokus.
+        const panel = $('#modalSite .modal'); if (panel) panel.scrollTop = 0;
+        const luk = $('#modalSite header [data-close]'); if (luk) luk.focus({ preventScroll: true });
       };
 
       $('#siBtnRediger').addEventListener('click', () => { this.siRedigerer = true; renderSiteDetalje(); });
@@ -5552,7 +5566,7 @@ App.registerPage({
         {
           label: '', sort: '',
           cell: (r, open) => r.installationer.length
-            ? `<td class="actions"><button type="button" class="tlink" data-fold="${h(r.id)}">${open ? 'Skjul installationer' : `Vis installationer (${r.installationer.length})`}</button></td>`
+            ? `<td class="actions"><button type="button" class="tlink" data-fold="${h(r.id)}" title="${open ? 'Skjul installationer' : 'Vis installationer'}" aria-label="${open ? 'Skjul installationer' : `Vis ${r.installationer.length} installationer`}">${open ? 'Skjul' : `Vis (${r.installationer.length})`}</button></td>`
             : '<td></td>',
           child: () => '<td></td>',
         },
@@ -6817,7 +6831,7 @@ App.registerPage({
           <td class="cut w-xs" title="${h(this._costcenterForRow(row))}">${this._costcenterForRow(row)}</td>
           <td class="num${mangler ? ' alert' : ''}" title="${mangler ? 'Mangler fakturakladde' : forslag ? 'Beløb er et forslag baseret på registrerede timer' : ''}">${kr(beloeb)}</td>
           <td class="num">${timer ? n(timer) + ' t' : '–'}</td>
-          <td class="cut st-cut" title="${h(statusTitel)}">${st(linjeStatus)}</td>
+          <td class="cut st-cut" title="${h(statusTitel)}" data-value="${h(linjeStatus)}">${App.stKort(linjeStatus)}</td>
           <td class="actions"><button class="tlink" data-vis="${h(k)}">Vis</button></td>
         </tr>`;
       }).join('');
