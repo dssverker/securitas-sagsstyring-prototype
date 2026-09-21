@@ -542,6 +542,50 @@
     .print-only .oek-print-logo { position: absolute; top: 10mm; right: 12mm; width: 84px; color: #031F30; }
     .print-only .oek-delta, .print-only .oek-neg { color: #000; }
   }
+
+  /* v8 Forside */
+  /* Menuknappen "Forside" er fed som Søg (.nav-search) – kernen sætter selv klassen (renderNavGrouped/renderNavFlat). */
+  .nav-forside { font-weight: 700; }
+
+  /* Kortgitter: to kolonner fra ca. 1100 px indholdsbredde (2 × 540 px + mellemrum), ellers én.
+     auto-fill (ikke auto-fit) holder sporene faste, så et enligt kort ikke strækkes ud over hele
+     bredden, men får samme bredde som kortene i sektionen nedenunder. minmax(min(540px, 100%), 1fr)
+     forhindrer vandret scroll i smalle beholdere som telefonrammen. */
+  .fs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(540px, 100%), 1fr)); gap: var(--space-4); align-items: start; }
+  .fs-grid > .card + .card { margin-top: 0; } /* gap'et fra .fs-grid erstatter .card + .card sin margin */
+
+  .fs-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-2); }
+  .fs-card-head h3 { flex: 1; min-width: 0; overflow-wrap: break-word; }
+  .fs-count { flex: none; font-size: 24px; line-height: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fs-beloeb { font-weight: 700; margin: 0 0 var(--space-2); }
+  .fs-regel { margin: 0 0 var(--space-3); }
+
+  .fs-posts { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .fs-post {
+    display: flex; flex-direction: column; gap: var(--space-1); width: 100%; text-align: left;
+    background: none; border: var(--stroke) solid var(--border-default); border-radius: var(--radius-overlay);
+    padding: var(--space-2) var(--space-3); font: inherit; color: inherit; cursor: pointer;
+    transition: border-color var(--motion-base) var(--ease-standard);
+  }
+  .fs-post:hover { border-color: var(--border-strong); }
+  /* Primærteksten ombrydes i stedet for at blive afkortet – en lang tekst må aldrig skubbe kortet
+     bredere (QA måler scrollWidth > clientWidth på .fs-post). Mærkaten beholder sin egen bredde og
+     står øverst til højre, uanset hvor mange linjer teksten fylder. */
+  .fs-post-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2); }
+  .fs-post-tekst { font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .fs-post-under { display: block; overflow-wrap: anywhere; }
+  .fs-post-meta { display: block; }
+  .fs-tag { flex: none; font-size: 12px; line-height: 18px; font-weight: 700; color: var(--text-secondary); background: var(--surface-subtle); border-radius: var(--radius-overlay); padding: 0 var(--space-2); }
+
+  .fs-seealle { display: inline-block; margin-top: var(--space-2); } /* egen luft, uanset hvor mange poster kortet har */
+  .fs-tomlinje { margin-top: var(--space-2); }
+  .fs-rolig { margin: var(--space-3) 0; }
+
+  .fs-afd { margin: var(--space-6) 0 var(--space-4); }
+  .fs-h2 { margin: var(--space-6) 0 var(--space-2); }
+  .fs-forklaring { margin: 0 0 var(--space-4); }
+
+  .fs-knap { width: 100%; }
 </style>
 </head>
 <body>
@@ -594,13 +638,15 @@ window.PROTO_CONFIG = {
 // Demo-data til prototypen. Udtaget og forenklet fra teamets egne Excel-filer.
 // Ingen persondata (telefon/mail) er taget med.
 window.DEMO = {
-  version: 8, // hæv tallet når demo-data ændres, så gemt browser-state nulstilles
+  version: 9, // hæv tallet når demo-data ændres, så gemt browser-state nulstilles (v9: PLAN-v8s forsidedata)
   // lederFor: afdelingsleder for den nævnte afdeling. Rollen forbliver "PM", så alle sidernes roles-tjek virker uændret (PLAN-v5).
+  // Henrik og Dennis er afdelingsledere (Generel og Novo, PLAN-v8 beslutning 6). SERV er en opdigtet pladsholder
+  // for den foreløbige Service-rolle (PLAN-v8 beslutning 4/O4) – vi kender ingen rigtig person i rollen.
   medarbejdere: [
     { id: "HERA", navn: "Henrik Rasmussen", rolle: "PM", afdeling: "Generel", lederFor: "Generel" },
     { id: "BBN",  navn: "Brian Bo Nielsen", rolle: "PM", afdeling: "Generel" },
     { id: "MAHE", navn: "Matthias Herskind", rolle: "PM", afdeling: "Generel" },
-    { id: "DO",   navn: "Dennis Olsen", rolle: "PM", afdeling: "Novo" },
+    { id: "DO",   navn: "Dennis Olsen", rolle: "PM", afdeling: "Novo", lederFor: "Novo" },
     { id: "THA",  navn: "Thomas Hjort Andersen", rolle: "Chef", afdeling: "Generel" },
     { id: "PEBO", navn: "Bo Christiansen", rolle: "Tekniker", afdeling: "Novo" },
     { id: "VA",   navn: "Victor Andreasen", rolle: "Tekniker", afdeling: "Novo" },
@@ -608,6 +654,7 @@ window.DEMO = {
     { id: "SB",   navn: "Steffen Bøgh", rolle: "Tekniker", afdeling: "Novo" },
     { id: "HH",   navn: "Henriette Hallengreen", rolle: "Fakturering", afdeling: "Generel" },
     { id: "BD",   navn: "Benny Davidsen", rolle: "Fakturering", afdeling: "Generel" },
+    { id: "SERV", navn: "Service Demo", rolle: "Service", afdeling: "Generel" },
   ],
 
   // AS400 → Business Central. I dag ligger denne som skjult ark i tre filer.
@@ -765,6 +812,7 @@ window.DEMO = {
         { tekst: "Kontant fakturering jf. installation af videoovervågning på Søndervangsskolen", rekv: "S2026012", beloeb: 325022, status: "Klar til fakturering", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 4, kl: "10:20", tekst: "Restpunkter fra gennemgangen er udbedret", af: "HERA", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-03-24 14:23", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2026-05-12 09:10", tekst: "Opstartsmøde med Glostrup Kommune og CC Installation", af: "HERA", pmTid: 2, seTid: 1, ulTid: 0 },
         { dato: "2026-07-01 10:45", tekst: "Alle leverandørfakturaer bogført på sagen", af: "HERA", pmTid: 1.5, seTid: 0, ulTid: 0 },
@@ -808,6 +856,7 @@ window.DEMO = {
         { tekst: "Slutfakturering", rekv: "PO 8002455120", beloeb: 484000, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 2, kl: "08:45", tekst: "Aftalt næste etape med kunden", af: "DO", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2025-11-03 09:00", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 2, seTid: 0, ulTid: 0 },
         { dato: "2026-02-15 10:00", tekst: "Faktureringsanmodning aconto 1 sendt", af: "DO", pmTid: 0.5, seTid: 0, ulTid: 0 },
         { dato: "2026-05-15 10:00", tekst: "Faktureringsanmodning aconto 2 sendt", af: "DO", pmTid: 0.5, seTid: 0, ulTid: 0 },
@@ -824,8 +873,8 @@ window.DEMO = {
         { faktura: "3311", leverandoer: "Tømrer Hansen", leverandoerId: "", ydelse: "Dørskift GSBC/GSG", beloeb: 31500, dato: "2026-03-05" },
       ],
       fakturering: [
-        { tekst: "Ny AIA NOX GSBC jf. tilbud", rekv: "PO 8002401177", beloeb: 412000, status: "Klar til fakturering", dato: "", initialer: "" },
-        { tekst: "Dørskift med tømrer (PRDK000720-4/-5)", rekv: "PO 8002401177", beloeb: 22800, status: "Klar til fakturering", dato: "", initialer: "" },
+        { tekst: "Ny AIA NOX GSBC jf. tilbud", rekv: "PO 8002401177", beloeb: 412000, status: "Sendt til fakturering", dato: "", initialer: "", sendtDato: "2026-09-15", sendtAf: "DO" },
+        { tekst: "Dørskift med tømrer (PRDK000720-4/-5)", rekv: "PO 8002401177", beloeb: 22800, status: "Sendt til fakturering", dato: "", initialer: "", sendtDato: "2026-09-15", sendtAf: "DO" },
       ],
       log: [
         { dato: "2025-01-02 08:00", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
@@ -851,6 +900,7 @@ window.DEMO = {
       udgifter: [],
       fakturering: [],
       log: [
+        { dageSiden: 11, tekst: "Afventer leverance af kameraer", af: "DO", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-06-21 12:15", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
       ],
     },
@@ -883,6 +933,7 @@ window.DEMO = {
         { tekst: "Slutfakturering", rekv: "", beloeb: 393600, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 6, kl: "14:05", tekst: "Dokumentation sendt til gennemsyn", af: "BBN", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-06-06 10:15", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "BBN", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2026-06-06 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "BBN", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
       ],
@@ -902,7 +953,7 @@ window.DEMO = {
       ],
       fakturering: [
         { tekst: "Slutfakturering jf. tilbud", rekv: "", beloeb: 532000, status: "Klar til fakturering", dato: "", initialer: "" },
-        { tekst: "Ekstra arbejde jf. aftale", rekv: "", beloeb: 39000, status: "Klar til fakturering", dato: "", initialer: "" },
+        { tekst: "Ekstra arbejde jf. aftale", rekv: "", beloeb: 39000, status: "Sendt til fakturering", dato: "", initialer: "", sendtDato: "2026-08-28", sendtAf: "BBN" },
       ],
       log: [
         { dato: "2025-03-17 14:15", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "BBN", pmTid: 1, seTid: 0, ulTid: 0 },
@@ -964,6 +1015,7 @@ window.DEMO = {
         { tekst: "Slutfakturering", rekv: "", beloeb: 212400, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 3, tekst: "Montage af detektorer i gang på etape 2", af: "DO", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-07-08 15:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2026-07-08 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "DO", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
       ],
@@ -996,6 +1048,7 @@ window.DEMO = {
       udgifter: [],
       fakturering: [],
       log: [
+        { dageSiden: 17, kl: "09:30", tekst: "Opstartsmøde afholdt på sitet", af: "HERA", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-06-27 11:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "HERA", pmTid: 1, seTid: 0, ulTid: 0 },
       ],
     },
@@ -1072,6 +1125,7 @@ window.DEMO = {
         { tekst: "Slutfakturering", rekv: "", beloeb: 102900, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 9, tekst: "Kabeltræk afsluttet i bygning 2", af: "DO", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-01-22 13:45", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2026-01-22 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "DO", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
       ],
@@ -1111,6 +1165,7 @@ window.DEMO = {
         { tekst: "Slutfakturering", rekv: "", beloeb: 165000, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 21, kl: "11:40", tekst: "Afventer adgang til teknikrum", af: "DO", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2025-09-15 13:45", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2025-09-15 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "DO", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
       ],
@@ -1160,6 +1215,7 @@ window.DEMO = {
         { tekst: "Slutfakturering", rekv: "", beloeb: 393000, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 14, tekst: "Programmering af centraler påbegyndt", af: "DO", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2025-07-15 12:00", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "DO", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2025-07-15 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "DO", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
       ],
@@ -1172,6 +1228,7 @@ window.DEMO = {
       udgifter: [],
       fakturering: [],
       log: [
+        { dageSiden: 8, kl: "13:15", tekst: "Aftalt opstart med kunden", af: "BBN", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-08-20 11:30", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "BBN", pmTid: 1, seTid: 0, ulTid: 0 },
       ],
     },
@@ -1214,6 +1271,7 @@ window.DEMO = {
         { tekst: "Slutfakturering", rekv: "", beloeb: 111900, status: "Under udførsel", dato: "", initialer: "" },
       ],
       log: [
+        { dageSiden: 24, tekst: "Afventer leverance af kabel", af: "MAHE", pmTid: 0, seTid: 0, ulTid: 0 },
         { dato: "2026-05-12 11:00", tekst: "Oprettelse af sag samt overdragelse af projekt", af: "MAHE", pmTid: 1, seTid: 0, ulTid: 0 },
         { dato: "2026-05-12 10:00", tekst: "Opstartsmøde afholdt med kunde/UL", af: "MAHE", pmTid: 1.5, seTid: 0.5, ulTid: 0 },
       ],
@@ -1440,39 +1498,39 @@ window.DEMO = {
 
   // Serviceopgaver (CAS) – fra Opgavestyring
   serviceopgaver: [
-    { id: "PRDK000949-1", parent: "PRDK000949", siteId: "DK-S-038357", beskrivelse: "Programmering af 91 kort, udleveret til reception", tekniker: "VA", status: "Lukket til fakturering", po: "8002455120", oprettet: "2026-08-04", lukket: "2026-08-12", type: "Service", pris: 0 },
+    { id: "PRDK000949-1", parent: "PRDK000949", siteId: "DK-S-038357", beskrivelse: "Programmering af 91 kort, udleveret til reception", tekniker: "VA", status: "Lukket til fakturering", po: "8002455120", oprettet: "2026-08-04", lukket: "2026-08-12", type: "Service", pris: 0, kladde: { linjer: [{ tekst: "Timer normal", antal: 8.5, enhedspris: 1025, beloeb: 8712.5 }, { tekst: "Overtid 1", antal: 0, enhedspris: 1538, beloeb: 0 }, { tekst: "Overtid 2", antal: 0, enhedspris: 2050, beloeb: 0 }, { tekst: "Servicevogn", antal: 3, enhedspris: 1025, beloeb: 3075 }], total: 11787.5, dage: 3, timer: 8.5, ot1: 0, ot2: 0, godkendtAf: "VA", dato: "2026-08-12" } },
     { id: "PRDK000949-2", parent: "PRDK000949", siteId: "DK-S-038357", beskrivelse: "Kortproduktion – Lenel – HID kodt med kode", tekniker: "VA", status: "Åben", po: "8002455120", oprettet: "2026-08-20", lukket: "", type: "Service", pris: 0 },
     { id: "CAS-550526-L3T4W2", siteId: "DK-S-038357", beskrivelse: "ADK DKLYN009224 virker ikke, står og blinker", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-08-20", lukket: "", type: "Fejl", pris: 1850 },
-    { id: "CAS-538366-R3K2F7", siteId: "DK-S-003341", beskrivelse: "IO-modul skal opsættes til at give signal til BMS", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-07-14", lukket: "2026-07-22", type: "Service", pris: 4200 },
-    { id: "PRDK000720-4", parent: "PRDK000720", siteId: "DK-S-042087", beskrivelse: "GSBC – Dørskift med tømrer", tekniker: "PEBO", status: "Lukket til fakturering", po: "8002401177", oprettet: "2026-02-10", lukket: "2026-02-14", type: "Service", pris: 22800 },
-    { id: "PRDK502630-8", parent: "PRDK502630", siteId: "DK-S-023537", beskrivelse: "Alarmcentral melder fejl 12 – kommunikation", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-03-26", lukket: "", type: "Fejl", pris: 3100 },
-    { id: "PRDK970214-6", parent: "PRDK970214", siteId: "DK-S-050107", beskrivelse: "Eftersyn af nødstrøm/batteribackup", tekniker: "SB", status: "Faktureret", po: "8002405224", oprettet: "2026-09-18", lukket: "2026-09-26", type: "Eftersyn", pris: 6200 },
+    { id: "CAS-538366-R3K2F7", siteId: "DK-S-003341", beskrivelse: "IO-modul skal opsættes til at give signal til BMS", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-07-14", lukket: "2026-07-22", type: "Service", pris: 4200, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 4200, beloeb: 4200 }], total: 4200, dage: 1, timer: 7, ot1: 0, ot2: 0, godkendtAf: "PEBO", dato: "2026-07-22" } },
+    { id: "PRDK000720-4", parent: "PRDK000720", siteId: "DK-S-042087", beskrivelse: "GSBC – Dørskift med tømrer", tekniker: "PEBO", status: "Lukket til fakturering", po: "8002401177", oprettet: "2026-02-10", lukket: "2026-02-14", type: "Service", pris: 22800, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 22800, beloeb: 22800 }], total: 22800, dage: 1, timer: 8, ot1: 0, ot2: 1, godkendtAf: "PEBO", dato: "2026-02-14" } },
+    { id: "PRDK001529-1", parent: "PRDK001529", siteId: "DK-S-023537", beskrivelse: "Alarmcentral melder fejl 12 – kommunikation", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-03-26", lukket: "", type: "Fejl", pris: 3100 },
+    { id: "PRDK001498-1", parent: "PRDK001498", siteId: "DK-S-050105", beskrivelse: "Eftersyn af nødstrøm/batteribackup", tekniker: "SB", status: "Faktureret", po: "8002405224", oprettet: "2026-09-18", lukket: "2026-09-26", type: "Eftersyn", pris: 6200 },
     { id: "CAS-534010-XR8KFV", siteId: "DK-S-050101", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "VA", status: "Faktureret", po: "8002499125", oprettet: "2026-01-25", lukket: "2026-01-28", type: "Service", pris: 12400 },
     { id: "CAS-545460-SLY9P5", siteId: "DK-S-050108", beskrivelse: "Sirene udløses ikke ved test", tekniker: "SB", status: "Åben", po: "", oprettet: "2026-06-11", lukket: "", type: "Fejl", pris: 1200 },
-    { id: "PRDK201206-9", parent: "PRDK201206", siteId: "DK-S-020092", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "CG", status: "Åben", po: "", oprettet: "2026-02-25", lukket: "", type: "Eftersyn", pris: 4800 },
-    { id: "CAS-518876-R7ZSDA", siteId: "DK-S-050106", beskrivelse: "Tilføjelse af nye brugere/kort i systemet", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-08-21", lukket: "2026-08-28", type: "Service", pris: 850 },
-    { id: "PRDK683863-2", parent: "PRDK683863", siteId: "DK-S-009365", beskrivelse: "Læser ved hovedindgang svarer ikke", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-09-14", lukket: "2026-09-16", type: "Fejl", pris: 2400 },
+    { id: "PRDK001456-1", parent: "PRDK001456", siteId: "DK-S-003341", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "CG", status: "Åben", po: "", oprettet: "2026-02-25", lukket: "", type: "Eftersyn", pris: 4800 },
+    { id: "CAS-518876-R7ZSDA", siteId: "DK-S-050106", beskrivelse: "Tilføjelse af nye brugere/kort i systemet", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-08-21", lukket: "2026-08-28", type: "Service", pris: 850, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 850, beloeb: 850 }], total: 850, dage: 3, timer: 20, ot1: 1.5, ot2: 1, godkendtAf: "CG", dato: "2026-08-28" } },
+    { id: "PRDK001495-1", parent: "PRDK001495", siteId: "DK-S-050103", beskrivelse: "Læser ved hovedindgang svarer ikke", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-09-14", lukket: "2026-09-16", type: "Fejl", pris: 2400 },
     { id: "CAS-525138-G8WT27", siteId: "DK-S-023537", beskrivelse: "Halvårligt eftersyn af ADK-anlæg", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-05-14", lukket: "2026-05-22", type: "Eftersyn", pris: 6200 },
     { id: "CAS-538465-VYS6ER", siteId: "DK-S-038357", beskrivelse: "Justering af kameraer efter ombygning", tekniker: "SB", status: "Åben", po: "", oprettet: "2026-09-09", lukket: "", type: "Service", pris: 850 },
-    { id: "PRDK630728-1", parent: "PRDK630728", siteId: "DK-S-050108", beskrivelse: "Opgradering af firmware på centraler", tekniker: "SB", status: "Lukket til fakturering", po: "", oprettet: "2026-06-07", lukket: "2026-06-11", type: "Service", pris: 12400 },
-    { id: "CAS-556996-D66RDT", siteId: "DK-S-050108", beskrivelse: "Kamera mister billede periodisk", tekniker: "SB", status: "Lukket til fakturering", po: "", oprettet: "2026-03-16", lukket: "2026-03-17", type: "Fejl", pris: 1850 },
+    { id: "PRDK001541-1", parent: "PRDK001541", siteId: "DK-S-050108", beskrivelse: "Opgradering af firmware på centraler", tekniker: "SB", status: "Lukket til fakturering", po: "", oprettet: "2026-06-07", lukket: "2026-06-11", type: "Service", pris: 12400, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 12400, beloeb: 12400 }], total: 12400, dage: 4, timer: 22, ot1: 2.5, ot2: 0, godkendtAf: "SB", dato: "2026-06-11" } },
+    { id: "CAS-556996-D66RDT", siteId: "DK-S-050108", beskrivelse: "Kamera mister billede periodisk", tekniker: "SB", status: "Lukket til fakturering", po: "", oprettet: "2026-03-16", lukket: "2026-03-17", type: "Fejl", pris: 1850, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 1850, beloeb: 1850 }], total: 1850, dage: 1, timer: 8, ot1: 0, ot2: 0, godkendtAf: "SB", dato: "2026-03-17" } },
     { id: "CAS-542587-C6M6Y6", siteId: "DK-S-040396", beskrivelse: "Sirene udløses ikke ved test", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-03-03", lukket: "2026-03-11", type: "Fejl", pris: 3100 },
-    { id: "PRDK438536-2", parent: "PRDK438536", siteId: "DK-S-050105", beskrivelse: "Kamera mister billede periodisk", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-01-20", lukket: "2026-01-22", type: "Fejl", pris: 2400 },
-    { id: "CAS-524565-QEHTQV", siteId: "DK-S-042087", beskrivelse: "Læser ved hovedindgang svarer ikke", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-05-01", lukket: "2026-05-02", type: "Fejl", pris: 3950 },
+    { id: "PRDK001427-1", parent: "PRDK001427", siteId: "DK-S-050105", beskrivelse: "Kamera mister billede periodisk", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-01-20", lukket: "2026-01-22", type: "Fejl", pris: 2400 },
+    { id: "CAS-524565-QEHTQV", siteId: "DK-S-042087", beskrivelse: "Læser ved hovedindgang svarer ikke", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-05-01", lukket: "2026-05-02", type: "Fejl", pris: 3950, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 3950, beloeb: 3950 }], total: 3950, dage: 2, timer: 11, ot1: 0, ot2: 0, godkendtAf: "PEBO", dato: "2026-05-02" } },
     { id: "CAS-530221-XKRKYA", siteId: "DK-S-003341", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-07-20", lukket: "2026-07-24", type: "Service", pris: 6200 },
     { id: "CAS-516390-R6LGP6", siteId: "DK-S-050102", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "VA", status: "Åben", po: "", oprettet: "2026-06-19", lukket: "", type: "Eftersyn", pris: 3100 },
-    { id: "PRDK251426-8", parent: "PRDK251426", siteId: "DK-S-042087", beskrivelse: "Opgradering af firmware på centraler", tekniker: "CG", status: "Lukket til fakturering", po: "8002489889", oprettet: "2026-05-01", lukket: "2026-05-08", type: "Service", pris: 3100 },
+    { id: "PRDK001452-1", parent: "PRDK001452", siteId: "DK-S-042087", beskrivelse: "Opgradering af firmware på centraler", tekniker: "CG", status: "Lukket til fakturering", po: "8002489889", oprettet: "2026-05-01", lukket: "2026-05-08", type: "Service", pris: 3100, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 3100, beloeb: 3100 }], total: 3100, dage: 2, timer: 11.5, ot1: 1.5, ot2: 0, godkendtAf: "CG", dato: "2026-05-08" } },
     { id: "CAS-543200-Y5EXD7", siteId: "DK-S-009365", beskrivelse: "Årligt eftersyn af AIA-anlæg", tekniker: "CG", status: "Åben", po: "", oprettet: "2026-04-20", lukket: "", type: "Eftersyn", pris: 3100 },
-    { id: "CAS-508661-4U7NTT", siteId: "DK-S-050102", beskrivelse: "Dørautomatik reagerer ikke på kort", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-03-03", lukket: "2026-03-08", type: "Fejl", pris: 3950 },
+    { id: "CAS-508661-4U7NTT", siteId: "DK-S-050102", beskrivelse: "Dørautomatik reagerer ikke på kort", tekniker: "PEBO", status: "Lukket til fakturering", po: "", oprettet: "2026-03-03", lukket: "2026-03-08", type: "Fejl", pris: 3950, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 3950, beloeb: 3950 }], total: 3950, dage: 1, timer: 4, ot1: 0, ot2: 1, godkendtAf: "PEBO", dato: "2026-03-08" } },
     { id: "CAS-549424-9H6Y2Y", siteId: "DK-S-003341", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "SB", status: "Faktureret", po: "", oprettet: "2026-05-24", lukket: "2026-05-28", type: "Service", pris: 1200 },
     { id: "CAS-517181-VP5X9N", siteId: "DK-S-050110", beskrivelse: "Servicebesøg – gennemgang af anlæg", tekniker: "SB", status: "Åben", po: "", oprettet: "2026-09-04", lukket: "", type: "Service", pris: 6200 },
     { id: "CAS-526758-DEB9BL", siteId: "DK-S-009365", beskrivelse: "Lovpligtigt eftersyn iht. serviceaftale", tekniker: "CG", status: "Faktureret", po: "", oprettet: "2026-04-21", lukket: "2026-04-23", type: "Eftersyn", pris: 6200 },
     { id: "CAS-558026-QXD5SW", siteId: "DK-S-042087", beskrivelse: "Udskiftning af batterier i centraler", tekniker: "VA", status: "Lukket til fakturering", po: "", oprettet: "2026-06-22", lukket: "2026-06-28", type: "Service", pris: 4800 },
     { id: "CAS-559093-XNBPKG", siteId: "DK-S-050101", beskrivelse: "Servicebesøg – gennemgang af anlæg", tekniker: "CG", status: "Åben", po: "8002489873", oprettet: "2026-08-08", lukket: "", type: "Service", pris: 3950 },
-    { id: "PRDK415173-2", parent: "PRDK415173", siteId: "DK-S-050107", beskrivelse: "Justering af kameraer efter ombygning", tekniker: "VA", status: "Lukket til fakturering", po: "", oprettet: "2026-01-02", lukket: "2026-01-08", type: "Service", pris: 2400 },
-    { id: "PRDK766456-5", parent: "PRDK766456", siteId: "DK-S-044467", beskrivelse: "Halvårligt eftersyn af ADK-anlæg", tekniker: "VA", status: "Åben", po: "8002418964", oprettet: "2026-03-26", lukket: "", type: "Eftersyn", pris: 12400 },
+    { id: "PRDK001464-1", parent: "PRDK001464", siteId: "DK-S-038357", beskrivelse: "Justering af kameraer efter ombygning", tekniker: "VA", status: "Lukket til fakturering", po: "", oprettet: "2026-01-02", lukket: "2026-01-08", type: "Service", pris: 2400, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 2400, beloeb: 2400 }], total: 2400, dage: 4, timer: 30, ot1: 2.5, ot2: 2, godkendtAf: "VA", dato: "2026-01-08" } },
+    { id: "PRDK001395-1", parent: "PRDK001395", siteId: "DK-S-044467", beskrivelse: "Halvårligt eftersyn af ADK-anlæg", tekniker: "VA", status: "Åben", po: "8002418964", oprettet: "2026-03-26", lukket: "", type: "Eftersyn", pris: 12400 },
     { id: "CAS-517391-BE2QTD", siteId: "DK-S-042087", beskrivelse: "Årligt eftersyn af AIA-anlæg", tekniker: "PEBO", status: "Åben", po: "", oprettet: "2026-06-26", lukket: "", type: "Eftersyn", pris: 2400 },
-    { id: "CAS-551329-86YTLR", siteId: "DK-S-050108", beskrivelse: "Årligt eftersyn af AIA-anlæg", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-02-15", lukket: "2026-02-24", type: "Eftersyn", pris: 2400 },
+    { id: "CAS-551329-86YTLR", siteId: "DK-S-050108", beskrivelse: "Årligt eftersyn af AIA-anlæg", tekniker: "CG", status: "Lukket til fakturering", po: "", oprettet: "2026-02-15", lukket: "2026-02-24", type: "Eftersyn", pris: 2400, kladde: { linjer: [{ tekst: "Aftalt pris", antal: 1, enhedspris: 2400, beloeb: 2400 }], total: 2400, dage: 1, timer: 4, ot1: 0, ot2: 0, godkendtAf: "CG", dato: "2026-02-24" } },
   ],
 
   // Tidsregistreringer fra teknikere (fra teknikerarkene)
@@ -1518,7 +1576,7 @@ window.DEMO = {
     { dato: "2026-01-20", sag: "PRDK001511", tekniker: "PEBO", timer: 8, ot1: 0, ot2: 0, koersel: 0, udfoert: "Opgradering af firmware", materialer: [] },
     { dato: "2026-01-22", sag: "PRDK001479", tekniker: "SB", timer: 7.5, ot1: 1, ot2: 0, koersel: 1, udfoert: "Justering af kamera efter ombygning", materialer: [] },
     { dato: "2026-01-24", sag: "PRDK000720", tekniker: "PEBO", timer: 7.5, ot1: 0, ot2: 1, koersel: 0, udfoert: "Opsætning af SiPass-læsere", materialer: [] },
-    { dato: "2026-01-26", sag: "PRDK683863-2", tekniker: "PEBO", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Test og idriftsættelse", materialer: [{ type: "Bil", model: "Parkering Rød Zone", antal: 10 }, { type: "GB", model: "AD800 AM", antal: 9 }] },
+    { dato: "2026-01-26", sag: "PRDK001495-1", tekniker: "PEBO", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Test og idriftsættelse", materialer: [{ type: "Bil", model: "Parkering Rød Zone", antal: 10 }, { type: "GB", model: "AD800 AM", antal: 9 }] },
     { dato: "2026-01-27", sag: "PRDK001479", tekniker: "CG", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Aflevering og gennemgang med kunde", materialer: [] },
     { dato: "2026-01-28", sag: "CAS-517181-VP5X9N", tekniker: "PEBO", timer: 8, ot1: 0, ot2: 1, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
     { dato: "2026-01-28", sag: "PRDK001518", tekniker: "VA", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
@@ -1528,11 +1586,11 @@ window.DEMO = {
     { dato: "2026-02-01", sag: "PRDK001518", tekniker: "CG", timer: 8, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Opsætning af nye brugere/kort", materialer: [] },
     { dato: "2026-02-02", sag: "PRDK001456", tekniker: "PEBO", timer: 6, ot1: 0, ot2: 0, koersel: 0, udfoert: "Opsætning af SiPass-læsere", materialer: [{ type: "Kabel", model: "4x2x0,6 PTK", antal: 7 }] },
     { dato: "2026-02-04", sag: "PRDK001438", tekniker: "VA", timer: 7.5, ot1: 0, ot2: 1, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
-    { dato: "2026-02-04", sag: "PRDK502630-8", tekniker: "CG", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Justering af kamera efter ombygning", materialer: [] },
+    { dato: "2026-02-04", sag: "PRDK001529-1", tekniker: "CG", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Justering af kamera efter ombygning", materialer: [] },
     { dato: "2026-02-06", sag: "PRDK001511", tekniker: "SB", timer: 7.5, ot1: 1, ot2: 0, koersel: 1, udfoert: "Eftersyn og funktionstest", materialer: [{ type: "Sender", model: "Iris 4-440 LAN + GPRS", antal: 8 }] },
     { dato: "2026-02-07", sag: "PRDK001452", tekniker: "SB", timer: 6, ot1: 0, ot2: 1, koersel: 1, udfoert: "Opgradering af firmware", materialer: [{ type: "Pir", model: "DD1012 AM", antal: 9 }, { type: "Kabel", model: "12x0,6", antal: 6 }] },
     { dato: "2026-02-08", sag: "PRDK001452", tekniker: "VA", timer: 8, ot1: 0, ot2: 1, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [] },
-    { dato: "2026-02-09", sag: "PRDK438536-2", tekniker: "CG", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [{ type: "Batterier", model: "12V 7,2Ah Akku", antal: 11 }] },
+    { dato: "2026-02-09", sag: "PRDK001427-1", tekniker: "CG", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [{ type: "Batterier", model: "12V 7,2Ah Akku", antal: 11 }] },
     { dato: "2026-02-09", sag: "CAS-542587-C6M6Y6", tekniker: "CG", timer: 7, ot1: 0, ot2: 0, koersel: 0, udfoert: "Test og idriftsættelse", materialer: [{ type: "Nox", model: "IO4", antal: 12 }, { type: "GB", model: "AD800", antal: 1 }] },
     { dato: "2026-02-10", sag: "CAS-517181-VP5X9N", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [{ type: "Mk", model: "MK 240-6", antal: 1 }, { type: "Mk", model: "MK 240-6", antal: 3 }] },
     { dato: "2026-02-11", sag: "PRDK001518", tekniker: "CG", timer: 7, ot1: 0, ot2: 1, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
@@ -1544,16 +1602,16 @@ window.DEMO = {
     { dato: "2026-02-16", sag: "PRDK001518", tekniker: "PEBO", timer: 7.5, ot1: 0, ot2: 0, koersel: 0, udfoert: "Montage af dørautomatik", materialer: [] },
     { dato: "2026-02-16", sag: "PRDK001421", tekniker: "CG", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Opgradering af firmware", materialer: [] },
     { dato: "2026-02-16", sag: "CAS-550526-L3T4W2", tekniker: "PEBO", timer: 7.5, ot1: 0, ot2: 0, koersel: 0, udfoert: "Kabeltræk til teknikrum", materialer: [{ type: "Bil", model: "Parkering Gul Zone", antal: 11 }, { type: "Sender", model: "Iris 4-420", antal: 6 }] },
-    { dato: "2026-02-18", sag: "PRDK683863-2", tekniker: "CG", timer: 8, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Eftersyn og funktionstest", materialer: [{ type: "Batterier", model: "12V 18Ah Akku", antal: 3 }, { type: "GB", model: "AD800 AM", antal: 9 }] },
+    { dato: "2026-02-18", sag: "PRDK001495-1", tekniker: "CG", timer: 8, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Eftersyn og funktionstest", materialer: [{ type: "Batterier", model: "12V 18Ah Akku", antal: 3 }, { type: "GB", model: "AD800 AM", antal: 9 }] },
     { dato: "2026-02-18", sag: "PRDK001438", tekniker: "VA", timer: 8, ot1: 1.5, ot2: 1, koersel: 1, udfoert: "Aflevering og gennemgang med kunde", materialer: [] },
     { dato: "2026-02-19", sag: "PRDK001495", tekniker: "VA", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Fejlsøgning på central", materialer: [] },
     { dato: "2026-02-19", sag: "CAS-538465-VYS6ER", tekniker: "SB", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [{ type: "Pir", model: "DD669AM - 360°", antal: 4 }, { type: "Bil", model: "Parkering Gul Zone", antal: 12 }] },
     { dato: "2026-02-23", sag: "PRDK001479", tekniker: "SB", timer: 7.5, ot1: 0, ot2: 0, koersel: 1, udfoert: "Programmering af central", materialer: [{ type: "Sipass", model: "MFI", antal: 6 }, { type: "Bil", model: "Parkering Rød Zone", antal: 6 }] },
     { dato: "2026-02-23", sag: "PRDK001452", tekniker: "SB", timer: 8, ot1: 0, ot2: 1, koersel: 1, udfoert: "Justering af kamera efter ombygning", materialer: [] },
     { dato: "2026-02-27", sag: "PRDK001541", tekniker: "SB", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Udskiftning af defekt detektor", materialer: [] },
-    { dato: "2026-02-28", sag: "PRDK766456-5", tekniker: "VA", timer: 7.5, ot1: 0, ot2: 0, koersel: 1, udfoert: "Eftersyn og funktionstest", materialer: [] },
+    { dato: "2026-02-28", sag: "PRDK001395-1", tekniker: "VA", timer: 7.5, ot1: 0, ot2: 0, koersel: 1, udfoert: "Eftersyn og funktionstest", materialer: [] },
     { dato: "2026-03-05", sag: "PRDK001449", tekniker: "SB", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Test og idriftsættelse", materialer: [] },
-    { dato: "2026-03-07", sag: "PRDK630728-1", tekniker: "PEBO", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
+    { dato: "2026-03-07", sag: "PRDK001541-1", tekniker: "PEBO", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
     { dato: "2026-03-07", sag: "PRDK001490", tekniker: "SB", timer: 7.5, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [] },
     { dato: "2026-03-07", sag: "PRDK001395", tekniker: "PEBO", timer: 7.5, ot1: 0, ot2: 1, koersel: 1, udfoert: "Fejlsøgning på central", materialer: [{ type: "Nox", model: "Nox Corp G3", antal: 2 }, { type: "Sipass", model: "ENC-030 Skab", antal: 9 }] },
     { dato: "2026-03-08", sag: "PRDK001452", tekniker: "VA", timer: 8, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Programmering af central", materialer: [] },
@@ -1577,13 +1635,13 @@ window.DEMO = {
     { dato: "2026-04-02", sag: "PRDK001452", tekniker: "VA", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [] },
     { dato: "2026-04-05", sag: "CAS-516390-R6LGP6", tekniker: "PEBO", timer: 6, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [] },
     { dato: "2026-04-08", sag: "CAS-538465-VYS6ER", tekniker: "CG", timer: 6, ot1: 0, ot2: 0, koersel: 1, udfoert: "Test og idriftsættelse", materialer: [] },
-    { dato: "2026-04-09", sag: "PRDK201206-9", tekniker: "CG", timer: 8, ot1: 0, ot2: 1, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
+    { dato: "2026-04-09", sag: "PRDK001456-1", tekniker: "CG", timer: 8, ot1: 0, ot2: 1, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
     { dato: "2026-04-09", sag: "PRDK001551", tekniker: "PEBO", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Aflevering og gennemgang med kunde", materialer: [{ type: "Mk", model: "MK 240-10", antal: 10 }] },
     { dato: "2026-04-11", sag: "CAS-524565-QEHTQV", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
-    { dato: "2026-04-12", sag: "PRDK630728-1", tekniker: "SB", timer: 6, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
+    { dato: "2026-04-12", sag: "PRDK001541-1", tekniker: "SB", timer: 6, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
     { dato: "2026-04-13", sag: "PRDK001452", tekniker: "VA", timer: 7, ot1: 0, ot2: 1, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
     { dato: "2026-04-13", sag: "PRDK001449", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Programmering af central", materialer: [] },
-    { dato: "2026-04-14", sag: "PRDK251426-8", tekniker: "SB", timer: 4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Udskiftning af defekt detektor", materialer: [] },
+    { dato: "2026-04-14", sag: "PRDK001452-1", tekniker: "SB", timer: 4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Udskiftning af defekt detektor", materialer: [] },
     { dato: "2026-04-14", sag: "CAS-549424-9H6Y2Y", tekniker: "PEBO", timer: 4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Programmering af central", materialer: [] },
     { dato: "2026-04-14", sag: "PRDK000949", tekniker: "VA", timer: 8, ot1: 0, ot2: 0, koersel: 0, udfoert: "Udskiftning af defekt detektor", materialer: [] },
     { dato: "2026-04-15", sag: "PRDK001479", tekniker: "VA", timer: 6, ot1: 0, ot2: 0, koersel: 1, udfoert: "Montage af dørautomatik", materialer: [] },
@@ -1591,7 +1649,7 @@ window.DEMO = {
     { dato: "2026-04-17", sag: "CAS-508661-4U7NTT", tekniker: "CG", timer: 4, ot1: 0, ot2: 1, koersel: 0, udfoert: "Opgradering af firmware", materialer: [{ type: "Sipass", model: "ENC-030 Skab", antal: 12 }, { type: "Sipass", model: "AFO5200 IO8", antal: 2 }] },
     { dato: "2026-04-17", sag: "PRDK000949", tekniker: "SB", timer: 8, ot1: 0, ot2: 0, koersel: 0, udfoert: "Opgradering af firmware", materialer: [] },
     { dato: "2026-04-18", sag: "PRDK001532", tekniker: "PEBO", timer: 7, ot1: 0, ot2: 1, koersel: 1, udfoert: "Opsætning af nye brugere/kort", materialer: [] },
-    { dato: "2026-04-18", sag: "PRDK630728-1", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
+    { dato: "2026-04-18", sag: "PRDK001541-1", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [] },
     { dato: "2026-04-19", sag: "PRDK001532", tekniker: "SB", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Montage af dørautomatik", materialer: [] },
     { dato: "2026-04-23", sag: "PRDK001479", tekniker: "VA", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Opgradering af firmware", materialer: [{ type: "Nox", model: "Nox Corp G3", antal: 6 }] },
     { dato: "2026-04-23", sag: "PRDK001438", tekniker: "VA", timer: 7.5, ot1: 1.5, ot2: 1, koersel: 1, udfoert: "Montage af dørautomatik", materialer: [] },
@@ -1602,9 +1660,9 @@ window.DEMO = {
     { dato: "2026-04-26", sag: "CAS-549424-9H6Y2Y", tekniker: "CG", timer: 8, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Test og idriftsættelse", materialer: [{ type: "Pir", model: "DD669AM - 360°", antal: 9 }] },
     { dato: "2026-04-28", sag: "PRDK001421", tekniker: "VA", timer: 7, ot1: 1.5, ot2: 0, koersel: 0, udfoert: "Montage af NOX-detektorer", materialer: [] },
     { dato: "2026-04-29", sag: "PRDK001438", tekniker: "SB", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Opsætning af SiPass-læsere", materialer: [] },
-    { dato: "2026-05-02", sag: "PRDK415173-2", tekniker: "CG", timer: 8, ot1: 0, ot2: 1, koersel: 0, udfoert: "Opsætning af nye brugere/kort", materialer: [] },
+    { dato: "2026-05-02", sag: "PRDK001464-1", tekniker: "CG", timer: 8, ot1: 0, ot2: 1, koersel: 0, udfoert: "Opsætning af nye brugere/kort", materialer: [] },
     { dato: "2026-05-02", sag: "PRDK001511", tekniker: "CG", timer: 8, ot1: 1, ot2: 1, koersel: 0, udfoert: "Test og idriftsættelse", materialer: [] },
-    { dato: "2026-05-03", sag: "PRDK415173-2", tekniker: "PEBO", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [{ type: "Sender", model: "IRIS 4-400", antal: 11 }] },
+    { dato: "2026-05-03", sag: "PRDK001464-1", tekniker: "PEBO", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [{ type: "Sender", model: "IRIS 4-400", antal: 11 }] },
     { dato: "2026-05-03", sag: "CAS-518876-R7ZSDA", tekniker: "PEBO", timer: 7, ot1: 1.5, ot2: 1, koersel: 1, udfoert: "Opsætning af SiPass-læsere", materialer: [] },
     { dato: "2026-05-03", sag: "PRDK000720", tekniker: "CG", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Justering af kamera efter ombygning", materialer: [] },
     { dato: "2026-05-03", sag: "PRDK001532", tekniker: "PEBO", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [] },
@@ -1616,7 +1674,7 @@ window.DEMO = {
     { dato: "2026-05-10", sag: "PRDK001407", tekniker: "PEBO", timer: 6, ot1: 0, ot2: 0, koersel: 1, udfoert: "Opsætning af nye brugere/kort", materialer: [] },
     { dato: "2026-05-11", sag: "PRDK000949", tekniker: "PEBO", timer: 8, ot1: 1, ot2: 0, koersel: 0, udfoert: "Test og idriftsættelse", materialer: [{ type: "Sipass", model: "ENC-030 Skab", antal: 3 }] },
     { dato: "2026-05-13", sag: "PRDK001495", tekniker: "SB", timer: 6, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [{ type: "Bil", model: "Parkering Gul Zone", antal: 7 }, { type: "Kabel", model: "4x0,6 PTK", antal: 4 }] },
-    { dato: "2026-05-15", sag: "PRDK251426-8", tekniker: "CG", timer: 7.5, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
+    { dato: "2026-05-15", sag: "PRDK001452-1", tekniker: "CG", timer: 7.5, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
     { dato: "2026-05-16", sag: "CAS-545460-SLY9P5", tekniker: "PEBO", timer: 7, ot1: 0, ot2: 1, koersel: 0, udfoert: "Justering af kamera efter ombygning", materialer: [{ type: "GB", model: "GD 470 Glasbrudsdetektor", antal: 12 }, { type: "GB", model: "AD800 AM", antal: 2 }] },
     { dato: "2026-05-18", sag: "PRDK001216", tekniker: "SB", timer: 8, ot1: 0, ot2: 0, koersel: 0, udfoert: "Programmering af central", materialer: [{ type: "Nox", model: "PS5", antal: 7 }, { type: "GB", model: "AD800 AM", antal: 7 }] },
     { dato: "2026-05-20", sag: "PRDK001452", tekniker: "CG", timer: 7, ot1: 1, ot2: 0, koersel: 0, udfoert: "Programmering af central", materialer: [{ type: "Batterier", model: "12V 7,2Ah Akku", antal: 12 }] },
@@ -1631,7 +1689,7 @@ window.DEMO = {
     { dato: "2026-06-02", sag: "PRDK001502", tekniker: "VA", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabeltræk til teknikrum", materialer: [{ type: "GB", model: "AD800 AM", antal: 5 }, { type: "Nox", model: "CPA", antal: 3 }] },
     { dato: "2026-06-03", sag: "PRDK001265", tekniker: "PEBO", timer: 8, ot1: 1, ot2: 0, koersel: 1, udfoert: "Programmering af central", materialer: [{ type: "GB", model: "GD 470 Glasbrudsdetektor", antal: 4 }, { type: "Sender", model: "Iris 4-440 LAN + GPRS", antal: 9 }] },
     { dato: "2026-06-08", sag: "PRDK001532", tekniker: "CG", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [{ type: "Kabel", model: "12x0,6", antal: 1 }] },
-    { dato: "2026-06-09", sag: "PRDK415173-2", tekniker: "CG", timer: 7, ot1: 1.5, ot2: 1, koersel: 1, udfoert: "Fejlsøgning på central", materialer: [{ type: "Sipass", model: "AFO5200 IO8", antal: 11 }] },
+    { dato: "2026-06-09", sag: "PRDK001464-1", tekniker: "CG", timer: 7, ot1: 1.5, ot2: 1, koersel: 1, udfoert: "Fejlsøgning på central", materialer: [{ type: "Sipass", model: "AFO5200 IO8", antal: 11 }] },
     { dato: "2026-06-12", sag: "CAS-559093-XNBPKG", tekniker: "VA", timer: 6, ot1: 0, ot2: 0, koersel: 1, udfoert: "Fejlsøgning på central", materialer: [] },
     { dato: "2026-06-12", sag: "PRDK001502", tekniker: "PEBO", timer: 8, ot1: 0, ot2: 1, koersel: 1, udfoert: "Aflevering og gennemgang med kunde", materialer: [{ type: "Bil", model: "Parkering Grøn Zone", antal: 7 }] },
     { dato: "2026-06-14", sag: "PRDK001518", tekniker: "SB", timer: 8, ot1: 1.5, ot2: 0, koersel: 0, udfoert: "Udskiftning af defekt detektor", materialer: [{ type: "Kabel", model: "4x0,6 PTK", antal: 4 }] },
@@ -1642,13 +1700,13 @@ window.DEMO = {
     { dato: "2026-06-21", sag: "PRDK000720", tekniker: "PEBO", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [] },
     { dato: "2026-06-21", sag: "PRDK001479", tekniker: "CG", timer: 4, ot1: 1, ot2: 1, koersel: 1, udfoert: "Opsætning af SiPass-læsere", materialer: [{ type: "GB", model: "AD800", antal: 10 }] },
     { dato: "2026-06-22", sag: "CAS-543200-Y5EXD7", tekniker: "PEBO", timer: 8, ot1: 1, ot2: 0, koersel: 0, udfoert: "Montage af NOX-detektorer", materialer: [] },
-    { dato: "2026-06-22", sag: "PRDK630728-1", tekniker: "VA", timer: 8, ot1: 1, ot2: 0, koersel: 0, udfoert: "Montage af NOX-detektorer", materialer: [] },
+    { dato: "2026-06-22", sag: "PRDK001541-1", tekniker: "VA", timer: 8, ot1: 1, ot2: 0, koersel: 0, udfoert: "Montage af NOX-detektorer", materialer: [] },
     { dato: "2026-06-25", sag: "PRDK000949", tekniker: "SB", timer: 4, ot1: 1, ot2: 0, koersel: 1, udfoert: "Aflevering og gennemgang med kunde", materialer: [] },
     { dato: "2026-06-25", sag: "PRDK001479", tekniker: "CG", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [{ type: "Nox", model: "CPA", antal: 6 }, { type: "Nox", model: "IO4", antal: 1 }] },
     { dato: "2026-06-25", sag: "PRDK001438", tekniker: "SB", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Opsætning af nye brugere/kort", materialer: [{ type: "Kabel", model: "4x0,6 PTK", antal: 3 }] },
     { dato: "2026-06-26", sag: "CAS-538465-VYS6ER", tekniker: "PEBO", timer: 8, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Fejlsøgning på central", materialer: [{ type: "Bil", model: "Parkering Grøn Zone", antal: 3 }, { type: "Sender", model: "Iris 4-440 LAN + GPRS", antal: 2 }] },
     { dato: "2026-06-26", sag: "PRDK001551", tekniker: "VA", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
-    { dato: "2026-06-28", sag: "PRDK415173-2", tekniker: "CG", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Montage af dørautomatik", materialer: [{ type: "Nox", model: "CPA", antal: 8 }, { type: "Sender", model: "Iris 4-420", antal: 9 }] },
+    { dato: "2026-06-28", sag: "PRDK001464-1", tekniker: "CG", timer: 7, ot1: 0, ot2: 0, koersel: 1, udfoert: "Montage af dørautomatik", materialer: [{ type: "Nox", model: "CPA", antal: 8 }, { type: "Sender", model: "Iris 4-420", antal: 9 }] },
     { dato: "2026-06-28", sag: "PRDK001438", tekniker: "SB", timer: 7.5, ot1: 0, ot2: 1, koersel: 1, udfoert: "Test og idriftsættelse", materialer: [] },
     { dato: "2026-06-28", sag: "PRDK001479", tekniker: "PEBO", timer: 8, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [] },
     { dato: "2026-07-01", sag: "PRDK001395", tekniker: "SB", timer: 8, ot1: 1.5, ot2: 0, koersel: 0, udfoert: "Opgradering af firmware", materialer: [] },
@@ -1659,7 +1717,7 @@ window.DEMO = {
     { dato: "2026-07-05", sag: "PRDK001532", tekniker: "VA", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Aflevering og gennemgang med kunde", materialer: [] },
     { dato: "2026-07-09", sag: "PRDK001438", tekniker: "PEBO", timer: 7.5, ot1: 0, ot2: 0, koersel: 1, udfoert: "Opsætning af SiPass-læsere", materialer: [{ type: "Mk", model: "MC 250-10", antal: 2 }, { type: "GB", model: "AD800", antal: 12 }] },
     { dato: "2026-07-10", sag: "CAS-558026-QXD5SW", tekniker: "VA", timer: 7.5, ot1: 0, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
-    { dato: "2026-07-11", sag: "PRDK502630-8", tekniker: "VA", timer: 4, ot1: 1, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
+    { dato: "2026-07-11", sag: "PRDK001529-1", tekniker: "VA", timer: 4, ot1: 1, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [] },
     { dato: "2026-07-11", sag: "PRDK001456", tekniker: "CG", timer: 7.5, ot1: 0, ot2: 0, koersel: 1, udfoert: "Opsætning af nye brugere/kort", materialer: [{ type: "Sender", model: "Iris 4-420", antal: 3 }] },
     { dato: "2026-07-12", sag: "PRDK001532", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Opsætning af SiPass-læsere", materialer: [] },
     { dato: "2026-07-12", sag: "PRDK000720", tekniker: "SB", timer: 8, ot1: 1, ot2: 1, koersel: 1, udfoert: "Test og idriftsættelse", materialer: [{ type: "Batterier", model: "12V 7,2Ah Akku", antal: 6 }] },
@@ -1673,7 +1731,7 @@ window.DEMO = {
     { dato: "2026-07-21", sag: "CAS-559093-XNBPKG", tekniker: "VA", timer: 8, ot1: 1.5, ot2: 1, koersel: 0, udfoert: "Opgradering af firmware", materialer: [] },
     { dato: "2026-07-25", sag: "CAS-558026-QXD5SW", tekniker: "PEBO", timer: 8, ot1: 1.5, ot2: 0, koersel: 0, udfoert: "Konfiguration af kameraer", materialer: [{ type: "Sipass", model: "AFO5200 IO8", antal: 1 }, { type: "Batterier", model: "12V 18Ah Akku", antal: 8 }] },
     { dato: "2026-07-26", sag: "PRDK001479", tekniker: "SB", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Opsætning af SiPass-læsere", materialer: [] },
-    { dato: "2026-07-26", sag: "PRDK438536-2", tekniker: "CG", timer: 6, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Udskiftning af defekt detektor", materialer: [{ type: "Batterier", model: "12V 18Ah Akku", antal: 3 }, { type: "Mk", model: "MK 240-6", antal: 12 }] },
+    { dato: "2026-07-26", sag: "PRDK001427-1", tekniker: "CG", timer: 6, ot1: 1.5, ot2: 0, koersel: 1, udfoert: "Udskiftning af defekt detektor", materialer: [{ type: "Batterier", model: "12V 18Ah Akku", antal: 3 }, { type: "Mk", model: "MK 240-6", antal: 12 }] },
     { dato: "2026-07-27", sag: "PRDK001438", tekniker: "CG", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Slutkontrol inden aflevering", materialer: [{ type: "Pir", model: "DD1012", antal: 11 }] },
     { dato: "2026-07-28", sag: "PRDK001532", tekniker: "VA", timer: 4, ot1: 0, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [{ type: "Mk", model: "MK 240-10", antal: 7 }] },
     { dato: "2026-07-28", sag: "PRDK001498", tekniker: "PEBO", timer: 6, ot1: 1, ot2: 0, koersel: 1, udfoert: "Konfiguration af kameraer", materialer: [] },
@@ -1700,7 +1758,7 @@ window.DEMO = {
     { dato: "2026-08-21", sag: "PRDK001438", tekniker: "PEBO", timer: 7, ot1: 1, ot2: 0, koersel: 1, udfoert: "Kabling og tilslutning af sirener", materialer: [] },
     { dato: "2026-08-22", sag: "CAS-556996-D66RDT", tekniker: "SB", timer: 8, ot1: 0, ot2: 0, koersel: 1, udfoert: "Aflevering og gennemgang med kunde", materialer: [] },
     { dato: "2026-08-23", sag: "PRDK001541", tekniker: "SB", timer: 7.5, ot1: 1, ot2: 0, koersel: 0, udfoert: "Montage af NOX-detektorer", materialer: [{ type: "GB", model: "AD800 AM", antal: 4 }, { type: "Batterier", model: "12V 7,2Ah Akku", antal: 1 }] },
-    { dato: "2026-08-23", sag: "PRDK438536-2", tekniker: "PEBO", timer: 7, ot1: 0, ot2: 1, koersel: 0, udfoert: "Opgradering af firmware", materialer: [{ type: "Sender", model: "Iris 4-420", antal: 11 }] },
+    { dato: "2026-08-23", sag: "PRDK001427-1", tekniker: "PEBO", timer: 7, ot1: 0, ot2: 1, koersel: 0, udfoert: "Opgradering af firmware", materialer: [{ type: "Sender", model: "Iris 4-420", antal: 11 }] },
     { dato: "2026-08-25", sag: "PRDK001452", tekniker: "CG", timer: 8, ot1: 1.5, ot2: 0, koersel: 0, udfoert: "Justering af kamera efter ombygning", materialer: [{ type: "GB", model: "AD800 AM", antal: 5 }] },
     { dato: "2026-08-26", sag: "PRDK001407", tekniker: "SB", timer: 7.5, ot1: 1, ot2: 0, koersel: 1, udfoert: "Opsætning af nye brugere/kort", materialer: [] },
     { dato: "2026-08-26", sag: "PRDK001551", tekniker: "CG", timer: 4, ot1: 0, ot2: 0, koersel: 0, udfoert: "Test og idriftsættelse", materialer: [] },
@@ -1818,6 +1876,24 @@ window.DEMO = {
   if (!S || S.dataVersion !== D.version) S = { dataVersion: D.version, user: 'HERA', nextPrdk: 1401, fAfd: '' };
   // Alle samlinger i DEMO kopieres ind i S første gang (og nye samlinger ved senere udvidelse af data.js)
   Object.keys(D).forEach(k => { if (!(k in S)) S[k] = JSON.parse(JSON.stringify(D[k])); });
+  // Relative logdatoer (PLAN-v8, beslutning 14): en logpost i data.js må bære `dageSiden: N` og valgfrit
+  // `kl: "HH:MM"` i stedet for `dato`. Den omsættes her til en fast dato, så de nyeste demoposter altid er
+  // nye i forhold til den dag, testeren første gang åbner datasættet – ellers ville "Står stille" på
+  // Forsiden vise alle igangværende projekter, så snart demodata var et par måneder gamle.
+  // Omsætningen kører ved HVER indlæsning, men kun på poster, der STADIG har dageSiden: den sletter
+  // feltet, så den hverken kan køre to gange eller flytte en dato, der allerede er sat. Den må ikke
+  // hænge på "projekter er lige kopieret fra DEMO" – en gemt state fra en tidligere build (eller et
+  // projekt, der kommer til senere) ville så ende med logposter helt uden dato.
+  // Regningen er lokal som i today() – aldrig toISOString(), jf. kommentaren dér.
+  {
+    const pad = v => String(v).padStart(2, '0');
+    (S.projekter || []).forEach(p => (p.log || []).forEach(l => {
+      if (!l || !('dageSiden' in l)) return;
+      const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - (+l.dageSiden || 0));
+      l.dato = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${l.kl || '09:00'}`;
+      delete l.dageSiden; delete l.kl;
+    }));
+  }
   // Samlinger der ikke findes i DEMO, og derfor aldrig bliver oprettet af linjen ovenfor.
   // historik = auditsporet bag App.log()/App.saetFelt() (PLAN-v6-spor1 §3).
   // salgsarkiv = tildelte indbakke-poster, som Spor 2 (F3) flytter hertil i stedet for at slette dem.
@@ -1828,6 +1904,9 @@ window.DEMO = {
   S.navOpen = S.navOpen || {};
   // colFilter = kolonnefiltre pr. tabelnøgle og kolonne-ETIKET (F8/B3, PLAN-v6-spor2 §F8).
   S.colFilter = S.colFilter || {};
+  // v8: et filter fra Forsiden gælder kun det besøg, det blev sat i. Efter en genindlæsning må en
+  // arbejdsside ikke stå med banneret "Viser N poster fra Forsiden" på en liste, brugeren selv åbnede.
+  delete S.forsideFilter;
   // v7: er den gemte bruger ukendt (fx slettet i et ældre datasæt) eller deaktiveret, må prototypen ikke
   // starte op som en bruger, der ikke findes. Falder tilbage til første aktive chef, ellers første aktive.
   // Ligger ved state-indlæsningen, så det også gælder i Node-sandkassen, hvor DOMContentLoaded aldrig affyres.
@@ -1926,18 +2005,21 @@ window.DEMO = {
   // ---------- økonomisk scope (PLAN-v5) ----------
   // Én sandhed om, hvilke projekters tal en bruger må se: Chef ser alt, afdelingsleder (lederFor) sin afdeling, PM egne projekter.
   const lederFor = () => emp(S.user).lederFor || '';
-  const scopeOptions = () => {
-    if (role() === 'Chef') return [{ v: 'alle', label: 'Alle afdelinger' }, { v: 'afd:Novo', label: 'Novo' }, { v: 'afd:Generel', label: 'Generel' }];
-    if (lederFor()) return [{ v: 'afd:' + lederFor(), label: 'Min afdeling' }, { v: 'pm:' + S.user, label: 'Mine projekter' }];
-    return [{ v: 'pm:' + S.user, label: 'Mine projekter' }];
+  // v8: reglen er skrevet for EN medarbejder i stedet for kun for S.user, så Forsiden kan regne
+  // scope for en anden bruger uden at skifte bruger i state (App.forsideSignaler). De tre gamle
+  // helpers er uændrede udadtil – de spørger bare på den indloggedes vegne.
+  const scopeOptionsFor = m => {
+    const o = m || {};
+    if ((o.rolle || 'PM') === 'Chef') return [{ v: 'alle', label: 'Alle afdelinger' }, { v: 'afd:Novo', label: 'Novo' }, { v: 'afd:Generel', label: 'Generel' }];
+    if (o.lederFor) return [{ v: 'afd:' + o.lederFor, label: 'Min afdeling' }, { v: 'pm:' + o.id, label: 'Mine projekter' }];
+    return [{ v: 'pm:' + o.id, label: 'Mine projekter' }];
   };
-  // Et gemt scope fra en anden bruger falder tilbage til brugerens eget første valg
-  const resolveScope = scope => { const o = scopeOptions(); return (o.find(x => x.v === scope) || o[0]).v; };
-  const inScope = (p, scope) => {
-    const s = resolveScope(scope);
-    if (s === 'alle') return true;
-    return s.startsWith('afd:') ? p.afdeling === s.slice(4) : p.pm === s.slice(3);
-  };
+  const scopeOptions = () => scopeOptionsFor(emp(S.user));
+  // Et gemt (eller forfalsket) scope falder tilbage til brugerens eget første valg
+  const resolveScopeFor = (m, scope) => { const o = scopeOptionsFor(m); return (o.find(x => x.v === scope) || o[0]).v; };
+  const resolveScope = scope => resolveScopeFor(emp(S.user), scope);
+  const iScope = (p, s) => s === 'alle' ? true : s.startsWith('afd:') ? (p || {}).afdeling === s.slice(4) : (p || {}).pm === s.slice(3);
+  const inScope = (p, scope) => iScope(p, resolveScope(scope));
 
   const dgCell = v => v == null ? '<td class="num">–</td>' : `<td class="num dg ${v >= 30 ? 'good' : v >= 15 ? 'warn' : 'bad'}">${pct(v)}</td>`;
   // 'Nedtaget' har med vilje tom klasse: den falder tilbage til den grå standardprik (ingen ny CSS-regel).
@@ -2078,8 +2160,10 @@ window.DEMO = {
   // ---------- brugeradministration (PLAN-v7, bølge 1a) ----------
   // Al forretningslogik ligger her, ikke på siden: så kan spærringerne afprøves i Node, og både
   // formularen (låste felter) og gemme-funktionen bygger på præcis de samme regler.
-  // "Service" er med vilje IKKE i listen – ingen har rollen, og den afventer Securitas' spørgsmål 14.
-  const BRUGER_ROLLER = ['Chef', 'PM', 'Tekniker', 'Fakturering'];
+  // v8: "Service" er kommet med som sidste rolle (PLAN-v8, beslutning 4). Rollen findes i forvejen i
+  // RETTIGHEDER og på sidernes roles-lister; den manglede kun her, så den kunne tildeles på Brugere.
+  // Alt om rollen er stadig en antagelse, indtil Securitas har svaret på spørgsmål 1.
+  const BRUGER_ROLLER = ['Chef', 'PM', 'Tekniker', 'Fakturering', 'Service'];
   const BRUGER_ID_RE = /^[A-ZÆØÅ]{2,5}$/;
   const BOGSTAV_RE = /[A-Za-zÆØÅæøå]/;
   const brugerFejl = t => ({ ok: false, fejl: t });
@@ -2342,6 +2426,482 @@ window.DEMO = {
     document.body.appendChild(wrap); window.print(); setTimeout(() => wrap.remove(), 1000);
   };
 
+  // ---------- v8 Forside: "Det venter på dig" (PLAN-v8) ----------
+  // Al beregning ligger her som rene funktioner uden DOM. pages/forside.js viser KUN det, som
+  // forsideSignaler() returnerer, og indeholder ingen forretningsregler – så kan reglerne afprøves i
+  // Node (tools/test-forside.js), og siden kan bygges om uden at et signal flytter sig.
+  // Grænserne står ét sted (beslutning 12) og skrives ud i hvert korts undertekst, så Securitas kan
+  // se reglen på skærmen uden at læse koden.
+  const FORSIDE_GRAENSER = Object.freeze({ stilstandDage: 30, sendtDage: 14, serviceDage: 30, eftersynDage: 30 });
+  const idagDato = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const dageMellem = (fra, til) => Math.round((til - fra) / 86400000);
+  // Hele dage siden en dato. Negativ = datoen ligger forude ("forfalder om N dage", kun S1).
+  const dageSiden = (dato, t) => { const d = parseDato(dato); return d ? dageMellem(d, t || idagDato()) : 0; };
+  const UGEDAGE = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
+  const MAANEDER = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
+  const erHverdag = d => d.getDay() !== 0 && d.getDay() !== 6;
+  // Perioden bag L6 og T2: måneden for den SENESTE HVERDAG før i dag, til og med den dag.
+  // "Til og med i går" alene duede ikke: den 1. i måneden (og mandag den 2.) ville forventningen være
+  // 0 timer, og kortet ville være dødt netop de dage, hvor sidste måned skal gøres op. Den 1. oktober
+  // gøres hele september derfor op, og mandag den 2. november hele oktober (seneste hverdag = fredag
+  // den 30.). Forventningen er hverdage × 7,4 – samme sats som expectedHours().
+  const forsidePeriode = t => {
+    const idag = t || idagDato();
+    const sidste = new Date(idag);
+    do { sidste.setDate(sidste.getDate() - 1); } while (!erHverdag(sidste));
+    const d = new Date(sidste.getFullYear(), sidste.getMonth(), 1);
+    let hverdage = 0;
+    while (d <= sidste) { if (erHverdag(d)) hverdage++; d.setDate(d.getDate() + 1); }
+    return {
+      fra: isoDato(new Date(sidste.getFullYear(), sidste.getMonth(), 1)),
+      til: isoDato(sidste),
+      hverdage,
+      timer: Math.round(hverdage * 7.4 * 10) / 10,
+      tekst: `${MAANEDER[sidste.getMonth()]} til og med den ${sidste.getDate()}.`,
+    };
+  };
+
+  // Seneste aktivitet på et projekt (P4/L4): logpost, tidsregistrering på projektet eller en af dets
+  // delopgaver, udgiftslinje eller fakturalinje (fakturadato og sendt-dato) – ellers oprettelsesdatoen.
+  // Tåler manglende felter. Demodata har enkelte tidsposter frem i tiden; en dato efter i dag tæller
+  // som aktivitet i dag, så alderen aldrig bliver negativ.
+  const sidsteAktivitet = p => {
+    const o = p || {};
+    const datoer = [];
+    const tilfoej = v => { const s = String(v || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(s)) datoer.push(s); };
+    (o.log || []).forEach(l => tilfoej(l && l.dato));
+    if (o.id) (S.tid || []).forEach(t => { const sag = String((t || {}).sag || ''); if (sag === o.id || sag.startsWith(o.id + '-')) tilfoej(t.dato); });
+    (o.udgifter || []).forEach(u => tilfoej(u && u.dato));
+    (o.fakturering || []).forEach(f => { tilfoej(f && f.dato); tilfoej(f && f.sendtDato); });
+    datoer.sort();
+    const idag = today();
+    const nyeste = datoer.length ? datoer[datoer.length - 1] : String(o.oprettet || '').slice(0, 10);
+    if (!nyeste) return idag;
+    return nyeste > idag ? idag : nyeste;
+  };
+
+  // Afdelingsgæt ud fra kundens hidtidige projekter – samme regel som afdelingForSite() i
+  // pages/indbakke.js og pages/fakturering.js, men med "" (ukendt) i stedet for "Generel" som
+  // standard: PLAN-v8 beslutning 7 kræver, at en sag uden gæt vises hos BEGGE afdelingsledere.
+  // afdelingsGaet(id) || 'Generel' giver derfor præcis sidernes svar (bevist i tools/test-forside.js).
+  const afdelingsGaet = siteId => {
+    if (!siteId) return '';   // uden site er der intet at gætte ud fra – og alle ledere skal se sagen
+    const kId = kundeAf(siteId).id;
+    const sites = kId ? (S.sites || []).filter(x => x.kundeId === kId).map(x => x.id) : [siteId];
+    const tal = {};
+    (S.projekter || []).forEach(p => { if (sites.includes(p.siteId) && p.afdeling) tal[p.afdeling] = (tal[p.afdeling] || 0) + 1; });
+    return Object.keys(tal).sort((a, b) => tal[b] - tal[a])[0] || '';
+  };
+  // Hvad der mangler, før en indbakkepost kan tildeles – samme regel som window.SalgsLed.mangler
+  // i pages/indbakke.js. Kernen må ikke afhænge af, at en sidefil er indlæst (Node-testene).
+  const salgsHuller = i => {
+    const o = i || {};
+    const ud = [];
+    const s = site(o.siteId);
+    if (!s.id) ud.push('Site findes ikke');
+    else {
+      if (!kundeAf(s).id) ud.push('Kunde ikke koblet på sitet');
+      if (!s.stedNr) ud.push('Sted nr.');
+    }
+    if (!o.opportunity) ud.push('Opportunity');
+    if (!(+o.oekonomi)) ud.push('Salgspris');
+    return ud;
+  };
+  // Udestående på et projekt – samme regel som window.ProjektFlow.udestaaende i pages/projekt.js.
+  const projUdestaaende = p => {
+    const linjer = ((p || {}).fakturering || []).filter(f => f.status !== FAKTURALINJE_STATUS[3]);
+    return { antal: linjer.length, beloeb: linjer.reduce((a, f) => a + (+f.beloeb || 0), 0), rest: p ? calc(p).rest : 0 };
+  };
+  // Kø-linjerne til fakturering – samme regel som queueRows() i pages/fakturering.js.
+  const faktureringKoe = () => {
+    const iKoe = [FAKTURALINJE_STATUS[1], FAKTURALINJE_STATUS[2]];
+    const ud = [];
+    (S.projekter || []).forEach(p => (p.fakturering || []).forEach((line, idx) => {
+      if (iKoe.includes(line.status)) ud.push({ type: 'projekt', id: p.id, p, s: site(p.siteId), line, idx });
+    }));
+    (S.serviceopgaver || []).forEach(opg => {
+      if (opg.status === 'Lukket til fakturering') ud.push({ type: 'service', id: opg.id, opg, s: site(opg.siteId) });
+    });
+    return ud;
+  };
+  // Åben eftersynsopgave på sitet – "booket" i S1's og L7's forstand (samme opslag som opgaveFor()
+  // i pages/eftersyn.js).
+  const aabenEftersynsopgave = siteId => (S.serviceopgaver || []).find(o => o.siteId === siteId && o.type === 'Eftersyn' && o.status === 'Åben') || null;
+
+  // Signalberegningen. medId = den bruger, der regnes for (standard: den indloggede).
+  // opt.afdeling bruges KUN af chefen ("" = alle afdelinger); enhver anden rolle får sit eget scope,
+  // uanset hvad der står i opt – scope er sikkerhed, ikke en visningsindstilling.
+  const forsideSignaler = (medId, opt) => {
+    const G = FORSIDE_GRAENSER;
+    const svar = { variant: '', afdeling: '', afdelingsvalg: [], venter: [], foelgOp: [], tomme: [], knapper: [] };
+    // Kun et manglende argument betyder "den indloggede". En tom streng eller et 0 er et opslag, der
+    // gik galt hos kaldstedet, og må ikke ende med at vise en anden brugers forside.
+    const m = alleMed().find(x => x.id === (medId === undefined || medId === null ? S.user : medId));
+    if (!m || !erAktivMed(m)) return svar;   // ukendt eller deaktiveret bruger: tomt svar, ingen undtagelse
+    const rolle = m.rolle || 'PM';
+    const variant = rolle === 'Chef' ? 'chef'
+      : rolle === 'Tekniker' ? 'tekniker'
+        : rolle === 'Fakturering' ? 'fakturering'
+          : rolle === 'Service' ? 'service'
+            : m.lederFor ? 'leder' : 'pm';
+    const t = idagDato();
+    const alder = d => dageSiden(d, t);
+    // resolveScopeFor afviser selv et forfalsket opt.afdeling: en leder får altid sin egen afdeling,
+    // og chefens ukendte afdeling falder tilbage til "alle".
+    const oensket = String((opt || {}).afdeling || '').trim();
+    const scope = resolveScopeFor(m, oensket ? 'afd:' + oensket : 'alle');
+    const afdeling = scope.startsWith('afd:') ? scope.slice(4) : '';
+    // Kun chefen kan vælge afdeling; de øvrige har ét fast område og får en tom liste.
+    const afdelingsvalg = variant === 'chef' ? afdelinger() : [];
+    const iOmraade = p => iScope(p, scope) && p.pm !== m.id;   // "Følg op" er ANDRES sager i området
+
+    const kundeTekst = siteId => kundeNavn(siteId) || siteLabel(site(siteId)) || String(siteId || '');
+    const siteTekst = siteId => siteLabel(site(siteId));
+    // Alderen skrives ud som en færdig dansk sætning, så siden ikke selv skal formulere den – og så
+    // det står SORT PÅ HVIDT, hvad datoen er: "31 dage" ud for en klar fakturalinje blev læst som
+    // "klar i 31 dage", men datoen er projektets seneste aktivitet.
+    const dagOrd = a => a === 1 ? '1 dag' : `${a} dage`;
+    const sidenTekst = (verb, a) => a === 0 ? `${verb} i dag` : a > 0 ? `${verb} for ${dagOrd(a)} siden` : `${verb} om ${dagOrd(-a)}`;
+    const forfaldTekst = a => a === 0 ? 'Forfalder i dag' : a > 0 ? `Forfaldent for ${dagOrd(a)} siden` : `Forfalder om ${dagOrd(-a)}`;
+    // Posten. visId = det id, brugeren skal se (PRDK-nummer, opgave-id, site-id, opportunity) – det
+    // er postens eget id undtagen dér, hvor id'et ikke siger brugeren noget (NYE) eller posten ikke
+    // ER en sag (T2's datoer og L6's teknikere: tom). verb: '' = ingen alderstekst · 'forfald' =
+    // eftersynets to retninger · ellers udsagnsordet foran "for N dage siden".
+    // alder er null, når posten ikke HAR en alder (T2 er selve datoen, L6 er en person).
+    const post = o => {
+      const dato = String(o.dato || '').slice(0, 10);
+      const a = o.alder === null ? null : (o.alder == null ? alder(dato) : o.alder);
+      return {
+        id: String(o.id || ''), visId: o.visId === undefined ? String(o.id || '') : String(o.visId || ''),
+        tekst: o.tekst || '', under: o.under || '', dato,
+        alder: a, alderTekst: (!dato || !o.verb || a === null) ? '' : (o.verb === 'forfald' ? forfaldTekst(a) : sidenTekst(o.verb, a)),
+        hvem: o.hvem || '', beloeb: +o.beloeb || 0, maerkat: o.maerkat || '', maal: o.maal || null,
+      };
+    };
+    const projMaal = id => ({ type: 'projekt', id });
+    // maal for en post, der åbner en arbejdsside: samme filternøgler som kortets "Se alle", men kun
+    // den ene post (så siden kan vise netop den række, brugeren klikkede på).
+    const sideMaal = (side, filter, titel, id) => ({ type: 'side', side, filter: Object.assign({}, filter, { titel, ids: [id] }) });
+    // Kortet. poster sorteres ældste først; antal og beløb dækker ALLE poster, ikke kun de fem, siden
+    // viser. En post uden dato sorteres SIDST – uden dato er der ingen alder at prioritere efter, og
+    // den må ikke skubbe rigtige, gamle poster ned under de fem, siden viser. sortering = et kort med
+    // en anden rangorden end datoen (L6: den, der er længst bagud, først) – listen er da allerede
+    // sorteret af kaldstedet, og sorteringen her skal holde den rækkefølge.
+    const kort = (id, titel, regel, poster, side, filter, medBeloeb, sortering) => {
+      const noegle = x => x.dato || '9999-99-99';
+      const p = poster.slice().sort(sortering || ((a, b) => noegle(a).localeCompare(noegle(b)) || String(a.id).localeCompare(String(b.id))));
+      const k = { id, titel, regel, antal: p.length };
+      if (medBeloeb) k.beloeb = p.reduce((a, x) => a + (+x.beloeb || 0), 0);
+      k.poster = p;
+      // ids = kortets poster uden dubletter (to fakturalinjer på samme projekt giver ét id), så
+      // arbejdssiden kan vise præcis de rækker, kortet talte, uden at gentage reglen.
+      k.seAlle = { side, filter: Object.assign({}, filter, { titel, ids: [...new Set(p.map(x => x.id))] }) };
+      return k;
+    };
+
+    // ---- P1-P5 / L1-L4: samme fire regler set fra to sider. "Det venter på dig" viser egne sager
+    // uden PM, "Følg op" viser andres med PM og beløb (PLAN-v8, afsnittet Signaler).
+    const projektKort = (liste, folgOp) => {
+      const pre = folgOp ? 'L' : 'P';
+      const hvem = p => folgOp ? p.pm : '';
+      const klar = [], udfoert = [], sendt = [], stille = [];
+      // Målsiden Projektoverblik har ÉN række pr. projekt. Derfor bliver flere fakturalinjer på samme
+      // projekt til ÉN post med det samlede beløb – ellers lovede "Se alle (N)" flere rækker, end
+      // filteret kunne vise, og siden ville gentage det samme projekt.
+      const linjeTekst = linjer => linjer.length === 1 ? (linjer[0].tekst || '') : `${linjer.length} linjer`;
+      const sumBeloeb = linjer => linjer.reduce((a, f) => a + (+f.beloeb || 0), 0);
+      liste.forEach(p => {
+        const akt = sidsteAktivitet(p);
+        const ps = projStatus(p);
+        const linjer = p.fakturering || [];
+        const klarLinjer = linjer.filter(f => f.status === FAKTURALINJE_STATUS[1]);
+        // "ældre end 14 dage" (PLAN-v8 P3/L3): 14 dage tæller ikke med, 15 gør.
+        const sendtLinjer = linjer.filter(f => f.status === FAKTURALINJE_STATUS[2] && f.sendtDato && alder(f.sendtDato) > G.sendtDage);
+        if (klarLinjer.length) {
+          klar.push(post({ id: p.id, tekst: kundeTekst(p.siteId), under: linjeTekst(klarLinjer), dato: akt, verb: 'Seneste aktivitet', hvem: hvem(p), beloeb: sumBeloeb(klarLinjer), maal: projMaal(p.id) }));
+        }
+        if (sendtLinjer.length) {
+          // Datoen er den ÆLDSTE sendt-dato blandt linjerne, så sorteringen viser det, der har hængt længst.
+          const aeldst = sendtLinjer.map(f => String(f.sendtDato).slice(0, 10)).sort()[0];
+          sendt.push(post({ id: p.id, tekst: kundeTekst(p.siteId), under: linjeTekst(sendtLinjer), dato: aeldst, verb: 'Sendt', hvem: hvem(p), beloeb: sumBeloeb(sendtLinjer), maal: projMaal(p.id) }));
+        }
+        if (ps.udfoerelse === UDFOERELSE_STATUS[2] && !p.overdragelse) {
+          udfoert.push(post({ id: p.id, tekst: kundeTekst(p.siteId), under: p.navn, dato: akt, verb: 'Seneste aktivitet', hvem: hvem(p), maal: projMaal(p.id) }));
+        }
+        // "Ingen aktivitet i 30 dage" (P4/L4): 30 dage tæller med.
+        if (erIgangvaerende(p) && ps.udfoerelse !== UDFOERELSE_STATUS[2] && alder(akt) >= G.stilstandDage) {
+          stille.push(post({ id: p.id, tekst: kundeTekst(p.siteId), under: p.navn, dato: akt, verb: 'Seneste aktivitet', hvem: hvem(p), maerkat: ps.udfoerelse, maal: projMaal(p.id) }));
+        }
+      });
+      const basis = folgOp ? { afdeling } : { pm: m.id };
+      return [
+        kort(pre + '1', 'Klar til fakturering, ikke sendt', 'Fakturalinjer, der står som klar, men endnu ikke er sendt til fakturering', klar, 'projekter', Object.assign({ kun: 'klar' }, basis), true),
+        kort(pre + '2', 'Udført, ikke overdraget', 'Udførelsen er sat til Udført, men projektet er ikke overdraget til service', udfoert, 'projekter', Object.assign({ kun: 'udfoertIkkeOverdraget' }, basis)),
+        kort(pre + '3', 'Sendt, men ikke faktureret', `Sendt til fakturering for mere end ${G.sendtDage} dage siden`, sendt, 'projekter', Object.assign({ kun: 'sendt' }, basis), true),
+        kort(pre + '4', 'Står stille', `Ingen aktivitet i ${G.stilstandDage} dage eller mere`, stille, 'projekter', Object.assign({ kun: 'stille' }, basis)),
+      ];
+    };
+    // P5 findes kun på egne sager – en leder følger ikke andres delopgaver op (PLAN-v8, tabellen L1-L7).
+    const delopgaveKort = liste => {
+      const poster = [];
+      liste.forEach(p => subtasks(p.id).forEach(o => {
+        if (o.status === 'Åben') {
+          poster.push(post({ id: o.id, tekst: o.beskrivelse || p.navn, under: siteTekst(o.siteId), dato: o.oprettet, verb: 'Oprettet', maerkat: 'Åben', maal: projMaal(p.id) }));
+        } else if (o.status === 'Lukket til fakturering' && !o.kladde) {
+          poster.push(post({ id: o.id, tekst: o.beskrivelse || p.navn, under: siteTekst(o.siteId), dato: o.lukket || o.oprettet, verb: 'Lukket', maerkat: 'Mangler fakturakladde', maal: projMaal(p.id) }));
+        }
+      }));
+      return kort('P5', 'Delopgaver', 'Åbne delopgaver, og delopgaver lukket til fakturering uden fakturakladde', poster, 'service', { kun: 'delopgaver', pm: m.id });
+    };
+    // NYE: chefen ser alle, afdelingslederne dem, der gættes til egen afdeling. En sag uden gæt vises
+    // hos BEGGE ledere, så den ikke kan blive liggende, fordi ingen føler sig ansvarlig (beslutning 7).
+    const nyeSagerKort = () => {
+      const titel = 'Nye sager fra salg';
+      // Afdelingsvælgeren hører til "Følg op" (beslutning 5). Chefen ser ALTID alle nye sager, så
+      // kortets tal og dets filter siger det samme, uanset hvilken afdeling han kigger på nedenfor.
+      const filter = { afdeling: variant === 'chef' ? '' : afdeling };
+      const poster = (S.indbakke || []).filter(i => {
+        if (variant === 'chef') return true;
+        const g = afdelingsGaet(i.siteId);
+        return !g || g === afdeling;
+      }).map(i => {
+        const g = afdelingsGaet(i.siteId);
+        const huller = salgsHuller(i);
+        return post({
+          // Sagen har endnu intet projektnummer – opportunity er det, salg og PM taler om.
+          id: i.id, visId: i.opportunity || i.id, tekst: kundeTekst(i.siteId), under: i.tekst,
+          dato: i.dato, verb: 'Modtaget',
+          maerkat: (g || 'Ukendt afdeling') + (huller.length ? ' · Mangler stamdata' : ''),
+          maal: sideMaal('indbakke', filter, titel, i.id),
+        });
+      });
+      return kort('NYE', titel, 'Sager fra salg, der endnu ikke er tildelt en projektleder', poster, 'indbakke', filter);
+    };
+
+    // ---- L5-L7: andres opgaver i området, som ingen PM-sag fanger.
+    // udeladEgne: en afdelingsleders EGNE delopgaver står allerede under P5 i "Det venter på dig" og
+    // må ikke gentages i "Følg op" med et andet mål. Chefens L5 og Service-rollens S2 er uberørte.
+    const aabneServiceKort = (id, titel, udeladEgne) => {
+      const filter = { status: 'Åben', tekniker: '', aeldreEndDage: G.serviceDage };
+      const poster = (S.serviceopgaver || []).filter(o => {
+        // "ældre end 30 dage" (PLAN-v8 L5/S2): 30 dage tæller ikke med, 31 gør.
+        if (o.status !== 'Åben' || alder(o.oprettet) <= G.serviceDage) return false;
+        if (udeladEgne && o.parent && (proj(o.parent) || {}).pm === m.id) return false;
+        return !afdeling || emp(o.tekniker).afdeling === afdeling;
+      }).map(o => post({
+        id: o.id, tekst: o.beskrivelse || siteTekst(o.siteId), under: siteTekst(o.siteId), dato: o.oprettet,
+        verb: 'Oprettet', hvem: o.tekniker, maerkat: o.type || 'Service', maal: sideMaal('service', filter, titel, o.id),
+      }));
+      return kort(id, titel, `Åbne serviceopgaver oprettet for mere end ${G.serviceDage} dage siden`, poster, 'service', filter);
+    };
+    const teknikertidKort = () => {
+      const titel = 'Teknikere bag forventet tid';
+      const per = forsidePeriode(t);
+      // Målet er Kontering, ikke Tidsregistrering: Kontering viser registreret mod forventet tid PR.
+      // TEKNIKER og måned, mens Tidsregistrering kun kan vise én tekniker ad gangen – og en leder kan
+      // alligevel ikke registrere tid for andre. ids står i kortets rækkefølge, så den, der er længst
+      // bagud, er den, siden forvælger.
+      const filter = { slags: 'tekniker' };
+      const poster = medarbejdere({ aktive: true, rolle: 'Tekniker' })
+        .filter(x => !afdeling || x.afdeling === afdeling)
+        .map(x => {
+          const egne = (S.tid || []).filter(y => y.tekniker === x.id);
+          const timer = egne.filter(y => { const d = String(y.dato || '').slice(0, 10); return d >= per.fra && d <= per.til; })
+            .reduce((a, y) => a + (+y.timer || 0) + (+y.ot1 || 0) + (+y.ot2 || 0), 0);
+          return { x, timer };
+        })
+        .filter(o => o.timer < per.timer)
+        // Den, der er længst bagud, står øverst. Posten er en PERSON, ikke en sag: den har hverken
+        // dato eller alder (seneste registrering kunne ligge i fremtiden og gav "om 6 dage"), og
+        // navnet står allerede i tekst – derfor er hvem tom.
+        .sort((a, b) => a.timer - b.timer || String(a.x.navn || a.x.id).localeCompare(String(b.x.navn || b.x.id), 'da'))
+        .map(o => post({
+          id: o.x.id, visId: '', tekst: o.x.navn || o.x.id, under: `Registreret ${n(o.timer)} af ${n(per.timer)} timer`,
+          dato: '', alder: null, hvem: '', maerkat: o.x.afdeling || '', maal: sideMaal('kontering', filter, titel, o.x.id),
+        }));
+      return kort('L6', titel, `Registreret tid (inkl. intern tid) mod forventet ${n(per.timer)} timer i ${per.tekst}`, poster, 'kontering', filter, false, () => 0);
+    };
+    const forfaldneEftersynKort = () => {
+      const titel = 'Forfaldne eftersyn uden opgave';
+      const filter = { kun: 'forfaldneUdenOpgave' };
+      const poster = (S.sites || []).filter(s => {
+        const e = eftersynSite(s.id);
+        if (!e.naeste || alder(e.naeste) <= 0) return false;      // kun forfaldne, ikke dagens eftersyn
+        if (aabenEftersynsopgave(s.id)) return false;             // allerede booket
+        const g = afdelingsGaet(s.id);
+        return !afdeling || !g || g === afdeling;                 // ukendt gæt vises hos begge ledere
+      }).map(s => post({
+        id: s.id, tekst: kundeTekst(s.id), under: siteTekst(s.id), dato: eftersynSite(s.id).naeste, verb: 'forfald',
+        maerkat: afdelingsGaet(s.id) || 'Ukendt afdeling', maal: sideMaal('eftersyn', filter, titel, s.id),
+      }));
+      return kort('L7', titel, 'Næste eftersyn er forfaldent, og der findes ingen åben eftersynsopgave på sitet', poster, 'eftersyn', filter);
+    };
+
+    // ---- T1-T3: teknikerens egne opgaver og egen tid.
+    const teknikerKort = () => {
+      const egne = (S.serviceopgaver || []).filter(o => o.tekniker === m.id);
+      const t1Filter = { status: 'Åben', tekniker: m.id };
+      // hvem er tom på alle tre kort: det er teknikerens EGNE kort, og hans eget navn under hver post
+      // fortæller ham intet.
+      const t1 = egne.filter(o => o.status === 'Åben').map(o => post({
+        id: o.id, tekst: o.beskrivelse || siteTekst(o.siteId), under: siteTekst(o.siteId), dato: o.oprettet,
+        verb: 'Oprettet', maerkat: o.type || 'Service', maal: sideMaal('service', t1Filter, 'Mine åbne opgaver', o.id),
+      }));
+      const t3Filter = { kun: 'udenKladde', tekniker: m.id };
+      const t3 = egne.filter(o => o.status === 'Lukket til fakturering' && !o.kladde).map(o => post({
+        id: o.id, tekst: o.beskrivelse || siteTekst(o.siteId), under: siteTekst(o.siteId), dato: o.lukket || o.oprettet,
+        verb: 'Lukket', maerkat: o.type || 'Service', maal: sideMaal('service', t3Filter, 'Lukket uden fakturakladde', o.id),
+      }));
+      // T2: de hverdage i de seneste syv dage (til og med i går), hvor teknikeren intet har registreret.
+      // Timetallet i underteksten er den samme periode som L6 (seneste hverdags måned til og med den dag).
+      const titel2 = 'Manglende tid';
+      const t2Filter = { slags: 'dato' };   // ids er datoer her, medarbejder-id'er i L6
+      const per = forsidePeriode(t);
+      const egneTider = (S.tid || []).filter(x => x.tekniker === m.id);
+      const timer = egneTider.filter(x => { const d = String(x.dato || '').slice(0, 10); return d >= per.fra && d <= per.til; })
+        .reduce((a, x) => a + (+x.timer || 0) + (+x.ot1 || 0) + (+x.ot2 || 0), 0);
+      const harDato = new Set(egneTider.map(x => String(x.dato || '').slice(0, 10)));
+      const t2 = [];
+      for (let i = 7; i >= 1; i--) {
+        const d = new Date(t); d.setDate(d.getDate() - i);
+        if (!erHverdag(d)) continue;
+        const iso = isoDato(d);
+        if (harDato.has(iso)) continue;
+        // Posten ER datoen: intet visId, ingen alder og intet "hvem" – alt tre ville gentage den.
+        t2.push(post({ id: iso, visId: '', tekst: `${UGEDAGE[d.getDay()]} ${iso}`, under: 'Ingen registrering', dato: iso, alder: null, maal: sideMaal('tid', t2Filter, titel2, iso) }));
+      }
+      return [
+        kort('T1', 'Mine åbne opgaver', 'Serviceopgaver, eftersyn og delopgaver, der står som åbne på dig', t1, 'service', t1Filter),
+        kort('T2', titel2, `Registreret ${n(timer)} af ${n(per.timer)} timer i ${per.tekst} – hverdage uden registrering i de seneste syv dage`, t2, 'tid', t2Filter),
+        kort('T3', 'Lukket uden fakturakladde', 'Egne opgaver lukket til fakturering uden fakturakladde – de blokerer faktureringen', t3, 'service', t3Filter),
+      ];
+    };
+
+    // ---- F1-F4: faktureringskøen. Køen har ingen "tildelt fakturerer", så Henriette og Benny ser det samme.
+    const faktureringsKort = () => {
+      const koe = faktureringKoe();
+      const f1Filter = { fane: 'sendt' }, f2Filter = { kun: 'udenKladde' }, f3Filter = { kun: 'udenBc' };
+      const f1 = [], f2 = [], f3 = [];
+      koe.forEach(r => {
+        const erProjekt = r.type === 'projekt';
+        const tekst = kundeTekst(r.s.id);
+        const under = erProjekt ? r.line.tekst : (r.opg.beskrivelse || siteTekst(r.s.id));
+        // En fakturakladde oprettes kun ved godkendelse (pages/service.js), så "har kladde" = godkendt kladde.
+        const beloeb = erProjekt ? r.line.beloeb : ((r.opg.kladde || {}).total || r.opg.pris || 0);
+        const dato = erProjekt ? (r.line.sendtDato || sidsteAktivitet(r.p)) : (r.opg.lukket || r.opg.oprettet);
+        // Datoen betyder tre forskellige ting i køen – underteksten skal sige hvilken.
+        const verb = erProjekt ? (r.line.sendtDato ? 'Sendt' : 'Seneste aktivitet') : 'Lukket';
+        const sendt = erProjekt ? r.line.status === FAKTURALINJE_STATUS[2] : !!r.opg.kladde;
+        if (sendt) f1.push(post({ id: r.id, tekst, under, dato, verb, hvem: erProjekt ? r.p.pm : r.opg.tekniker, beloeb, maal: sideMaal('fakturering', f1Filter, 'Sendt til fakturering', r.id) }));
+        if (!erProjekt && !r.opg.kladde) f2.push(post({ id: r.id, tekst, under, dato, verb: 'Lukket', hvem: r.opg.tekniker, beloeb, maerkat: 'Mangler fakturakladde', maal: sideMaal('fakturering', f2Filter, 'Blokeret: mangler fakturakladde', r.id) }));
+        if (!bc(r.s.stedNr)) f3.push(post({ id: r.id, tekst, under, dato, verb, hvem: erProjekt ? r.p.pm : r.opg.tekniker, beloeb, maerkat: 'Mangler stamdata', maal: sideMaal('fakturering', f3Filter, 'Mangler BC-felter', r.id) }));
+      });
+      const f4Filter = { kun: 'overdragetUdestaaende' };
+      const f4 = (S.projekter || []).filter(p => p.overdragelse && projUdestaaende(p).beloeb > 0).map(p => post({
+        id: p.id, tekst: kundeTekst(p.siteId), under: p.navn, dato: (p.overdragelse || {}).dato, verb: 'Overdraget',
+        hvem: p.pm, beloeb: projUdestaaende(p).beloeb, maal: projMaal(p.id),
+      }));
+      return [
+        kort('F1', 'Sendt til fakturering', 'Projektlinjer sendt til fakturering og serviceopgaver lukket med godkendt fakturakladde', f1, 'fakturering', f1Filter, true),
+        kort('F2', 'Blokeret: mangler fakturakladde', 'Serviceopgaver lukket til fakturering uden fakturakladde', f2, 'fakturering', f2Filter),
+        kort('F3', 'Mangler BC-felter', 'Linjer i køen, hvor sitets sted nr. mangler eller ikke findes i Business Central', f3, 'fakturering', f3Filter),
+        kort('F4', 'Overdraget med udestående', 'Overdragne projekter med fakturalinjer, der ikke er fakturerede', f4, 'projekter', f4Filter, true),
+      ];
+    };
+
+    // ---- S1-S2: Service-rollen. Foreløbig og bygget på en antagelse (beslutning 4).
+    const serviceKort = () => {
+      const s1Filter = { kun: 'skalBookes' };
+      const s1 = (S.sites || []).filter(s => {
+        const e = eftersynSite(s.id);
+        if (!e.naeste || alder(e.naeste) < -G.eftersynDage) return false;   // længere ude end varslet
+        return !aabenEftersynsopgave(s.id);
+      }).map(s => post({
+        id: s.id, tekst: kundeTekst(s.id), under: siteTekst(s.id), dato: eftersynSite(s.id).naeste, verb: 'forfald',
+        maerkat: afdelingsGaet(s.id) || 'Ukendt afdeling', maal: sideMaal('eftersyn', s1Filter, 'Eftersyn, der skal bookes', s.id),
+      }));
+      return [
+        kort('S1', 'Eftersyn, der skal bookes', `Næste eftersyn er forfaldent eller forfalder inden for ${G.eftersynDage} dage, og der findes ingen åben eftersynsopgave på sitet`, s1, 'eftersyn', s1Filter),
+        aabneServiceKort('S2', `Åbne serviceopgaver ældre end ${G.serviceDage} dage`),
+      ];
+    };
+
+    // ---- sammensætningen pr. variant (PLAN-v8, beslutning 3).
+    const egne = (S.projekter || []).filter(p => p.pm === m.id);
+    let venter = [], foelgOp = [];
+    if (variant === 'chef') {
+      // Chefen har ingen egne projekter i demodata og ser da kun de nye sager under "Det venter på
+      // dig" – de tomme PM-kort skal ikke fylde linjen "Intet venter" op. Står han alligevel som PM
+      // på en sag, får han de samme fem kort som en leder, så sagen ikke bliver usynlig for ham.
+      venter = [nyeSagerKort()];
+      if (egne.length) venter = venter.concat(projektKort(egne, false), delopgaveKort(egne));
+    } else if (variant === 'leder') {
+      venter = [nyeSagerKort()].concat(projektKort(egne, false), delopgaveKort(egne));
+    } else if (variant === 'pm') {
+      venter = projektKort(egne, false).concat(delopgaveKort(egne));
+    } else if (variant === 'tekniker') {
+      venter = teknikerKort();
+      svar.knapper = [{ tekst: 'Registrér tid', side: 'tid' }];
+    } else if (variant === 'fakturering') {
+      venter = faktureringsKort();
+    } else if (variant === 'service') {
+      venter = serviceKort();
+    }
+    if (variant === 'chef' || variant === 'leder') {
+      const andres = (S.projekter || []).filter(iOmraade);
+      foelgOp = projektKort(andres, true).concat(
+        aabneServiceKort('L5', `Åbne serviceopgaver ældre end ${G.serviceDage} dage`, variant === 'leder'),
+        teknikertidKort(),
+        forfaldneEftersynKort(),
+      );
+    }
+    svar.variant = variant;
+    svar.afdeling = afdeling;
+    svar.afdelingsvalg = afdelingsvalg;
+    // Kort uden poster fylder ikke en skærm op – de samles i én rolig linje nederst (beslutning 8).
+    const del = (liste, sektion) => liste.forEach(k => {
+      if (k.antal) svar[sektion].push(k);
+      else svar.tomme.push({ id: k.id, titel: k.titel, sektion });
+    });
+    del(venter, 'venter');
+    del(foelgOp, 'foelgOp');
+    return svar;
+  };
+
+  // "Se alle" og et klik på en post åbner arbejdssiden med et filter, siden selv læser i sin render().
+  // Filternøgler pr. side (kontrakten til pages/*.js – alle bærer desuden titel og ids):
+  //   fakturering: { fane: 'sendt' } · { kun: 'udenKladde' } · { kun: 'udenBc' }
+  //   projekter:   { pm, afdeling, kun: 'klar' | 'udfoertIkkeOverdraget' | 'sendt' | 'stille' | 'overdragetUdestaaende' }
+  //   service:     { status: 'Åben', tekniker, aeldreEndDage } · { kun: 'udenKladde', tekniker } · { kun: 'delopgaver', pm }
+  //   eftersyn:    { kun: 'skalBookes' } · { kun: 'forfaldneUdenOpgave' }
+  //   indbakke:    { afdeling }
+  //   tid:         { slags: 'dato' } (T2 – ids er datoer, teknikerens eget kort)
+  //   kontering:   { slags: 'tekniker' } (L6 – ids er medarbejdere, den længst bagud først)
+  // ids = de poster, kortet talte, så siden kan vise præcis dem uden at gentage reglen. titel bruges
+  // til sidens linje "Viser N poster fra Forsiden: <titel>". Står et filter på en liste med
+  // kolonnefiltre, sætter siden desuden data-uden-kolonnefilter="1" på tabellen (se applyFilter).
+  // Filteret kopieres ind og ud (JSON-klon): hverken kaldstedets objekt eller sidens kopi må kunne
+  // ændre state bagefter – en side, der sorterer i sin egen kopi af ids, må ikke flytte facit.
+  const klonFilter = v => { try { return JSON.parse(JSON.stringify(v == null ? {} : v)); } catch (e) { return {}; } };
+  const aabnSideMedFilter = (side, filter) => {
+    // Samme synlighedstjek som go(): et filter til en side, rollen ikke må se, må ikke blive liggende
+    // i state, når navigationen alligevel bliver afvist.
+    const p = getPage(side);
+    if (p && sideSynlig(p, emp(S.user))) {
+      S.forsideFilter = { side, filter: klonFilter(filter) };
+      save();
+    }
+    go(side);
+  };
+  // Ikke-destruktiv læsning: arbejdssiderne kalder render() igen ved hver sortering og hvert filter,
+  // så et filter, der forsvandt ved første læsning, ville være væk efter det første klik på siden.
+  const hentForsideFilter = side => {
+    const f = S.forsideFilter;
+    return f && f.side === side ? klonFilter(f.filter) : null;
+  };
+  // Ryddes to steder: her (knappen "Vis alle" på arbejdssiden) og i go(), når man går til en anden side.
+  const rydForsideFilter = () => { if (S.forsideFilter) { delete S.forsideFilter; save(); } };
+
 
   // ---------- Tætte, sorterbare tabeller (PLAN-v4) ----------
   // Brug: <th data-sort="text|num|date">; kald App.sortable(tableEl, 'key') én gang og App.applySort(tableEl, 'key') efter hver render.
@@ -2438,12 +2998,24 @@ window.DEMO = {
   // vandrette scroll ikke klipper den, og der aldrig er mere end én åben ad gangen.
   let colFilterPop = null, colFilterCtx = null; // ctx = { table, key, th, btn, label, type }
 
+  // v8: står siden med et filter fra Forsiden ("Viser N poster fra Forsiden: …"), sætter den
+  // data-uden-kolonnefilter="1" på tabellen. Så er kolonnefiltrene ude af kraft, til brugeren
+  // trykker "Vis alle": ellers vandt et gemt kolonnefilter tilbage i samme øjeblik, brugeren
+  // sorterede, og listen viste færre rækker, end banneret lovede. S.colFilter røres ALDRIG af
+  // dette – filtrene virker igen, præcis som de stod, når attributten er væk. Sorteringen er uberørt.
+  const udenKolonnefilter = table => !!table && typeof table.hasAttribute === 'function' && table.hasAttribute('data-uden-kolonnefilter');
+
   const applyFilter = (table, key) => {
     if (table.hasAttribute('data-nofilter')) return;
     const allThs = [...table.querySelectorAll('thead th')];
     const filterThs = allThs.filter(th => th.dataset.sort);
     if (!filterThs.length) return;
-    const filters = (S.colFilter && S.colFilter[key]) || {};
+    const uden = udenKolonnefilter(table);
+    // Knapperne skjules, så brugeren ikke kan sætte et filter, der først virker efter "Vis alle",
+    // og en åben popover på netop denne tabel lukkes.
+    filterThs.forEach(th => { const b = th.querySelector('.colfilter-btn'); if (b) b.hidden = uden; });
+    if (uden && colFilterCtx && colFilterCtx.table === table) closeColFilterPop(false);
+    const filters = uden ? {} : ((S.colFilter && S.colFilter[key]) || {});
     const tb = table.tBodies[0]; if (!tb) return;
     const rows = [...tb.rows].filter(r => !r.classList.contains('empty-row') && !r.querySelector('.empty') && !r.dataset.child);
     // Kun filtre, hvis kolonne findes i den AKTUELLE thead, tæller som aktive – en gemt tilstand for en
@@ -2480,8 +3052,9 @@ window.DEMO = {
   };
   const updateFilterStatus = (table, key, synlige, total, aktiv) => {
     const el = filterStatusEl(table);
-    el.hidden = !aktiv;
-    if (!aktiv) { el.innerHTML = ''; return; }
+    const vis = aktiv && !udenKolonnefilter(table);   // Forside-filteret har sin egen linje over tabellen
+    el.hidden = !vis;
+    if (!vis) { el.innerHTML = ''; return; }
     el.innerHTML = `Viser ${synlige} af ${total} rækker · <button type="button" class="tlink" data-clear-colfilter>Ryd alle filtre</button>`;
     el.querySelector('[data-clear-colfilter]').addEventListener('click', () => {
       if (S.colFilter) delete S.colFilter[key];
@@ -2495,7 +3068,7 @@ window.DEMO = {
   const updateFooterNote = (table, kolonner, aktiv) => {
     const tf = table.tFoot; if (!tf) return;
     let note = tf.querySelector('tr.f8-note');
-    if (!aktiv) { if (note) note.remove(); return; }
+    if (!aktiv || udenKolonnefilter(table)) { if (note) note.remove(); return; }
     if (!note) { note = document.createElement('tr'); note.className = 'f8-note'; note.appendChild(document.createElement('td')); tf.appendChild(note); }
     const td = note.querySelector('td'); td.colSpan = kolonner || 1;
     td.textContent = 'Total, alle rækker – filteret ovenfor viser kun nogle af dem.';
@@ -2555,6 +3128,7 @@ window.DEMO = {
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
   };
   const openColFilterPop = (table, key, th) => {
+    if (udenKolonnefilter(table)) return;   // kolonnefiltre er ude af kraft, mens Forside-filteret står
     const pop = ensureColFilterPop();
     const label = thLabel(th), type = th.dataset.sort || 'text';
     const btn = th.querySelector('.colfilter-btn');
@@ -2624,6 +3198,7 @@ window.DEMO = {
     btn.type = 'button'; btn.className = 'colfilter-btn';
     btn.setAttribute('aria-haspopup', 'dialog'); btn.setAttribute('aria-expanded', 'false');
     btn.setAttribute('aria-label', 'Filtrer ' + label);
+    btn.hidden = udenKolonnefilter(table);   // tabellen kan allerede stå med et Forside-filter
     th.classList.add('has-filter');
     th.appendChild(btn);
     // stopPropagation: et klik/Enter/mellemrum på filterknappen må ikke også udløse th's sortering (F8).
@@ -2734,8 +3309,12 @@ window.DEMO = {
   // Under 900 px er menuen uændret den vandrette ikon-stribe (F1: "en to-niveau-menu i en vandret
   // scroller er dårligere end den flade") – samme flade struktur som før B6, kun uden gruppen Rapporter.
   function renderNavFlat(nav, vis) {
+    // v8: Forsiden står øverst uden for grupperne – også fladt, hvor den ellers ville lande i den
+    // gruppe, sidefilen tilfældigvis har sat. Ingen tæller (beslutning 15).
+    const forsidePage = vis.find(p => p.id === 'forside' && !p.hidden);
+    if (forsidePage) nav.appendChild(buildLeafBtn(forsidePage));
     GROUP_ORDER.forEach(g => {
-      const items = vis.filter(p => (p.group || 'Projekter') === g && !p.hidden);
+      const items = vis.filter(p => (p.group || 'Projekter') === g && !p.hidden && p.id !== 'forside');
       if (!items.length) return;
       const lbl = document.createElement('div'); lbl.className = 'nav-label'; lbl.textContent = groupLabel(g); nav.appendChild(lbl);
       items.forEach(p => nav.appendChild(buildLeafBtn(p)));
@@ -2744,7 +3323,11 @@ window.DEMO = {
     const activeP = S.currentProj && proj(S.currentProj);
     if (pk && activeP) {
       const b = buildActiveProjBtn(activeP);
-      const first = nav.querySelector('.nav-label + .nav-btn + .nav-btn') || (nav.firstChild && nav.firstChild.nextSibling && nav.firstChild.nextSibling.nextSibling);
+      // Genvejen står efter den anden knap i den FØRSTE gruppe. Reserveplaceringen regnes fra den
+      // første gruppeoverskrift – ikke fra nav'ens første barn, som Forside-knappen nu er.
+      const forsteLabel = nav.querySelector('.nav-label');
+      const first = nav.querySelector('.nav-label + .nav-btn + .nav-btn')
+        || (forsteLabel && forsteLabel.nextSibling && forsteLabel.nextSibling.nextSibling);
       nav.insertBefore(b, first ? first.nextSibling : null);
     }
   }
@@ -2812,6 +3395,10 @@ window.DEMO = {
   // med udslag (F1). Ved 901-1440 px folder styles.css skinnen om til ikon+udslag – se rail-reglerne der.
   function renderNavGrouped(nav, vis) {
     const top = document.createElement('div'); top.className = 'nav-top';
+    // v8: Forsiden er global som Søg og står FØR den, øverst uden for grupperne (beslutning 2).
+    // Koden tåler, at siden endnu ikke er registreret – den bygges i en senere bølge.
+    const forsidePage = vis.find(p => p.id === 'forside' && !p.hidden);
+    if (forsidePage) top.appendChild(buildLeafBtn(forsidePage, 'nav-forside'));
     const soegPage = vis.find(p => p.id === 'soeg');
     if (soegPage) top.appendChild(buildLeafBtn(soegPage, 'nav-search'));
 
@@ -2826,8 +3413,8 @@ window.DEMO = {
 
     const groups = document.createElement('div'); groups.className = 'nav-groups';
     GROUP_ORDER.forEach(g => {
-      // Søg er global og ligger uden for grupperne (se rapportens note om pages/soeg.js)
-      const items = vis.filter(p => (p.group || 'Projekter') === g && !p.hidden && p.id !== 'soeg');
+      // Søg og Forsiden er globale og ligger uden for grupperne (se rapportens note om pages/soeg.js)
+      const items = vis.filter(p => (p.group || 'Projekter') === g && !p.hidden && p.id !== 'soeg' && p.id !== 'forside');
       if (!items.length) return;
       groups.appendChild(buildNavGroup(g, items, activeP));
     });
@@ -2844,11 +3431,11 @@ window.DEMO = {
   }
 
   // Åbner (og husker) den gruppe en side hører til, uden at bygge hele menuen om – kaldes ved hver
-  // navigation, så fokus og de øvrige gruppers tilstand ikke forstyrres. Søg og Feedback ligger uden
-  // for gruppesystemet og springes over.
+  // navigation, så fokus og de øvrige gruppers tilstand ikke forstyrres. Søg, Forsiden og Feedback
+  // ligger uden for gruppesystemet og springes over.
   function revealNavGroup(pageId, g) {
     const nav = $('#nav'); if (!nav) return;
-    const uden = pageId === 'soeg' || pageId === 'feedback';
+    const uden = pageId === 'soeg' || pageId === 'feedback' || pageId === 'forside';
     $$('.nav-group', nav).forEach(b => b.classList.toggle('has-active', !uden && b.dataset.group === g));
     if (railWidth()) { closeRailFlyouts(); return; } // skinnen: en valgt side lukker udslaget; gruppen markeres kun med has-active
     if (uden || !g) return;
@@ -2867,6 +3454,9 @@ window.DEMO = {
     if (!p) return;
     // Samme tjek som menulisten, så en skjult side heller ikke kan nås via adresselinjen (#brugere)
     if (!sideSynlig(p, emp(S.user))) { toast('Denne visning er ikke tilgængelig for din rolle'); return; }
+    // v8: et filter fra Forsiden gælder kun den side, det blev sat til. Ryddes FØR sidens render(),
+    // så en side aldrig kan komme til at læse et filter, der hørte til et andet kort.
+    if (S.forsideFilter && S.forsideFilter.side !== pageId) { delete S.forsideFilter; save(); }
     $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + pageId));
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
     revealNavGroup(pageId, p.group || 'Projekter');
@@ -2877,11 +3467,15 @@ window.DEMO = {
 
   function openProject(id) { S.currentProj = id; renderNav(); go('projekt'); }
 
+  // v8 (beslutning 2): Forsiden er startside for alle roller ved login og brugerskift. Findes siden
+  // ikke (eller er den skjult for rollen), gælder de gamle rollevalg uændret – kernen må ikke kræve
+  // en side, der først registreres i en senere bølge.
   function defaultPage() {
-    const r = role();
-    const pref = { Tekniker: 'tid', Fakturering: 'fakturering', Service: 'service', Chef: 'projekter' }[r] || 'indbakke';
     const vis = visiblePages();
-    return (vis.find(p => p.id === pref) || vis[0]).id;
+    // En skjult forside (hidden) er hverken menupunkt eller startside – samme tjek som i menuen.
+    if (vis.some(p => p.id === 'forside' && !p.hidden)) return 'forside';
+    const pref = { Tekniker: 'tid', Fakturering: 'fakturering', Service: 'service', Chef: 'projekter' }[role()] || 'indbakke';
+    return (vis.find(p => p.id === pref) || vis[0] || { id: 'indbakke' }).id;
   }
 
   // ---------- bruger / roller ----------
@@ -3001,7 +3595,11 @@ window.DEMO = {
     // v7 brugeradministration (PLAN-v7, bølge 1a) – kontrakt for pages/brugere.js og de 12 læsesteder
     medarbejdere, maaAdministrereBrugere, afdelinger, foreslaaInitialer, medarbejderLaase,
     opretMedarbejder, retMedarbejder, saetMedarbejderAktiv, aktiveProjekterFor,
-    opdaterBrugerskifter, visiblePages, allePages: () => pages.slice(), BRUGER_ROLLER,
+    opdaterBrugerskifter, visiblePages, allePages: () => pages.slice(), BRUGER_ROLLER, defaultPage,
+    // v8 Forside (PLAN-v8) – kontrakt for pages/forside.js og arbejdssidernes "Se alle".
+    // De fem sidste er rene udgaver af regler, der også findes i en sidefil (se rapporten).
+    FORSIDE_GRAENSER, forsideSignaler, sidsteAktivitet, aabnSideMedFilter, hentForsideFilter, rydForsideFilter,
+    afdelingsGaet, salgsHuller, projUdestaaende, faktureringKoe, aabenEftersynsopgave, forsidePeriode, dageSiden,
     UDFOERELSE_STATUS, FAKTURALINJE_STATUS, FAKTURERING_STATUS, INSTALLATION_STATUS, INSTALLATION_TYPER,
     get currentProj() { return S.currentProj || null; },
     icons: ['feed', 'screen', 'calendar-check', 'mobile', 'home', 'check', 'close', 'export', 'search', 'service', 'user', 'time', 'mail', 'notification', 'download', 'info', 'shield-check', 'location'],
@@ -3019,6 +3617,205 @@ window.DEMO = {
     // F8: en åben filterpopover er positioneret ud fra sin kolonne ved åbning og følger ikke med, hvis
     // vinduet ændrer størrelse – luk den i stedet for at lade den svæve forkert placeret.
     try { window.addEventListener('resize', () => { if (colFilterPop && !colFilterPop.hidden) closeColFilterPop(false); }); } catch (e) {}
+  });
+})();
+
+</script>
+<script>
+// Forside – "Det venter på dig" (PLAN-v8). Handlingsrettet startside for alle roller: viser KUN det,
+// App.forsideSignaler() returnerer, og sender brugeren videre til den side, hvor det løses. Ingen
+// forretningsregler her – de ligger alle i kernen, så reglerne kan afprøves i Node (tools/test-forside.js)
+// uden at denne side rører dem.
+(function () {
+  // Opslag fra data-nøgle til mål/seAlle, genopbygget ved hver render() – klikket slår op her i stedet
+  // for at lægge JSON i attributter (AGENT-REGLER/PLAN-v8 §F).
+  let postMaal = {};
+  let kortSeAlle = {};
+  // Sat lige før et render(), der skyldes et klik på en afdelingsfane (F1) – bruges KUN til at føre
+  // tastaturfokus tilbage til den nu aktive fane, så et almindeligt render() ved sideskift/brugerskift
+  // ikke rører fokus.
+  let fokusEfterAfdKlik = false;
+
+  // Metalinjen viser kun de dele, kernen har fyldt ud, i rækkefølgen visId · hvem · beløb · alderTekst.
+  // Kernen leverer den færdige alderTekst (fx "Sendt for 23 dage siden") – post.alder bruges ikke her,
+  // og felterne kan mangle (før kernens rettelse er landet), så alt læses med "|| ''".
+  const fsPostHtml = (kort, post, key) => {
+    postMaal[key] = post.maal;
+    const { h, kr, emp } = App;
+    const metaBits = [];
+    const visId = post.visId || '';
+    if (visId) metaBits.push(h(visId));
+    if (post.hvem) metaBits.push(h(emp(post.hvem).navn));
+    if (post.beloeb > 0) metaBits.push(h(kr(post.beloeb)));
+    const alderTekst = post.alderTekst || '';
+    if (alderTekst) metaBits.push(h(alderTekst));
+    return `<button type="button" class="fs-post" data-maal="${h(key)}">
+      <span class="fs-post-top">
+        <span class="fs-post-tekst">${h(post.tekst)}</span>
+        ${post.maerkat ? `<span class="fs-tag">${h(post.maerkat)}</span>` : ''}
+      </span>
+      ${post.under ? `<span class="fs-post-under muted">${h(post.under)}</span>` : ''}
+      ${metaBits.length ? `<span class="caption muted fs-post-meta">${metaBits.join(' · ')}</span>` : ''}
+    </button>`;
+  };
+
+  // Ét kort: overskrift + antal, evt. samlet beløb, reglen som undertekst, op til fem poster og "Se alle".
+  const fsKortHtml = (kort, key) => {
+    const { h, kr } = App;
+    kortSeAlle[key] = kort.seAlle;
+    const posts = kort.poster.slice(0, 5).map((p, i) => fsPostHtml(kort, p, key + '-' + i)).join('');
+    return `<div class="card fs-card"><div class="card-body">
+      <div class="fs-card-head"><h3>${h(kort.titel)}</h3><span class="fs-count">${kort.antal}</span></div>
+      ${kort.beloeb != null ? `<p class="fs-beloeb">${h(kr(kort.beloeb))}</p>` : ''}
+      <p class="caption muted fs-regel">${h(kort.regel)}</p>
+      <div class="fs-posts">${posts}</div>
+      <button type="button" class="tlink fs-seealle" data-seealle="${h(key)}">Se alle (${kort.antal})</button>
+    </div></div>`;
+  };
+
+  // Én sektion (venter/foelgOp): kortgitter + rolig linje for tomme kort, eller én venlig sætning hvis
+  // sektionen slet ingen kort har (beslutning 8).
+  const fsSektionHtml = (kort, tomme, sektion, prefix, tomBesked) => {
+    const { h } = App;
+    const tomTitler = tomme.filter(t => t.sektion === sektion).map(t => t.titel);
+    if (!kort.length && !tomTitler.length) return `<p class="muted fs-rolig">${h(tomBesked)}</p>`;
+    let ud = '';
+    if (kort.length) ud += `<div class="fs-grid">${kort.map((k, i) => fsKortHtml(k, prefix + i)).join('')}</div>`;
+    if (tomTitler.length) ud += `<p class="caption muted fs-tomlinje">Intet venter: ${tomTitler.map(t => h(t)).join(' · ')}</p>`;
+    return ud;
+  };
+
+  // Sidehovedets linje: hvem og hvad – ingen hilsner, ingen udråbstegn.
+  const fsHeadLinje = (svar, m) => {
+    const tekst = {
+      chef: 'chef',
+      leder: `projektleder og afdelingsleder for ${m.lederFor || m.afdeling || ''}`,
+      pm: 'projektleder',
+      fakturering: 'fakturering',
+      service: 'service (foreløbig rolle)',
+    }[svar.variant] || '';
+    return `${m.navn} · ${tekst}`;
+  };
+
+  // Chefens afdelingsvælger over "Følg op". Aktiv fane markeres med svar.afdeling (det kernen faktisk
+  // regnede for), ikke den gemte værdi – en forfalsket/forældet værdi kan afvises af kernen.
+  const fsAfdVaelgerHtml = svar => {
+    const { h } = App;
+    const opts = [''].concat(svar.afdelingsvalg);
+    return `<div class="ftabs fs-afd" role="group" aria-label="Afdeling">${opts.map(v => {
+      const aktiv = v === svar.afdeling;
+      return `<button type="button" class="ftab${aktiv ? ' on' : ''}" data-afd="${h(v)}" aria-pressed="${aktiv}">${v ? h(v) : 'Alle'}</button>`;
+    }).join('')}</div>`;
+  };
+
+  // Skærmvisning: chef, leder, pm, fakturering, service.
+  const fsSkaermHtml = (svar, m) => {
+    const { h } = App;
+    const visFoelgOp = svar.variant === 'chef' || svar.variant === 'leder';
+    const omraadeTxt = svar.afdeling || 'alle afdelinger';
+    return `
+      <div class="page-head">
+        <div>
+          <h1>Det venter på dig</h1>
+          <p>${h(fsHeadLinje(svar, m))}</p>
+        </div>
+      </div>
+      ${fsSektionHtml(svar.venter, svar.tomme, 'venter', 'v', 'Der er ikke noget, der venter på dig lige nu.')}
+      ${visFoelgOp ? `
+        <h2 class="fs-h2">Følg op</h2>
+        <p class="muted fs-forklaring">Andres sager i ${h(omraadeTxt)}, som ser ud til at hænge.</p>
+        ${svar.variant === 'chef' ? fsAfdVaelgerHtml(svar) : ''}
+        ${fsSektionHtml(svar.foelgOp, svar.tomme, 'foelgOp', 'f', 'Der er ikke noget at følge op på lige nu.')}
+      ` : ''}
+    `;
+  };
+
+  // Tekniker: samme indhold i telefonrammen fra pages/tid.js, én kolonne.
+  const fsTeknikerHtml = (svar, m) => {
+    const { h } = App;
+    const knapper = svar.knapper.map(k => `<button type="button" class="btn cta fs-knap" data-knap="${h(k.side)}">${h(k.tekst)}</button>`).join('');
+    return `
+      <div class="page-head">
+        <div>
+          <h1>Det venter på dig – teknikerens telefon</h1>
+          <p>${h(m.navn)} · tekniker</p>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen">
+            <div class="app-bar"><div><b>Det venter på dig</b><small>${h(m.navn)}</small></div><svg aria-label="Securitas"><use href="#logo-white"/></svg></div>
+            <div class="content">
+              ${knapper}
+              ${fsSektionHtml(svar.venter, svar.tomme, 'venter', 'v', 'Der er ikke noget, der venter på dig lige nu.')}
+            </div>
+          </div>
+        </div>
+        <div class="side-note">
+          <h2>Det venter på dig, på telefonen</h2>
+          <p>Teknikeren ser denne forside på sin telefon, med det der venter: åbne opgaver, manglende tid og opgaver lukket uden fakturakladde. Kortene åbner Serviceopgaver og Tidsregistrering, samme steder som knapperne i menuen.</p>
+        </div>
+      </div>
+    `;
+  };
+
+  // Ukendt eller deaktiveret bruger: kernen svarer med variant '' og tomme lister.
+  const fsUkendtHtml = () => `
+    <div class="page-head"><div><h1>Det venter på dig</h1></div></div>
+    <p class="muted">Denne bruger findes ikke, eller er deaktiveret.</p>
+  `;
+
+  App.registerPage({
+    id: 'forside', label: 'Forside', icon: 'home', order: 1,
+    // init() binder KUN delegerede klik-lyttere på sidens rod – intet her må afhænge af data eller
+    // bruger, for så bliver det forældet ved brugerskift (samme lære som v7, se PLAN-v8 punkt B).
+    init() {
+      const root = App.$('#page-forside');
+      if (!root) return;
+      root.addEventListener('click', e => {
+        const seAlleBtn = e.target.closest('[data-seealle]');
+        if (seAlleBtn) {
+          const sa = kortSeAlle[seAlleBtn.dataset.seealle];
+          if (sa) App.aabnSideMedFilter(sa.side, sa.filter);
+          return;
+        }
+        const postBtn = e.target.closest('[data-maal]');
+        if (postBtn) {
+          const maal = postMaal[postBtn.dataset.maal];
+          if (!maal) return;
+          if (maal.type === 'projekt') App.openProject(maal.id);
+          else if (maal.type === 'side') App.aabnSideMedFilter(maal.side, maal.filter);
+          return;
+        }
+        const knapBtn = e.target.closest('[data-knap]');
+        if (knapBtn) { App.go(knapBtn.dataset.knap); return; }
+        const afdBtn = e.target.closest('[data-afd]');
+        if (afdBtn) {
+          App.S.forsideAfd = afdBtn.dataset.afd;
+          App.save();
+          fokusEfterAfdKlik = true;
+          this.render();
+        }
+      });
+    },
+    // Alt indhold bygges her, hver gang – siden viser kun det, App.forsideSignaler() returnerer.
+    render() {
+      const root = App.$('#page-forside');
+      if (!root) return;
+      postMaal = {}; kortSeAlle = {};
+      const m = App.emp(App.S.user);
+      const svar = App.forsideSignaler(undefined, { afdeling: App.S.forsideAfd || '' });
+      if (svar.variant === 'tekniker') root.innerHTML = fsTeknikerHtml(svar, m);
+      else if (!svar.variant) root.innerHTML = fsUkendtHtml();
+      else root.innerHTML = fsSkaermHtml(svar, m);
+      // F1: kun efter et klik på en afdelingsfane føres fokus tilbage til den nu aktive fane – et
+      // almindeligt render() (sideskift, brugerskift, genindlæsning) må ikke flytte fokus.
+      if (fokusEfterAfdKlik) {
+        fokusEfterAfdKlik = false;
+        const aktivFane = root.querySelector('.fs-afd .ftab.on');
+        if (aktivFane && aktivFane.focus) aktivFane.focus();
+      }
+    },
   });
 })();
 
@@ -3087,6 +3884,7 @@ App.registerPage({
       <div class="replaces">Erstatter <b>projekt modtagende projekter.xlsx</b></div>
     </div>
     <div class="card">
+      <div id="inboxForsideBanner"></div>
       <div class="table-wrap">
         <table>
           <thead><tr>
@@ -3124,6 +3922,13 @@ App.registerPage({
     const tal = {};
     (S.projekter || []).forEach(p => { if (sites.includes(p.siteId) && p.afdeling) tal[p.afdeling] = (tal[p.afdeling] || 0) + 1; });
     return Object.keys(tal).sort((a, b) => tal[b] - tal[a])[0] || 'Generel';
+  },
+  // Forside-filterets rene rækkeudvælgelse (PLAN-v8, bølge 2b): ids er indbakke-id'er ("IN-…"), ét pr.
+  // post, så et simpelt idSet-match er nok – gættet på afdeling gentages ikke her. Uden DOM.
+  forsideRaekker(rows, ff) {
+    if (!ff || !Array.isArray(ff.ids)) return rows;
+    const idSet = new Set(ff.ids);
+    return rows.filter(i => idSet.has(i.id));
   },
   init() {
     const { $, S, D, site, emp, save, toast, today, now, openModal, closeModal, openProject } = App;
@@ -3165,8 +3970,17 @@ App.registerPage({
   render() {
     const { $, $$, S, site, kr, h, icon, siteLabel } = App;
     const tb = $('#inboxRows');
-    if (!S.indbakke.length) { tb.innerHTML = '<tr><td colspan="10" class="empty">Ingen nye sager. Alt er tildelt.</td></tr>'; return; }
-    tb.innerHTML = S.indbakke.map(i => {
+    // Forside-filter (PLAN-v8, bølge 2b): siden har ingen egne filtre at omgå – den viser altid alle
+    // indbakkeposter – så det eneste, der skal ske her, er at indsnævre til ff.ids og vise banneret.
+    const ff = App.hentForsideFilter('indbakke');
+    const rows = ff ? this.forsideRaekker(S.indbakke, ff) : S.indbakke;
+    $('#inboxForsideBanner').innerHTML = ff ? `<div class="replaces" data-forside-banner style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:var(--space-4)">
+      <span>Viser ${rows.length} poster fra Forsiden: <b>${h(ff.titel || '')}</b></span>
+      <button type="button" class="tlink" data-forside-vis-alle>Vis alle</button>
+    </div>` : '';
+    if (ff) $('[data-forside-vis-alle]', $('#inboxForsideBanner')).addEventListener('click', () => { App.rydForsideFilter(); this.render(); });
+    if (!rows.length) { tb.innerHTML = `<tr><td colspan="10" class="empty">${ff ? 'Ingen af Forsidens poster ligger længere i indbakken.' : 'Ingen nye sager. Alt er tildelt.'}</td></tr>`; return; }
+    tb.innerHTML = rows.map(i => {
       const s = site(i.siteId);
       // "Mangler" viser de huller, vi selv kan se i data; salgs egen note står under som note, så en
       // forældet note (fx "mangler sted nr." på et site, der har fået et) ikke læses som en sandhed.
@@ -3271,6 +4085,7 @@ App.registerPage({
         <button class="btn primary" id="btnNewCase">Ny sag</button>
         <button class="btn" id="btnExport"><svg class="ico s"><use href="#i-export"/></svg>Eksportér til Excel</button>
       </div>
+      <div id="projForsideBanner"></div>
       <div class="table-wrap">
         <table class="table-dense" id="projTable">
           <thead></thead>
@@ -3333,11 +4148,13 @@ App.registerPage({
     const { $, $$, D, S, site, bc, save, toast, openModal, closeModal, openProject, h, kr, siteLabel } = App;
     const fPm = $('#fPm');
     // Listen genopbygges i render() (kaldes hver gang siden vises), så en (de)aktivering af en PM ikke kræver genindlæsning.
-    fPm.addEventListener('input', () => { S.fPm = fPm.value; save(); this.render(); });
+    // Grill-rettelse B2: enhver betjening af sidens egne filtre forlader Forside-visningen først (ellers
+    // så filteret aktivt ud, men reagerede ikke) – App.rydForsideFilter() ændrer intet, hvis der ikke er noget at rydde.
+    fPm.addEventListener('input', () => { App.rydForsideFilter(); S.fPm = fPm.value; save(); this.render(); });
     App.UDFOERELSE_STATUS.forEach(v => $('#fStatus').add(new Option(v, v)));
     App.FAKTURERING_STATUS.forEach(v => $('#fFakStatus').add(new Option(v, v)));
-    ['#fStatus', '#fFakStatus', '#fModel', '#fMaaned', '#fSearch'].forEach(s => $(s).addEventListener('input', () => this.render()));
-    $$('#fAfd .ftab').forEach(b => b.addEventListener('click', () => { S.fAfd = b.dataset.v; App.save(); this.render(); }));
+    ['#fStatus', '#fFakStatus', '#fModel', '#fMaaned', '#fSearch'].forEach(s => $(s).addEventListener('input', () => { App.rydForsideFilter(); this.render(); }));
+    $$('#fAfd .ftab').forEach(b => b.addEventListener('click', () => { App.rydForsideFilter(); S.fAfd = b.dataset.v; App.save(); this.render(); }));
     $('#fEkonomi').addEventListener('click', () => { S.visOekonomi = !S.visOekonomi; save(); this.render(); });
     $('#btnExport').addEventListener('click', () => toast('Kun i den færdige løsning: her downloades listen som Excel-fil'));
     this.table = $('#projTable');
@@ -3594,8 +4411,16 @@ App.registerPage({
     ];
     return App.S.visOekonomi ? [...standard, ...oekonomi, ...tail, ...oekonomiHale, ...rest] : [...standard, ...tail, ...rest];
   },
+  // Forside-filterets rene rækkeudvælgelse (PLAN-v8, bølge 2b): ids peger allerede på præcis de
+  // projekter, kortet talte – ingen forretningsregel (klar/stille/…) gentages her. Uden DOM, så den kan
+  // afprøves i Node (samme mønster som queueRows() i pages/fakturering.js).
+  forsideRaekker(rows, ff) {
+    if (!ff || !Array.isArray(ff.ids)) return rows;
+    const idSet = new Set(ff.ids);
+    return rows.filter(p => idSet.has(p.id));
+  },
   render() {
-    const { $, $$, S, site, emp, calc, openProject, role, save } = App;
+    const { $, $$, S, site, emp, calc, openProject, role, save, h } = App;
     // PM-filteret genopbygges her (render() kører hver gang siden vises), så en (de)aktiveret PM slår
     // igennem uden genindlæsning. "Alle" er sidens faste førsteoption og røres ikke.
     $('#fPm').querySelectorAll('option:not([value=""])').forEach(o => o.remove());
@@ -3608,7 +4433,11 @@ App.registerPage({
     $$('#fAfd .ftab').forEach(x => x.classList.toggle('on', x.dataset.v === (S.fAfd || '')));
     $('#fEkonomi').classList.toggle('on', !!S.visOekonomi);
     const q = $('#fSearch').value.trim().toLowerCase();
-    const rows = S.projekter.filter(p => {
+    // Forside-filter (PLAN-v8, bølge 2b): mens det er sat, viser siden PRÆCIS de rækker, Forsiden talte –
+    // sidens egne filtre (afdeling, PM, status, model, måned, søgning) omgås helt, og S.fAfd/S.fPm m.fl.
+    // rører vi ikke, så "Vis alle" stiller siden tilbage præcis, som brugeren havde den.
+    const ff = App.hentForsideFilter('projekter');
+    const rows = ff ? this.forsideRaekker(S.projekter, ff) : S.projekter.filter(p => {
       if (S.fAfd && p.afdeling !== S.fAfd) return false;
       if ($('#fPm').value && p.pm !== $('#fPm').value) return false;
       const ps = App.projStatus(p);
@@ -3623,6 +4452,16 @@ App.registerPage({
       }
       return true;
     });
+
+    $('#projForsideBanner').innerHTML = ff ? `<div class="replaces" data-forside-banner style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:var(--space-4)">
+      <span>Viser ${rows.length} poster fra Forsiden: <b>${h(ff.titel || '')}</b></span>
+      <button type="button" class="tlink" data-forside-vis-alle>Vis alle</button>
+    </div>` : '';
+    if (ff) $('[data-forside-vis-alle]', $('#projForsideBanner')).addEventListener('click', () => { App.rydForsideFilter(); this.render(); });
+    // Grill-rettelse B1: kernens kontrakt for F8, mens et Forside-filter er aktivt – sat FØR
+    // App.sortable/App.applySort, så kernen selv holder rækker, filterlinjen og kolonneknapperne i ro,
+    // også ved et sorterings- eller kolonnefilterklik uden om render().
+    if (ff) this.table.setAttribute('data-uden-kolonnefilter', '1'); else this.table.removeAttribute('data-uden-kolonnefilter');
 
     const cols = this.columns();
     // thead genskabes hver gang, så antal kolonner altid stemmer og App.sortable aldrig dobbeltbindes.
@@ -4484,6 +5323,18 @@ App.registerPage({
     });
     return [...cs, ...subs, ...ps];
   },
+  // Forside-filterets rene beslutning (grill-rettelse B3): hvilken dato skal forudfyldes – uden at
+  // røre DOM'en, så den kan afprøves i Node. Kernens L6-kort ("Teknikere bag forventet tid") peger nu
+  // på pages/kontering.js i stedet, så denne side håndterer kun slags: 'dato' (T2, "Manglende tid") –
+  // formen på ids[0] bruges som reserve, hvis slags mangler eller er noget andet.
+  forsidePrefil(ff) {
+    if (!ff || !Array.isArray(ff.ids) || !ff.ids.length) return null;
+    const id0 = String(ff.ids[0]);
+    const erDatoForm = /^\d{4}-\d{2}-\d{2}$/.test(id0);
+    const erDato = ff.slags ? ff.slags === 'dato' : erDatoForm;
+    if (erDato && erDatoForm) return { dato: id0 };
+    return null;
+  },
   render() {
     const { $, $$, S, site, siteLabel, emp, h, n, isIntern, INTERN_KATEGORIER, expectedHours } = App;
     const techSel = $('#techSel');
@@ -4495,6 +5346,17 @@ App.registerPage({
     if ([...techSel.options].some(o => o.value === techSelCur)) techSel.value = techSelCur;
     // Er den aktuelle bruger tekniker, vælges vedkommende automatisk
     if (emp(S.user).rolle === 'Tekniker' && techSel.value !== S.user) { techSel.value = S.user; this.selCase = null; this.selKat = null; }
+
+    // Forside-filter (grill-rettelse B3): en dato forudfylder datofeltet. Selve beslutningen ligger i
+    // forsidePrefil() (uden DOM); her anvendes den blot. Intet banner på denne side. Filteret bruges
+    // højst én gang, så et senere besøg ikke forudfylder igen.
+    const ff = App.hentForsideFilter('tid');
+    if (ff) {
+      const prefil = this.forsidePrefil(ff);
+      if (prefil && prefil.dato) $('#tDato').value = prefil.dato;
+      App.rydForsideFilter();
+    }
+
     const tech = techSel.value; $('#techName').textContent = emp(tech).navn;
 
     // ---- registrér-på tabs ----
@@ -5952,6 +6814,7 @@ App.registerPage({
         <span class="spacer"></span>
         <button class="btn cta" id="svcNy">Ny serviceopgave</button>
       </div>
+      <div id="svcForsideBanner"></div>
       <div class="table-wrap">
         <table class="table-dense" id="svcTable">
           <thead></thead>
@@ -6005,13 +6868,16 @@ App.registerPage({
     const teknikere = aktive => App.medarbejdere({ aktive, rolle: 'Tekniker' });
 
     // filterrække – listen genopbygges i render() (kører hver gang siden vises), se dér.
+    // Grill-rettelse B2: enhver betjening af sidens egne filtre forlader Forside-visningen først (ellers
+    // så filteret aktivt ud, men reagerede ikke) – App.rydForsideFilter() ændrer intet, hvis der ikke er noget at rydde.
     const tekSel = $('#svcTekniker');
     $$('#svcTabs .ftab').forEach(b => b.addEventListener('click', () => {
+      App.rydForsideFilter();
       $$('#svcTabs .ftab').forEach(x => x.classList.toggle('on', x === b));
       this.fStatus = b.dataset.v; this.render();
     }));
-    tekSel.addEventListener('change', () => this.render());
-    $('#svcSearch').addEventListener('input', () => this.render());
+    tekSel.addEventListener('change', () => { App.rydForsideFilter(); this.render(); });
+    $('#svcSearch').addEventListener('input', () => { App.rydForsideFilter(); this.render(); });
 
     this.table = $('#svcTable');
     // thead genskabes ved hver render (kolonnerne afhænger af rollen), så App.sortable bindes der i stedet.
@@ -6249,6 +7115,14 @@ App.registerPage({
     const canGodkend = c.status === 'Åben' || c.status === 'Lukket til fakturering';
     $('#svcKladdeActions').innerHTML = `<button class="btn" id="svcKladdePdf">Gem som PDF</button>` + (canGodkend ? `<button class="btn cta" id="svcKladdeGodkend">Godkend og send til fakturering</button>` : '');
   },
+  // Forside-filterets rene rækkeudvælgelse (PLAN-v8, bølge 2b): ids er ét pr. opgave, så et simpelt
+  // idSet-match er nok – ingen forretningsregel gentages her. rows er allerede rettighedsafgrænset af
+  // kaldestedet (render()'s "all", som en tekniker kun ser egne opgaver i). Uden DOM, afprøvelig i Node.
+  forsideRaekker(rows, ff) {
+    if (!ff || !Array.isArray(ff.ids)) return rows;
+    const idSet = new Set(ff.ids);
+    return rows.filter(c => idSet.has(c.id));
+  },
   // Kolonneopsæt. Rollen Tekniker ser kun sig selv (listen er allerede filtreret til brugeren), så
   // Tekniker-kolonnen (og -filteret, se render()) er overflødig og skjules. Pris hører til kladden,
   // ikke overbliksliste; Oprettet vises som dato uden klokkeslæt, og handlinger er begrænset til
@@ -6308,7 +7182,11 @@ App.registerPage({
     const status = this.fStatus || '';
     const tek = isTekniker ? '' : $('#svcTekniker').value;
     const q = $('#svcSearch').value.trim().toLowerCase();
-    const rows = all.filter(c => {
+    // Forside-filter (PLAN-v8, bølge 2b): mens det er sat, viser listen PRÆCIS de opgaver, Forsiden
+    // talte – status-fanerne, teknikervalget og søgningen omgås helt. this.fStatus rører vi ikke, og
+    // "all" er allerede rettighedsafgrænset ovenfor, så en teknikers spærring til egne opgaver holder.
+    const ff = App.hentForsideFilter('service');
+    const rows = ff ? this.forsideRaekker(all, ff).slice().sort((a, b) => (b.oprettet || '').localeCompare(a.oprettet || '')) : all.filter(c => {
       if (status === '__delopgaver') { if (!c.parent) return false; }
       else if (status && c.status !== status) return false;
       if (tek && c.tekniker !== tek) return false;
@@ -6319,6 +7197,16 @@ App.registerPage({
       }
       return true;
     }).sort((a, b) => (b.oprettet || '').localeCompare(a.oprettet || ''));
+
+    $('#svcForsideBanner').innerHTML = ff ? `<div class="replaces" data-forside-banner style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:var(--space-4)">
+      <span>Viser ${rows.length} poster fra Forsiden: <b>${h(ff.titel || '')}</b></span>
+      <button type="button" class="tlink" data-forside-vis-alle>Vis alle</button>
+    </div>` : '';
+    if (ff) $('[data-forside-vis-alle]', $('#svcForsideBanner')).addEventListener('click', () => { App.rydForsideFilter(); this.render(); });
+    // Grill-rettelse B1: kernens kontrakt for F8, mens et Forside-filter er aktivt – sat FØR
+    // App.sortable/App.applySort, så kernen selv holder rækker, filterlinjen og kolonneknapperne i ro,
+    // også ved et sorterings- eller kolonnefilterklik uden om render().
+    if (ff) this.table.setAttribute('data-uden-kolonnefilter', '1'); else this.table.removeAttribute('data-uden-kolonnefilter');
 
     const cols = this.columns();
     // thead genskabes hver gang, så antal kolonner altid stemmer og App.sortable aldrig dobbeltbindes.
@@ -6751,6 +7639,7 @@ App.registerPage({
         <div class="spacer"></div>
         <button class="btn cta" id="fkMarker" disabled>Marker som faktureret</button>
       </div>
+      <div id="fkForsideBanner"></div>
       <div class="table-wrap">
         <table class="table-dense" id="fkTable">
           <thead><tr>
@@ -6816,6 +7705,20 @@ App.registerPage({
     const tal = {};
     (S.projekter || []).forEach(p => { if (sites.includes(p.siteId) && p.afdeling) tal[p.afdeling] = (tal[p.afdeling] || 0) + 1; });
     return Object.keys(tal).sort((a, b) => tal[b] - tal[a])[0] || 'Generel';
+  },
+  // Forside-filterets rene rækkeudvælgelse (PLAN-v8, bølge 2b). ids kan dække BÅDE en klar og en sendt
+  // linje på samme projekt-id (F1's "fane: sendt" skal kun vise den sendte) – derfor det ekstra tjek på
+  // fane, som blot LÆSER linjens/opgavens egen status, uden at gentage "hvad er sendt"-reglen fra kernen.
+  // "kun"-filtrene (udenKladde/udenBc) har allerede ét entydigt id pr. serviceopgave og kræver ikke det.
+  // Uden DOM, så den kan afprøves i Node ligesom queueRows().
+  forsideRaekker(rows, ff) {
+    if (!ff || !Array.isArray(ff.ids)) return rows;
+    const idSet = new Set(ff.ids);
+    let out = rows.filter(r => idSet.has(r.id));
+    if (ff.fane === 'sendt') {
+      out = out.filter(r => r.type === 'projekt' ? r.line.status === App.FAKTURALINJE_STATUS[2] : !!r.opg.kladde);
+    }
+    return out;
   },
   init() {
     const { $, $$, S, save, toast, today, kr, n, h, bc, site, emp, proj, openModal, go } = App;
@@ -6966,13 +7869,17 @@ App.registerPage({
     }
 
     // ---------- events ----------
+    // Grill-rettelse B2: enhver betjening af sidens egne filtre forlader Forside-visningen først (ellers
+    // hoppede fanen "Alle" fx tilbage til "Sendt" igen ved næste render, fordi F1's filter stadig var
+    // aktivt) – App.rydForsideFilter() ændrer intet, hvis der ikke er noget at rydde.
     $$('#fkTabs .ftab').forEach(b => b.addEventListener('click', () => {
+      App.rydForsideFilter();
       tab = b.dataset.t;
       $$('#fkTabs .ftab').forEach(x => x.classList.toggle('on', x === b));
       this.render();
     }));
-    $('#fkAfd').addEventListener('change', () => { afd = $('#fkAfd').value; this.render(); });
-    $('#fkSoeg').addEventListener('input', () => { soeg = $('#fkSoeg').value.trim(); this.render(); });
+    $('#fkAfd').addEventListener('change', () => { App.rydForsideFilter(); afd = $('#fkAfd').value; this.render(); });
+    $('#fkSoeg').addEventListener('input', () => { App.rydForsideFilter(); soeg = $('#fkSoeg').value.trim(); this.render(); });
     $('#fkRecentToggle').addEventListener('click', () => {
       recentOpen = !recentOpen;
       $('#fkRecentCard').hidden = !recentOpen;
@@ -7016,11 +7923,32 @@ App.registerPage({
     this._relatedProjectId = relatedProjectId;
     this._key = key;
     this._valgt = valgt;
+    // render() ligger uden for denne closure (samme mønster som de øvrige _-felter) og skal kunne se
+    // det gemte fanevalg for at stille fanerækken tilbage efter et Forside-filter (PLAN-v8, bølge 2b).
+    this._tab = () => tab;
   },
   render() {
     const { $, $$, S, save, toast, today, kr, n, h, emp, go, st } = App;
-    const rows = this._filtered();
     const all = this.queueRows();
+    // Forside-filter (PLAN-v8, bølge 2b): mens det er sat, viser køen PRÆCIS de rækker, Forsiden talte –
+    // fanerne, afdelingsfilteret og søgningen (this._filtered()) omgås helt. tab/afd/soeg i lukningen
+    // over init() rører vi ikke, så "Vis alle" stiller siden tilbage præcis, som brugeren havde den.
+    const ff = App.hentForsideFilter('fakturering');
+    const rows = ff ? this.forsideRaekker(all, ff) : this._filtered();
+    // Fanerækken skal vise "Sendt" som aktiv, mens F1's filter gælder, uden at overskrive det gemte
+    // fanevalg (this._tab()) – render() er her den ene kilde til fanernes visuelle "on"-tilstand.
+    const visTab = ff && ff.fane === 'sendt' ? 'sendt' : this._tab();
+    $$('#fkTabs .ftab').forEach(x => x.classList.toggle('on', x.dataset.t === visTab));
+
+    $('#fkForsideBanner').innerHTML = ff ? `<div class="replaces" data-forside-banner style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:var(--space-4)">
+      <span>Viser ${rows.length} poster fra Forsiden: <b>${h(ff.titel || '')}</b></span>
+      <button type="button" class="tlink" data-forside-vis-alle>Vis alle</button>
+    </div>` : '';
+    if (ff) $('[data-forside-vis-alle]', $('#fkForsideBanner')).addEventListener('click', () => { App.rydForsideFilter(); this.render(); });
+    // Grill-rettelse B1: kernens kontrakt for F8, mens et Forside-filter er aktivt – sat FØR
+    // App.sortable/App.applySort, så kernen selv holder rækker, filterlinjen og kolonneknapperne i ro,
+    // også ved et sorterings- eller kolonnefilterklik uden om render().
+    if (ff) this.table.setAttribute('data-uden-kolonnefilter', '1'); else this.table.removeAttribute('data-uden-kolonnefilter');
 
     // KPI'er
     const sumAlle = all.reduce((a, r) => a + this._beloebForRow(r).beloeb, 0);
@@ -7615,7 +8543,7 @@ App.registerPage({
               <tbody id="bruRollerRettigheder"></tbody>
             </table>
           </div>
-          <p class="caption muted" style="margin-top:12px">Ingen brugere har rollen Service – afklares med Securitas.</p>
+          <p class="caption muted" style="margin-top:12px">Rollen Service er foreløbig (PLAN-v8) – indholdet afklares med Securitas.</p>
           <p class="caption muted">En bruger med Må redigere stamdata sat til Ja eller Nej følger ikke tabellen for kunder, sites, installationer og underleverandører.</p>
         </div>
       </div>
@@ -7972,6 +8900,7 @@ App.registerPage({
         </div>
         <label class="field">Søg <input type="text" id="efSearch" placeholder="Site, kunde, installation" size="26"></label>
       </div>
+      <div id="efForsideBanner"></div>
       <div class="table-wrap" id="efListWrap">
         <table class="table-dense" id="efTable">
           <thead><tr>
@@ -8049,7 +8978,11 @@ App.registerPage({
     this.helpers = { parseISO, ddmm, startOfToday, nextEftersyn, opgaveFor, rowInfo };
 
     // ---------- toolbar ----------
+    // Grill-rettelse B2: status-fanerne og søgefeltet forlader Forside-visningen først (ellers så
+    // filteret aktivt ud, men reagerede ikke) – App.rydForsideFilter() ændrer intet, hvis der ikke er
+    // noget at rydde. Liste/Kalender er en visning, ikke et filter (samme rækker i begge), og rører den ikke.
     $$('#efTabs .ftab').forEach(b => b.addEventListener('click', () => {
+      App.rydForsideFilter();
       $$('#efTabs .ftab').forEach(x => x.classList.toggle('on', x === b));
       this.fStatus = b.dataset.v; this.render();
     }));
@@ -8057,7 +8990,7 @@ App.registerPage({
       $$('#efViewTabs .ftab').forEach(x => x.classList.toggle('on', x === b));
       this.fView = b.dataset.v; this.render();
     }));
-    $('#efSearch').addEventListener('input', () => this.render());
+    $('#efSearch').addEventListener('input', () => { App.rydForsideFilter(); this.render(); });
 
     this.table = $('#efTable');
     App.sortable(this.table, 'eftersyn-liste', { col: 7, dir: 'asc' });
@@ -8118,6 +9051,14 @@ App.registerPage({
       closeModal('modalEfMail'); toast('Påmindelse sendt til kunden');
     });
   },
+  // Forside-filterets rene rækkeudvælgelse (PLAN-v8, bølge 2b): ids er site-id'er, ét pr. række, så et
+  // simpelt idSet-match er nok – ingen forretningsregel (skalBookes/forfaldneUdenOpgave) gentages her.
+  // Uden DOM, så den kan afprøves i Node.
+  forsideRaekker(rows, ff) {
+    if (!ff || !Array.isArray(ff.ids)) return rows;
+    const idSet = new Set(ff.ids);
+    return rows.filter(r => idSet.has(r.site.id));
+  },
   openDetaljer(siteId) {
     const { $, S, site, h, kr, st, openModal, siteLabel } = App;
     const { ddmm, startOfToday, nextEftersyn, opgaveFor, rowInfo } = this.helpers;
@@ -8167,17 +9108,31 @@ App.registerPage({
     const status = this.fStatus || '';
     const view = this.fView || 'liste';
     const q = $('#efSearch').value.trim().toLowerCase();
-    let rows = all.filter(r => {
+    // Forside-filter (PLAN-v8, bølge 2b): mens det er sat, viser listen og kalenderen PRÆCIS de sites,
+    // Forsiden talte – status-fanerne og søgefeltet omgås helt. this.fStatus/this.fView rører vi ikke.
+    const ff = App.hentForsideFilter('eftersyn');
+    const basis = ff ? this.forsideRaekker(all, ff) : all.filter(r => {
       if (status && r.status !== status) return false;
       if (q) {
         const hay = [r.site.id, r.site.kode, App.kundeNavn(r.site), r.site.navn, App.installationTyper(r.site.id), r.site.adresse].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
-    }).sort((a, b) => {
+    });
+    let rows = basis.slice().sort((a, b) => {
       const av = a.nextDate ? a.nextDate.getTime() : Infinity, bv = b.nextDate ? b.nextDate.getTime() : Infinity;
       return av - bv;
     });
+
+    $('#efForsideBanner').innerHTML = ff ? `<div class="replaces" data-forside-banner style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:var(--space-4)">
+      <span>Viser ${rows.length} poster fra Forsiden: <b>${h(ff.titel || '')}</b></span>
+      <button type="button" class="tlink" data-forside-vis-alle>Vis alle</button>
+    </div>` : '';
+    if (ff) $('[data-forside-vis-alle]', $('#efForsideBanner')).addEventListener('click', () => { App.rydForsideFilter(); this.render(); });
+    // Grill-rettelse B1: kernens kontrakt for F8, mens et Forside-filter er aktivt – sat FØR
+    // App.sortable/App.applySort (uafhængigt af liste-/kalendervisning), så kernen selv holder rækker,
+    // filterlinjen og kolonneknapperne i ro, også ved et sorterings- eller kolonnefilterklik uden om render().
+    if (ff) this.table.setAttribute('data-uden-kolonnefilter', '1'); else this.table.removeAttribute('data-uden-kolonnefilter');
 
     $('#efListWrap').style.display = view === 'liste' ? '' : 'none';
     $('#efCalWrap').style.display = view === 'kalender' ? '' : 'none';
@@ -9458,6 +10413,17 @@ App.registerPage({
       ];
       return App.S.konteringBc ? [...base, ...bc, ...tail] : [...base, ...tail];
     },
+    // Forside-filterets rene beslutning (grill-rettelse B3): forvælger teknikeren, ids[0] peger på –
+    // kun når slags er 'tekniker' og den indloggede ikke selv er låst til sig selv (den spærring
+    // bevares altid, uanset hvad Forsiden sender). Uden DOM, afprøvelig i Node. Måneden røres ikke her:
+    // siden viser bare den periode, den normalt starter i.
+    forsidePrefil(ff, teknikerIder, laastTilSelv) {
+      if (!ff || ff.slags !== 'tekniker' || !Array.isArray(ff.ids) || !ff.ids.length) return null;
+      if (laastTilSelv) return null;
+      const id0 = String(ff.ids[0]);
+      if (!(teknikerIder || []).includes(id0)) return null;
+      return { teknikerId: id0 };
+    },
     render() {
       const { $, $$, S, D, emp, role, siteLabel, n, h, expectedHours, workdays, isIntern, save } = App;
       $('#konBc').classList.toggle('on', !!S.konteringBc);
@@ -9470,6 +10436,15 @@ App.registerPage({
 
       // Rollen Tekniker ser kun sig selv, og vælgeren er låst
       const lockedToSelf = role() === 'Tekniker';
+      // Forside-filter (grill-rettelse B3): L6 "Teknikere bag forventet tid" peger nu hertil og
+      // forvælger teknikeren i S.konTekniker, nøjagtig som et klik i valglisten selv ville gøre.
+      // Intet banner. Filteret bruges højst én gang.
+      const ff = App.hentForsideFilter('kontering');
+      if (ff) {
+        const prefil = this.forsidePrefil(ff, teknikere.map(m => m.id), lockedToSelf);
+        if (prefil && prefil.teknikerId) { S.konTekniker = prefil.teknikerId; this.expanded.clear(); }
+        App.rydForsideFilter();
+      }
       if (lockedToSelf) S.konTekniker = S.user;
       if (!S.konTekniker || !teknikere.some(m => m.id === S.konTekniker)) S.konTekniker = teknikere[0]?.id || '';
       teknikerSel.value = S.konTekniker;
