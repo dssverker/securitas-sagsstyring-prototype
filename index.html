@@ -12306,7 +12306,16 @@ App.registerPage({
   forsideRaekker(rows, ff) {
     if (!ff || !Array.isArray(ff.ids)) return rows;
     const idSet = new Set(ff.ids);
-    return rows.filter(r => (r.inst && idSet.has(r.inst.id)) || (r.site && idSet.has(r.site.id) && (!r.inst || (r.ef && r.ef.aktiv))));
+    const direkteInst = rows.filter(r => r.inst && idSet.has(r.inst.id));
+    if (direkteInst.length) return direkteInst;
+    const prSite = new Map();
+    rows.forEach(r => {
+      if (!r.site || !idSet.has(r.site.id)) return;
+      if (r.inst && !(r.ef && r.ef.aktiv)) return;
+      const eks = prSite.get(r.site.id);
+      if (!eks || (r.planYm || '9999-99') < (eks.planYm || '9999-99')) prSite.set(r.site.id, r);
+    });
+    return [...prSite.values()];
   },
 
   openDetaljer(idOrSiteId) {
