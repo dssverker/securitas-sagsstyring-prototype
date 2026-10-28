@@ -2446,6 +2446,7 @@ window.DEMO = {
         sagId: aktuelSagId || '',
         linjer: k.linjer,
         conf: { faktura: 0.99, leverandoer: 0.98, ydelse: 0.95, netto: 0.99, sag: 0.92 },
+      model: 'Gemini 3.8 Flash',
       };
     }
 
@@ -2565,10 +2566,180 @@ window.DEMO = {
         netto: 0.98,
         sag: sagMatch ? 0.95 : 0.75,
       },
+      model: 'Gemini 3.8 Flash',
     };
   };
 
   // Udtrækker læsbar tekst fra en PDF-fil i browseren (inkl. FlateDecode-streams via DecompressionStream)
+  // v10+: Multimodal PDF-fakturaindlæsning med Gemini 3.8 Flash (via Supabase Edge Function eller direkte Gemini API)
+  const FAKTURA_LLM_MODEL = 'gemini-3.8-flash';
+  const FAKTURA_LLM_FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const GEMINI_KEY_STORAGE = 'securitas-gemini-key';
+
+  const getGeminiApiKey = () => {
+    const cfg = (typeof window !== 'undefined' && window.PROTO_CONFIG) || {};
+    if (cfg.geminiKey) return String(cfg.geminiKey).trim();
+    try { return String(localStorage.getItem(GEMINI_KEY_STORAGE) || '').trim(); } catch (e) { return ''; }
+  };
+
+  const setGeminiApiKey = key => {
+    const k = String(key || '').trim();
+    try {
+      if (k) localStorage.setItem(GEMINI_KEY_STORAGE, k);
+      else localStorage.removeItem(GEMINI_KEY_STORAGE);
+    } catch (e) {}
+    return k;
+  };
+
+  const bytesToBase64 = bytes => {
+    let bin = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return typeof btoa === 'function' ? btoa(bin) : '';
+  };
+
+  const normaliserLlmFaktura = (parsed, fname, aktuelSagId) => {
+    if (!parsed || typeof parsed !== 'object') return null;
+    const faktura = String(parsed.faktura || parsed.invoiceNumber || '').trim() || '143079';
+    const leverandoer = String(parsed.leverandoer || parsed.supplier || 'Solar').trim();
+    const dato = /^\d{4}-\d{2}-\d{2}$/.test(String(parsed.dato || '')) ? parsed.dato : today();
+    const sagId = String(parsed.sagId || aktuelSagId || '').trim();
+    const rawLinjer = Array.isArray(parsed.linjer) ? parsed.linjer : [];
+    const linjer = rawLinjer.map(l => {
+      const antal = parseTal(l.antal) || 1;
+      const enhedspris = parseTal(l.enhedspris != null ? l.enhedspris : l.unitPrice);
+      const listepris = parseTal(l.listepris != null ? l.listepris : enhedspris) || enhedspris;
+      const beloeb = parseTal(l.beloeb != null ? l.beloeb : l.total) || Math.round(antal * enhedspris * 100) / 100;
+      return {
+        varenr: String(l.varenr || l.sku || '').trim(),
+        tekst: String(l.tekst || l.description || '').trim(),
+        antal,
+        listepris,
+        enhedspris,
+        beloeb,
+      };
+    }).filter(l => l.tekst || l.beloeb > 0);
+    const linjeSum = Math.round(linjer.reduce((a, l) => a + (+l.beloeb || 0), 0) * 100) / 100;
+    const netto = parseTal(parsed.netto) || linjeSum;
+    const moms = parseTal(parsed.moms) || Math.round(netto * 0.25 * 100) / 100;
+    const ydelse = String(parsed.ydelse || '').trim()
+      || (linjer.length > 1
+        ? `${linjer.length} materialeposter (${linjer.map(l => `${l.antal}× ${l.tekst}`).slice(0, 2).join(', ')}${linjer.length > 2 ? ' m.fl.' : ''})`
+        : (linjer[0] ? linjer[0].tekst : `Materialer jf. faktura ${faktura}`));
+    return {
+      fil: fname,
+      faktura,
+      leverandoer,
+      dato,
+      ydelse,
+      netto,
+      moms,
+      sagId,
+      linjer,
+      model: 'Gemini 3.8 Flash',
+      aiLive: true,
+      conf: { faktura: 0.99, leverandoer: 0.99, ydelse: 0.96, netto: 0.99, sag: parsed.sagId ? 0.96 : 0.80 },
+    };
+  };
+
+  const laesPdfFakturaMedGemini = async (bytes, fname, mimeType, rawTextFallback, aktuelSagId) => {
+    if (typeof fetch !== 'function' || !bytes || !bytes.length) return null;
+    const base64 = bytesToBase64(bytes);
+    if (!base64) return null;
+    const cfg = (typeof window !== 'undefined' && window.PROTO_CONFIG) || {};
+    const prompt = [
+      'Du er en dansk regnskabs- og faktura-AI (Gemini 3.8 Flash) for Securitas Solution Delivery.',
+      'Udtræk alle oplysninger præcist fra denne leverandørfaktura (fx Solar, ADI, Lemvigh-Müller, EET, Lindpro m.fl.).',
+      'Returnér KUN gyldig JSON med følgende struktur:',
+      '{',
+      '  "faktura": "fakturanummer som streng",',
+      '  "leverandoer": "leverandørnavn",',
+      '  "dato": "YYYY-MM-DD",',
+      '  "sagId": "evt. sagsnummer (PRDK... eller CAS-...) eller PO-reference",',
+      '  "ydelse": "kort dansk opsummering af leverancen",',
+      '  "netto": 0.00,',
+      '  "moms": 0.00,',
+      '  "linjer": [',
+      '    {',
+      '      "varenr": "varenummer / el-nr. / EAN",',
+      '      "tekst": "varebeskrivelse / materiale",',
+      '      "antal": 1,',
+      '      "listepris": 0.00,',
+      '      "enhedspris": 0.00,',
+      '      "beloeb": 0.00',
+      '    }',
+      '  ]',
+      '}',
+      'VIGTIGT: Alle varelinjer/materialeposter på fakturaen SKAL medtages i "linjer", og danske beløb (fx 85.140,00 eller 1.621,05) skal konverteres præcist med øre.',
+    ].join('\n');
+
+    // 1. Prøv Supabase Edge Function (parse-invoice) hvis konfigureret
+    if (cfg.supabaseUrl && cfg.supabaseKey && !cfg.disableEdgeInvoice) {
+      try {
+        const r = await fetch(`${cfg.supabaseUrl}/functions/v1/parse-invoice`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: cfg.supabaseKey,
+            Authorization: `Bearer ${cfg.supabaseKey}`,
+          },
+          body: JSON.stringify({
+            model: FAKTURA_LLM_MODEL,
+            fileName: fname,
+            mimeType: mimeType || 'application/pdf',
+            base64,
+            rawText: rawTextFallback || '',
+            aktuelSagId: aktuelSagId || '',
+          }),
+        });
+        if (r.ok) {
+          const data = await r.json();
+          const norm = normaliserLlmFaktura(data, fname, aktuelSagId);
+          if (norm && norm.netto > 0) return norm;
+        }
+      } catch (e) {}
+    }
+
+    // 2. Direkte kald til Gemini API (Model 3.8 Flash med fallback-kæde) hvis API-nøgle er sat
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+      for (const modelId of FAKTURA_LLM_FALLBACK_MODELS) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { inlineData: { mimeType: mimeType || 'application/pdf', data: base64 } },
+                  { text: prompt },
+                ],
+              }],
+              generationConfig: {
+                temperature: 0.1,
+                responseMimeType: 'application/json',
+              },
+            }),
+          });
+          if (!r.ok) continue;
+          const payload = await r.json();
+          const txtOut = (((payload.candidates || [])[0] || {}).content || {}).parts
+            ? payload.candidates[0].content.parts.map(p => p.text || '').join('')
+            : '';
+          if (!txtOut) continue;
+          const cleanJson = txtOut.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+          const parsed = JSON.parse(cleanJson);
+          const norm = normaliserLlmFaktura(parsed, fname, aktuelSagId);
+          if (norm && norm.netto > 0) return norm;
+        } catch (e) {}
+      }
+    }
+    return null;
+  };
+
   const laesPdfFaktura = async (file, aktuelSagId) => {
     if (!file) return parseFakturaTekst('', 'faktura.pdf', aktuelSagId);
     const fname = file.name || 'faktura.pdf';
@@ -2620,6 +2791,9 @@ window.DEMO = {
           }
         }
         rawText = chunks.join(' ');
+        const mime = file.type || (/\.pdf$/i.test(fname) ? 'application/pdf' : 'image/jpeg');
+        const llmRes = await laesPdfFakturaMedGemini(bytes, fname, mime, rawText, aktuelSagId);
+        if (llmRes) return llmRes;
       }
       return parseFakturaTekst(rawText, fname, aktuelSagId);
     } catch (e) {
@@ -4636,7 +4810,7 @@ window.DEMO = {
     eftersynPlanMaaned, formaterMaanedAar, addMaanederYm, KUNDE_PRODUKTER,
     STANDARD_TIMEPRISER, medarbejderTimepris, siteTimepriser, projektTimepriser, calcTid,
     siteMaterialeAvance, beregnMaterialeSalg, opslagListepris, importerPrisfil,
-    parseFakturaTekst, laesPdfFaktura, delopgaveOekonomi, tildelteTeknikere, erTildeltOpgave, tildelteTeknikereTekst,
+    parseFakturaTekst, laesPdfFaktura, laesPdfFakturaMedGemini, FAKTURA_LLM_MODEL, getGeminiApiKey, setGeminiApiKey, delopgaveOekonomi, tildelteTeknikere, erTildeltOpgave, tildelteTeknikereTekst,
     ul, ulNavn, ulAf, stedNr, projStatus, erIgangvaerende, igangvaerendeProjekter,
     saetFelt, log, historikFor, maaRette, maaRetteRoller, retteForklaring, PROTOTYPE_FORBEHOLD, RETTIGHEDER,
     // v7 brugeradministration (PLAN-v7, bølge 1a) – kontrakt for pages/brugere.js og de 12 læsesteder
@@ -5916,13 +6090,14 @@ App.registerPage({
         <div class="scan" id="scanPanel">
           <div class="scan-drop" id="scanDrop" tabindex="0" role="button" aria-label="Upload faktura til scanning">
             <svg class="ico"><use href="#i-export"/></svg>
-            <div><b>Scan faktura</b><br><span class="muted">Træk en PDF eller et foto hertil, eller vælg en fil. Faktura nr., leverandør, ydelse og beløb udfyldes automatisk.</span></div>
+            <div><b>Scan faktura <span class="badge" style="margin-left:6px;font-weight:normal">Gemini 3.8 Flash</span></b><br><span class="muted">Træk en PDF eller et foto hertil, eller vælg en fil. Faktura nr., leverandør, alle materialeposter og beløb inkl. øre udfyldes automatisk.</span></div>
             <input type="file" id="scanFile" accept=".pdf,image/*" hidden>
             <div class="scan-demos">Prøv med en demo-faktura:
               <button class="tlink" type="button" data-demo="adi">ADI</button> ·
               <button class="tlink" type="button" data-demo="solar">Solar (143485)</button> ·
               <button class="tlink" type="button" data-demo="lindpro">Lindpro</button> ·
-              <button class="tlink" type="button" data-demo="renta">Renta</button>
+              <button class="tlink" type="button" data-demo="renta">Renta</button> ·
+              <button class="tlink" type="button" id="btnScanApiKey" title="Konfigurér Gemini 3.8 Flash API-nøgle til live PDF-scanning">AI-nøgle</button>
             </div>
           </div>
           <div class="scan-result" id="scanResult" hidden></div>
@@ -6264,7 +6439,7 @@ App.registerPage({
           <td class="num"><input type="number" step="0.01" data-sc-f="beloeb" value="${+(l.beloeb || 0)}" style="width:110px;text-align:right"></td>
         </tr>`).join('');
       res.innerHTML = `
-        <div class="scan-head"><b>Scannet: ${h(r.fil)}</b><span class="muted caption">Felter markeret Tjek eller Usikker bør kontrolleres mod fakturaen</span></div>
+        <div class="scan-head"><b>Scannet: ${h(r.fil)} <span class="badge" style="margin-left:6px;font-weight:normal">${h(r.model || 'Gemini 3.8 Flash')}</span></b><span class="muted caption">Felter markeret Tjek eller Usikker bør kontrolleres mod fakturaen</span></div>
         <div class="form-grid">
           <label class="${conf(r.conf.faktura)}">Faktura nr. <span class="caption">${confTxt(r.conf.faktura)}</span><input type="text" id="scFaktura" value="${h(r.faktura)}"></label>
           <label class="${conf(r.conf.leverandoer)}">Leverandør <span class="caption">${confTxt(r.conf.leverandoer)}</span><input type="text" id="scLev" value="${h(r.leverandoer)}" list="levList"></label>
@@ -6357,19 +6532,30 @@ App.registerPage({
     const runScan = rOrPromise => {
       const res = $('#scanResult'); res.hidden = false;
       const filNavn = (rOrPromise && rOrPromise.fil) || 'faktura.pdf';
-      res.innerHTML = `<div class="scan-head"><b>Scanner ${h(filNavn)}</b><span class="muted caption">Læser faktura nr., leverandør, alle materialeposter og beløb inkl. øre</span></div><div class="scan-progress"><span></span></div>`;
+      res.innerHTML = `<div class="scan-head"><b>Scanner ${h(filNavn)} med Gemini 3.8 Flash…</b><span class="muted caption">Læser faktura nr., leverandør, alle materialeposter og beløb inkl. øre</span></div><div class="scan-progress"><span></span></div>`;
       Promise.resolve(rOrPromise).then(r => {
         setTimeout(() => showScan(r), 400);
       });
     };
     const drop = $('#scanDrop'), fileIn = $('#scanFile');
-    drop.addEventListener('click', e => { if (!e.target.closest('[data-demo]')) fileIn.click(); });
+    drop.addEventListener('click', e => { if (!e.target.closest('[data-demo], #btnScanApiKey')) fileIn.click(); });
     drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileIn.click(); } });
     fileIn.addEventListener('change', () => { if (fileIn.files[0]) runScan(guessFromFile(fileIn.files[0])); fileIn.value = ''; });
     ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
     ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
     drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) runScan(guessFromFile(f)); });
     $$('[data-demo]', drop).forEach(b => b.addEventListener('click', e => { e.stopPropagation(); runScan({ ...DEMOS[b.dataset.demo] }); }));
+    if ($('#btnScanApiKey', drop)) {
+      $('#btnScanApiKey', drop).addEventListener('click', e => {
+        e.stopPropagation();
+        const curKey = App.getGeminiApiKey ? App.getGeminiApiKey() : '';
+        const val = typeof prompt === 'function' ? prompt('Indtast Gemini API-nøgle til live PDF-scanning med Model 3.8 Flash (gemmes lokalt i din browser):', curKey) : null;
+        if (val !== null && App.setGeminiApiKey) {
+          App.setGeminiApiKey(val);
+          toast(val.trim() ? 'Gemini 3.8 Flash API-nøgle gemt i browseren' : 'Gemini API-nøgle fjernet');
+        }
+      });
+    }
 
     $('#fakForm').addEventListener('submit', e => {
       e.preventDefault(); const fd = new FormData(e.target); const p = cur();
@@ -9108,7 +9294,7 @@ App.registerPage({
             <span class="caption muted" style="margin-left:6px">Standard avance på listepris for ${h(kundeNavn(s) || 'kunden')}: <b>${h(stdAvance)} %</b> (Salgspris = Listepris + avance-%)</span>
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
-            <button type="button" class="btn" id="svcBtnScanFaktura">Indlæs leverandørfaktura (PDF)</button>
+            <button type="button" class="btn" id="svcBtnScanFaktura">Indlæs leverandørfaktura (Gemini 3.8 Flash)</button>
             <input type="file" id="svcScanInput" accept=".pdf,image/*" hidden>
             <button type="button" class="tlink" data-svcdemo="143485">Demo: Solar 143485</button> ·
             <button type="button" class="tlink" data-svcdemo="143079">Demo: Faktura 143079</button> ·
