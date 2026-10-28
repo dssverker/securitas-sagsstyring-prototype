@@ -2023,6 +2023,11 @@ window.DEMO = {
     (S.projekter || []).forEach(p => {
       if (!p) return;
       if (typeof p.ulAftale !== 'string') p.ulAftale = '';
+      if (typeof p.timeprisKost !== 'number') p.timeprisKost = 0;
+      if (typeof p.timeprisSalg !== 'number') p.timeprisSalg = 0;
+      if (!p.timepriser || typeof p.timepriser !== 'object') {
+        p.timepriser = { teknikerKost: 0, teknikerSalg: 0, pmKost: 0, pmSalg: 0, seKost: 0, seSalg: 0 };
+      }
     });
     (S.installationer || []).forEach(i => {
       if (!i || !i.eftersyn) return;
@@ -2183,6 +2188,140 @@ window.DEMO = {
   // Sted nr. bor kun på sitet (§1.2). Erstatter p.stedNr, som B5 sletter.
   const stedNr = p => site((p || {}).siteId).stedNr || '';
 
+  // v9 (P7): Timepriser (kost og salg) på vores eget personale – standard pr. rolle/medarbejder,
+  // men kan tastes ind og variere fra sag til sag (både samlet på sagen og opdelt på Tekniker/PM/SE).
+  const STANDARD_TIMEPRISER = Object.freeze({
+    Tekniker: { kost: 525, salg: 1025 },
+    PM: { kost: 650, salg: 1195 },
+    SE: { kost: 650, salg: 1195 },
+    Chef: { kost: 750, salg: 1295 },
+    Fakturering: { kost: 480, salg: 895 },
+    Service: { kost: 480, salg: 895 },
+  });
+  const medarbejderTimepris = idOrMed => {
+    const m = typeof idOrMed === 'string' ? emp(idOrMed) : (idOrMed || {});
+    const std = STANDARD_TIMEPRISER[m.rolle] || STANDARD_TIMEPRISER.Tekniker;
+    return {
+      kost: +m.timeprisKost > 0 ? +m.timeprisKost : std.kost,
+      salg: +m.timeprisSalg > 0 ? +m.timeprisSalg : std.salg,
+      harEgenKost: +m.timeprisKost > 0,
+      harEgenSalg: +m.timeprisSalg > 0,
+    };
+  };
+  // Returnerer de gældende timepriser (kost og salg) på et projekt for en given rolle ('Tekniker', 'PM', 'SE')
+  // og evt. en specifik medarbejder. Prioritet:
+  //   1) Rolle-specifik sats tastet på sagen (p.timepriser.teknikerKost / pmKost / seKost)
+  //   2) Generel sags-sats tastet på sagen (p.timeprisKost / p.timeprisSalg)
+  //   3) Medarbejderens egen standardsats under Brugere (m.timeprisKost / m.timeprisSalg)
+  //   4) Rolle-standard (og for Tekniker-salg: sitets timepris hvis sat, ellers 1025 kr.)
+  const projektTimepriser = (p, rolleNavn, medId) => {
+    const o = p || {};
+    const tp = o.timepriser || {};
+    const r = rolleNavn === 'PM' ? 'PM' : rolleNavn === 'SE' ? 'SE' : 'Tekniker';
+    const rPrefix = r === 'PM' ? 'pm' : r === 'SE' ? 'se' : 'tekniker';
+    const mId = medId || (r === 'PM' ? o.pm : r === 'SE' ? o.se : '');
+    const m = mId ? emp(mId) : {};
+    const std = STANDARD_TIMEPRISER[r] || STANDARD_TIMEPRISER.Tekniker;
+    const sTimepris = +site(o.siteId).timepris || 0;
+    const kost = +tp[rPrefix + 'Kost'] > 0 ? +tp[rPrefix + 'Kost']
+      : +o.timeprisKost > 0 ? +o.timeprisKost
+      : +m.timeprisKost > 0 ? +m.timeprisKost
+      : std.kost;
+    const salg = +tp[rPrefix + 'Salg'] > 0 ? +tp[rPrefix + 'Salg']
+      : +o.timeprisSalg > 0 ? +o.timeprisSalg
+      : +m.timeprisSalg > 0 ? +m.timeprisSalg
+      : (r === 'Tekniker' && sTimepris > 0 ? sTimepris : std.salg);
+    return {
+      kost,
+      salg,
+      ot1Kost: Math.round(kost * 1.5),
+      ot1Salg: Math.round(salg * 1.5),
+      ot2Kost: Math.round(kost * 2),
+      ot2Salg: Math.round(salg * 2),
+    };
+  };
+  const calcTid = p => {
+    const o = p || {};
+    const tekDefault = projektTimepriser(o, 'Tekniker');
+    const pmDefault = projektTimepriser(o, 'PM', o.pm);
+    const seDefault = projektTimepriser(o, 'SE', o.se);
+    const u = ul(o.ulId);
+    const ulSatser = { kost: +u.timeprisKost || 0, salg: +u.timeprisSalg || 0 };
+
+    const raekkeTid = t => {
+      const s = projektTimepriser(o, 'Tekniker', (t || {}).tekniker);
+      const timer = +(t || {}).timer || 0;
+      const ot1 = +(t || {}).ot1 || 0;
+      const ot2 = +(t || {}).ot2 || 0;
+      const kost = Math.round((timer * s.kost + ot1 * s.ot1Kost + ot2 * s.ot2Kost) * 100) / 100;
+      const salg = Math.round((timer * s.salg + ot1 * s.ot1Salg + ot2 * s.ot2Salg) * 100) / 100;
+      return { kostSats: s.kost, salgSats: s.salg, kost, salg, timerIAlt: timer + ot1 + ot2 };
+    };
+
+    const raekkeLog = l => {
+      const pmSats = projektTimepriser(o, 'PM', (l && l.af) || o.pm);
+      const seSats = seDefault;
+      const pmTid = +(l || {}).pmTid || 0;
+      const seTid = +(l || {}).seTid || 0;
+      const ulTid = +(l || {}).ulTid || 0;
+      const pmKost = Math.round(pmTid * pmSats.kost * 100) / 100;
+      const pmSalg = Math.round(pmTid * pmSats.salg * 100) / 100;
+      const seKost = Math.round(seTid * seSats.kost * 100) / 100;
+      const seSalg = Math.round(seTid * seSats.salg * 100) / 100;
+      const ulKost = Math.round(ulTid * ulSatser.kost * 100) / 100;
+      const ulSalg = Math.round(ulTid * ulSatser.salg * 100) / 100;
+      return {
+        pmKost, pmSalg, seKost, seSalg, ulKost, ulSalg,
+        egneKost: pmKost + seKost,
+        egneSalg: pmSalg + seSalg,
+        kost: pmKost + seKost + ulKost,
+        salg: pmSalg + seSalg + ulSalg,
+      };
+    };
+
+    const tidRows = (S.tid || []).filter(t => t.sag === o.id || (t.sag || '').startsWith(o.id + '-'));
+    let tekTimer = 0, tekOt1 = 0, tekOt2 = 0, tekKost = 0, tekSalg = 0;
+    tidRows.forEach(t => {
+      const r = raekkeTid(t);
+      tekTimer += +t.timer || 0;
+      tekOt1 += +t.ot1 || 0;
+      tekOt2 += +t.ot2 || 0;
+      tekKost += r.kost;
+      tekSalg += r.salg;
+    });
+
+    let pmTimer = 0, pmKost = 0, pmSalg = 0;
+    let seTimer = 0, seKost = 0, seSalg = 0;
+    let ulTimer = 0, ulKost = 0, ulSalg = 0;
+    (o.log || []).forEach(l => {
+      const r = raekkeLog(l);
+      pmTimer += +l.pmTid || 0; pmKost += r.pmKost; pmSalg += r.pmSalg;
+      seTimer += +l.seTid || 0; seKost += r.seKost; seSalg += r.seSalg;
+      ulTimer += +l.ulTid || 0; ulKost += r.ulKost; ulSalg += r.ulSalg;
+    });
+
+    const tekTimerIAlt = tekTimer + tekOt1 + tekOt2;
+    const egneTimer = tekTimerIAlt + pmTimer + seTimer;
+    const egneKost = Math.round((tekKost + pmKost + seKost) * 100) / 100;
+    const egneSalg = Math.round((tekSalg + pmSalg + seSalg) * 100) / 100;
+
+    return {
+      satser: { tekniker: tekDefault, pm: pmDefault, se: seDefault, ul: ulSatser },
+      tekniker: { timer: tekTimer, ot1: tekOt1, ot2: tekOt2, timerIAlt: tekTimerIAlt, kost: Math.round(tekKost * 100) / 100, salg: Math.round(tekSalg * 100) / 100 },
+      pm: { timer: pmTimer, kost: Math.round(pmKost * 100) / 100, salg: Math.round(pmSalg * 100) / 100 },
+      se: { timer: seTimer, kost: Math.round(seKost * 100) / 100, salg: Math.round(seSalg * 100) / 100 },
+      ul: { timer: ulTimer, kost: Math.round(ulKost * 100) / 100, salg: Math.round(ulSalg * 100) / 100 },
+      egneTimer,
+      egneKost,
+      egneSalg,
+      totalTimer: egneTimer + ulTimer,
+      totalKost: Math.round((egneKost + ulKost) * 100) / 100,
+      totalSalg: Math.round((egneSalg + ulSalg) * 100) / 100,
+      raekkeTid,
+      raekkeLog,
+    };
+  };
+
   const calc = p => {
     const salg = (p.salgspris || 0) + (p.ekstraArbejde || 0);
     const udg = (p.udgifter || []).reduce((a, u) => a + (+u.beloeb || 0), 0);
@@ -2190,7 +2329,12 @@ window.DEMO = {
     const dgB = salg ? (salg - (p.salgKost || 0)) / salg * 100 : null;
     const dgF = salg ? (salg - udg) / salg * 100 : null;
     const timer = (S.tid || []).filter(t => t.sag === p.id || (t.sag || '').startsWith(p.id + '-')).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
-    return { salg, udg, fakt, rest: salg - fakt, dgB, dgF, timer };
+    const tidOek = calcTid(p);
+    const timeKost = tidOek.egneKost;
+    const timeSalg = tidOek.egneSalg;
+    const udgInklTid = udg + timeKost;
+    const dgFInklTid = salg ? (salg - udgInklTid) / salg * 100 : null;
+    return { salg, udg, fakt, rest: salg - fakt, dgB, dgF, timer, timeKost, timeSalg, udgInklTid, dgFInklTid };
   };
   // ---------- økonomisk scope (PLAN-v5) ----------
   // Én sandhed om, hvilke projekters tal en bruger må se: Chef ser alt, afdelingsleder (lederFor) sin afdeling, PM egne projekter.
@@ -2463,6 +2607,16 @@ window.DEMO = {
       const m = { id, navn, rolle, afdeling };
       if (lederFor) m.lederFor = lederFor;
       if (typeof f.maaRedigereStamdata === 'boolean') m.maaRedigereStamdata = f.maaRedigereStamdata;
+      if (f.timeprisKost !== undefined && f.timeprisKost !== null && f.timeprisKost !== '') {
+        const tk = +f.timeprisKost;
+        if (isNaN(tk) || tk < 0) return brugerFejl('Timepris kost skal være et tal på 0 eller derover.');
+        if (tk > 0) m.timeprisKost = tk;
+      }
+      if (f.timeprisSalg !== undefined && f.timeprisSalg !== null && f.timeprisSalg !== '') {
+        const ts = +f.timeprisSalg;
+        if (isNaN(ts) || ts < 0) return brugerFejl('Timepris salg skal være et tal på 0 eller derover.');
+        if (ts > 0) m.timeprisSalg = ts;
+      }
       alleMed().push(m);
       // Oprettelsen er ÉN post i historikken – ikke et felt ad gangen (planens beslutning 9).
       log('medarbejder', id, 'oprettet', '', `${navn} · ${rolle} · ${afdeling}${lederFor ? ' · afdelingsleder for ' + lederFor : ''}`);
@@ -2493,7 +2647,9 @@ window.DEMO = {
           && uaendret('lederFor', String(a.lederFor == null ? '' : a.lederFor).trim() === (m.lederFor || ''))
           && uaendret('maaRedigereStamdata', (a.maaRedigereStamdata === true || a.maaRedigereStamdata === false)
             ? a.maaRedigereStamdata === m.maaRedigereStamdata
-            : !('maaRedigereStamdata' in m)));
+            : !('maaRedigereStamdata' in m))
+          && uaendret('timeprisKost', (+a.timeprisKost || 0) === (+m.timeprisKost || 0))
+          && uaendret('timeprisSalg', (+a.timeprisSalg || 0) === (+m.timeprisSalg || 0)));
         if (reel) return brugerFejl(laase.alt);
       }
       const navn = 'navn' in a ? String(a.navn == null ? '' : a.navn).trim() : null;
@@ -2511,6 +2667,10 @@ window.DEMO = {
         if (lederFor && !afdelinger().includes(lederFor)) return brugerFejl('Afdelingsleder for skal være en af afdelingerne: ' + afdelinger().join(', ') + '.');
       }
       const stamdata = 'maaRedigereStamdata' in a ? a.maaRedigereStamdata : undefined;
+      const tpKost = 'timeprisKost' in a ? (a.timeprisKost === '' || a.timeprisKost === null ? 0 : +a.timeprisKost) : null;
+      if (tpKost !== null && (isNaN(tpKost) || tpKost < 0)) return brugerFejl('Timepris kost skal være et tal på 0 eller derover.');
+      const tpSalg = 'timeprisSalg' in a ? (a.timeprisSalg === '' || a.timeprisSalg === null ? 0 : +a.timeprisSalg) : null;
+      if (tpSalg !== null && (isNaN(tpSalg) || tpSalg < 0)) return brugerFejl('Timepris salg skal være et tal på 0 eller derover.');
       // Alt er godkendt – først nu skrives der, og kun reelle ændringer logges (saetFelt gør det selv).
       if (navn !== null) saetFelt(m, 'medarbejder', m.id, 'navn', navn);
       if (rolle !== null) saetFelt(m, 'medarbejder', m.id, 'rolle', rolle);
@@ -2524,6 +2684,14 @@ window.DEMO = {
         // så maaRette() igen falder tilbage på rollen (den tjekker typeof … === 'boolean').
         if (stamdata === true || stamdata === false) saetFelt(m, 'medarbejder', m.id, 'maaRedigereStamdata', stamdata);
         else if ('maaRedigereStamdata' in m) { log('medarbejder', m.id, 'maaRedigereStamdata', m.maaRedigereStamdata, 'følger rollen'); delete m.maaRedigereStamdata; }
+      }
+      if (tpKost !== null) {
+        if (tpKost > 0) saetFelt(m, 'medarbejder', m.id, 'timeprisKost', tpKost);
+        else if ('timeprisKost' in m) { log('medarbejder', m.id, 'timeprisKost', m.timeprisKost, 0); delete m.timeprisKost; }
+      }
+      if (tpSalg !== null) {
+        if (tpSalg > 0) saetFelt(m, 'medarbejder', m.id, 'timeprisSalg', tpSalg);
+        else if ('timeprisSalg' in m) { log('medarbejder', m.id, 'timeprisSalg', m.timeprisSalg, 0); delete m.timeprisSalg; }
       }
       save();
       return brugerOk(m);
@@ -3921,6 +4089,7 @@ window.DEMO = {
     // v7-kompatibilitetslaget (PLAN-v6-spor1 §4) – kontrakt for bølge B2-B5
     kunde, kundeAf, kundeNavn, installation, installationer, installationTyper, serviceaftaler, eftersynSite,
     eftersynPlanMaaned, formaterMaanedAar, addMaanederYm, KUNDE_PRODUKTER,
+    STANDARD_TIMEPRISER, medarbejderTimepris, projektTimepriser, calcTid,
     ul, ulNavn, ulAf, stedNr, projStatus, erIgangvaerende, igangvaerendeProjekter,
     saetFelt, log, historikFor, maaRette, maaRetteRoller, retteForklaring, PROTOTYPE_FORBEHOLD, RETTIGHEDER,
     // v7 brugeradministration (PLAN-v7, bølge 1a) – kontrakt for pages/brugere.js og de 12 læsesteder
@@ -4365,6 +4534,10 @@ window.ProjectFactory = {
       salgspris: opts.salgspris || 0, ekstraArbejde: opts.ekstraArbejde || 0,
       salgKost: opts.salgKost != null ? opts.salgKost : Math.round((opts.salgspris || 0) * 0.65),
       mdlRate: opts.mdlRate || 0, loebetid: opts.loebetid || 0,
+      // P7: Timepriser (kost og salg) på vores eget personale pr. sag (kan variere fra sag til sag)
+      timeprisKost: +(opts.timeprisKost || 0),
+      timeprisSalg: +(opts.timeprisSalg || 0),
+      timepriser: Object.assign({ teknikerKost: 0, teknikerSalg: 0, pmKost: 0, pmSalg: 0, seKost: 0, seSalg: 0 }, opts.timepriser || {}),
       // F10 (krav C1): en læst kalk gemmes med tallene bag salgspris/kostpris, så stamdata senere kan vise
       // kilden ("fra kalk <fil>" i stedet for "skøn (65 %)"). null, når sagen er oprettet uden kalk.
       kalk: opts.kalk || null,
@@ -4479,7 +4652,20 @@ App.registerPage({
             <label>Månedskroner (kr./md.)<input type="number" id="ncMdlRate" step="1" placeholder="0"></label>
             <label>Underleverandør (UL)<select id="ncUl"><option value="">Ingen / vælg UL</option></select></label>
             <label style="grid-column:1/-1">Aftale med UL<input type="text" id="ncUlAftale" placeholder="Fx fastpris, timepris eller særaftale med underleverandør"></label>
+            <label>Timepris kost – eget personale (kr./t)<input type="number" id="ncTimeprisKost" step="1" min="0" placeholder="Standard (525 kr./t)"></label>
+            <label>Timepris salg – eget personale (kr./t)<input type="number" id="ncTimeprisSalg" step="1" min="0" placeholder="Standard (1.025 kr./t)"></label>
           </div>
+          <details id="ncTimepriserDetails" style="margin-bottom:12px; border:1px solid var(--border-subtle,#e1e4e8); border-radius:3px; padding:12px">
+            <summary style="cursor:pointer; font-weight:600">Timepriser pr. rolle på sagen – Tekniker, PM, SE (valgfrit)</summary>
+            <div class="form-grid" style="margin-top:9px">
+              <label>Tekniker kost (kr./t)<input type="number" id="ncTekKost" step="1" min="0" placeholder="Standard (525)"></label>
+              <label>Tekniker salg (kr./t)<input type="number" id="ncTekSalg" step="1" min="0" placeholder="Standard (1.025)"></label>
+              <label>PM kost (kr./t)<input type="number" id="ncPmKost" step="1" min="0" placeholder="Standard (650)"></label>
+              <label>PM salg (kr./t)<input type="number" id="ncPmSalg" step="1" min="0" placeholder="Standard (1.195)"></label>
+              <label>SE kost (kr./t)<input type="number" id="ncSeKost" step="1" min="0" placeholder="Standard (650)"></label>
+              <label>SE salg (kr./t)<input type="number" id="ncSeSalg" step="1" min="0" placeholder="Standard (1.195)"></label>
+            </div>
+          </details>
           <details id="ncProdukterDetails" open style="margin-bottom:6px; border:1px solid var(--border-subtle,#e1e4e8); border-radius:3px; padding:12px">
             <summary style="cursor:pointer; font-weight:600">Kundedata – Overordnet produktoversigt (til info)</summary>
             <div id="ncProdukterGrid" style="margin-top:9px"></div>
@@ -4675,6 +4861,7 @@ App.registerPage({
       if ($('#ncMdlRate')) $('#ncMdlRate').value = '';
       if ($('#ncUl')) $('#ncUl').value = '';
       if ($('#ncUlAftale')) $('#ncUlAftale').value = '';
+      ['#ncTimeprisKost', '#ncTimeprisSalg', '#ncTekKost', '#ncTekSalg', '#ncPmKost', '#ncPmSalg', '#ncSeKost', '#ncSeSalg'].forEach(sel => { if ($(sel)) $(sel).value = ''; });
       toggleNewSite();
       sidsteKalk = null; $('#kalkResult').hidden = true; kalkFileIn.value = '';
       // Genopbygges ved hvert åbn, så en nyoprettet eller (de)aktiveret PM er med uden genindlæsning.
@@ -4742,11 +4929,24 @@ App.registerPage({
       const mdlRateInput = $('#ncMdlRate') ? $('#ncMdlRate').value.trim() : '';
       const valgtUlId = $('#ncUl') ? $('#ncUl').value : '';
       const ulAftaleTxt = $('#ncUlAftale') ? $('#ncUlAftale').value.trim() : '';
+      const tpKostVal = $('#ncTimeprisKost') ? +$('#ncTimeprisKost').value || 0 : 0;
+      const tpSalgVal = $('#ncTimeprisSalg') ? +$('#ncTimeprisSalg').value || 0 : 0;
+      const rolleTimepriser = {
+        teknikerKost: $('#ncTekKost') ? +$('#ncTekKost').value || 0 : 0,
+        teknikerSalg: $('#ncTekSalg') ? +$('#ncTekSalg').value || 0 : 0,
+        pmKost: $('#ncPmKost') ? +$('#ncPmKost').value || 0 : 0,
+        pmSalg: $('#ncPmSalg') ? +$('#ncPmSalg').value || 0 : 0,
+        seKost: $('#ncSeKost') ? +$('#ncSeKost').value || 0 : 0,
+        seSalg: $('#ncSeSalg') ? +$('#ncSeSalg').value || 0 : 0,
+      };
       const p = window.ProjectFactory.create({
         navn: `${s.navn} – ${beskrivelse}`, siteId: s.id, opportunity,
         type, model: $('#ncModel').value, pm: ncPm.value,
         ulId: valgtUlId || undefined,
         ulAftale: ulAftaleTxt,
+        timeprisKost: tpKostVal,
+        timeprisSalg: tpSalgVal,
+        timepriser: rolleTimepriser,
         afdeling: $('#ncAfdeling').value, rekvirent: s.kontakt || '', salgspris: +$('#ncSalgspris').value || 0,
         salgKost: kostInput !== '' ? +kostInput : undefined,
         ekstraArbejde: sidsteKalk ? sidsteKalk.felter.ekstraArbejde : undefined,
@@ -5106,15 +5306,18 @@ App.registerPage({
 
       <div class="tabpane" id="tab-tid">
         <div class="card-body">
+          <div id="tidPriserWrap" style="margin-bottom:18px; padding:12px; border:1px solid var(--border-default); border-radius:6px; background:var(--surface-sunken,#f8f9fa)"></div>
+          <div class="stats" id="tidOekStats" style="grid-template-columns: repeat(4, 1fr); margin-bottom:18px"></div>
           <h3 style="margin-bottom:12px">Teknikertimer fra tidsregistrering</h3>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Dato</th><th>Sag</th><th>Tekniker</th><th class="num">Timer</th><th class="num">OT1</th><th class="num">OT2</th><th class="num">Kørsel</th><th>Udført</th><th>Materialer</th></tr></thead>
+              <thead><tr><th>Dato</th><th>Sag</th><th>Tekniker</th><th class="num">Timer</th><th class="num">OT1</th><th class="num">OT2</th><th class="num">Kørsel</th><th>Udført</th><th>Materialer</th><th class="num">Kost</th><th class="num">Salg</th></tr></thead>
               <tbody id="tidRows"></tbody>
               <tfoot><tr id="tidSum"></tr></tfoot>
             </table>
           </div>
-          <h3 style="margin:24px 0 12px">Projektlog med PM-, SE- og UL-tid</h3>
+          <h3 style="margin:24px 0 6px">Projektlog med PM-, SE- og UL-tid</h3>
+          <div id="logTidSum" class="caption muted" style="margin-bottom:9px"></div>
           <ul class="log" id="logRows"></ul>
           <form class="inline-form" id="logForm" novalidate style="grid-template-columns: 3fr 1fr 1fr 1fr auto; margin-top:12px; border:1px solid var(--border-default); border-radius:6px">
             <label>Hændelse <input type="text" name="tekst" required placeholder="fx Opstartsmøde med kunde"></label>
@@ -5566,6 +5769,8 @@ App.registerPage({
       f('Ekstra arbejde', p.ekstraArbejde, { name: 'ekstraArbejde', type: 'number' }),
       f('Salg kostpris', p.salgKost, { name: 'salgKost', type: 'number' }),
       f('Månedskroner (kr./md.)', p.mdlRate || 0, { name: 'mdlRate', type: 'number' }),
+      f('Timepris kost – eget personale (kr./t)', p.timeprisKost || 0, { name: 'timeprisKost', type: 'number' }),
+      f('Timepris salg – eget personale (kr./t)', p.timeprisSalg || 0, { name: 'timeprisSalg', type: 'number' }),
     ].join('');
     $$('#stamForm input[name], #stamForm select[name]').forEach(i => i.addEventListener('change', () => {
       if (i.name === 'siteKode') { s.kode = i.value.trim(); save(); this.render(); return; }
@@ -5657,12 +5862,65 @@ App.registerPage({
       </tr>`;
     }).join('') || '<tr><td colspan="8" class="empty">Ingen delopgaver på projektet endnu. Opret den første med "Ny delopgave".</td></tr>';
 
-    // Tid og log (inkl. timer registreret på delopgaver)
+    // Tid og log (inkl. timer registreret på delopgaver + P7 timepriser kost og salg)
+    const tidOek = App.calcTid(p);
+    const tp = p.timepriser || {};
+    const harRolleSatser = !!(+tp.teknikerKost || +tp.teknikerSalg || +tp.pmKost || +tp.pmSalg || +tp.seKost || +tp.seSalg);
+    if ($('#tidPriserWrap')) {
+      $('#tidPriserWrap').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:9px; margin-bottom:9px">
+          <b>Timepriser på vores personale på denne sag (kost og salg)</b>
+          <span class="caption muted">Gældende satser: Tekniker ${n(tidOek.satser.tekniker.kost)} / ${n(tidOek.satser.tekniker.salg)} kr./t · PM ${n(tidOek.satser.pm.kost)} / ${n(tidOek.satser.pm.salg)} kr./t · SE ${n(tidOek.satser.se.kost)} / ${n(tidOek.satser.se.salg)} kr./t</span>
+        </div>
+        <div class="form-grid" style="margin-bottom:9px">
+          <label>Timepris kost – eget personale (kr./t)<input type="number" step="1" min="0" data-tp-main="timeprisKost" value="${+p.timeprisKost > 0 ? p.timeprisKost : ''}" placeholder="Standard (${tidOek.satser.tekniker.kost} kr./t)"></label>
+          <label>Timepris salg – eget personale (kr./t)<input type="number" step="1" min="0" data-tp-main="timeprisSalg" value="${+p.timeprisSalg > 0 ? p.timeprisSalg : ''}" placeholder="Standard (${tidOek.satser.tekniker.salg} kr./t)"></label>
+        </div>
+        <details id="tidRolleSatser"${harRolleSatser ? ' open' : ''}>
+          <summary class="caption" style="cursor:pointer; font-weight:600">Individuelle timepriser pr. rolle på sagen (Tekniker, PM, SE)</summary>
+          <div class="form-grid" style="margin-top:9px">
+            <label>Tekniker kost (kr./t)<input type="number" step="1" min="0" data-tp-role="teknikerKost" value="${+tp.teknikerKost > 0 ? tp.teknikerKost : ''}" placeholder="${tidOek.satser.tekniker.kost}"></label>
+            <label>Tekniker salg (kr./t)<input type="number" step="1" min="0" data-tp-role="teknikerSalg" value="${+tp.teknikerSalg > 0 ? tp.teknikerSalg : ''}" placeholder="${tidOek.satser.tekniker.salg}"></label>
+            <label>PM kost (kr./t)<input type="number" step="1" min="0" data-tp-role="pmKost" value="${+tp.pmKost > 0 ? tp.pmKost : ''}" placeholder="${tidOek.satser.pm.kost}"></label>
+            <label>PM salg (kr./t)<input type="number" step="1" min="0" data-tp-role="pmSalg" value="${+tp.pmSalg > 0 ? tp.pmSalg : ''}" placeholder="${tidOek.satser.pm.salg}"></label>
+            <label>SE kost (kr./t)<input type="number" step="1" min="0" data-tp-role="seKost" value="${+tp.seKost > 0 ? tp.seKost : ''}" placeholder="${tidOek.satser.se.kost}"></label>
+            <label>SE salg (kr./t)<input type="number" step="1" min="0" data-tp-role="seSalg" value="${+tp.seSalg > 0 ? tp.seSalg : ''}" placeholder="${tidOek.satser.se.salg}"></label>
+          </div>
+        </details>`;
+      $$('[data-tp-main]', $('#tidPriserWrap')).forEach(inp => inp.addEventListener('change', () => {
+        p[inp.dataset.tpMain] = +inp.value || 0;
+        save(); this.render(); toast('Timepris opdateret på ' + p.id);
+      }));
+      $$('[data-tp-role]', $('#tidPriserWrap')).forEach(inp => inp.addEventListener('change', () => {
+        p.timepriser = p.timepriser || { teknikerKost: 0, teknikerSalg: 0, pmKost: 0, pmSalg: 0, seKost: 0, seSalg: 0 };
+        p.timepriser[inp.dataset.tpRole] = +inp.value || 0;
+        save(); this.render(); toast('Rolle-timepris opdateret på ' + p.id);
+      }));
+    }
+    if ($('#tidOekStats')) {
+      $('#tidOekStats').innerHTML = [
+        ['Egne timer i alt', `${n(tidOek.egneTimer)} t <small class="muted" style="font-weight:400">(Tek ${n(tidOek.tekniker.timerIAlt)} · PM ${n(tidOek.pm.timer)} · SE ${n(tidOek.se.timer)})</small>`],
+        ['Timekost (vores personale)', kr(tidOek.egneKost)],
+        ['Timesalgsværdi (vores personale)', kr(tidOek.egneSalg)],
+        ['Udgifter inkl. timekost', `${kr(c.udgInklTid)} <small class="muted" style="font-weight:400">(DG: ${pct(c.dgFInklTid)})</small>`],
+      ].map(([l, v]) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`).join('');
+    }
     const rows = S.tid.filter(t => t.sag === p.id || (t.sag || '').startsWith(p.id + '-')).sort((a, b) => b.dato.localeCompare(a.dato));
     const sum = k => rows.reduce((a, t) => a + (+t[k] || 0), 0);
-    $('#tidRows').innerHTML = rows.map(t => `<tr><td>${t.dato}</td><td>${h(t.sag)}</td><td>${h(emp(t.tekniker).navn)}</td><td class="num">${n(t.timer)}</td><td class="num">${n(t.ot1)}</td><td class="num">${n(t.ot2)}</td><td class="num">${n(t.koersel)}</td><td>${h(t.udfoert)}</td><td class="muted">${(t.materialer || []).map(x => `${x.antal} × ${h(x.model)}`).join(', ')}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">Ingen teknikertimer registreret på sagen.</td></tr>';
-    $('#tidSum').innerHTML = `<td colspan="3">Total</td><td class="num">${n(sum('timer'))}</td><td class="num">${n(sum('ot1'))}</td><td class="num">${n(sum('ot2'))}</td><td class="num">${n(sum('koersel'))}</td><td colspan="2"></td>`;
-    $('#logRows').innerHTML = p.log.map((l, i) => `<li><time>${h(l.dato)}</time><span>${h(l.tekst)}</span><span class="who">${h(emp(l.af).navn)} · PM ${n(l.pmTid)} t / SE ${n(l.seTid)} t / UL ${n(l.ulTid)} t${l.af === S.user ? ` · <button class="tlink" data-logdel="${i}">Slet</button>` : ''}</span></li>`).join('');
+    $('#tidRows').innerHTML = rows.map(t => {
+      const rt = tidOek.raekkeTid(t);
+      return `<tr><td>${t.dato}</td><td>${h(t.sag)}</td><td>${h(emp(t.tekniker).navn)}</td><td class="num">${n(t.timer)}</td><td class="num">${n(t.ot1)}</td><td class="num">${n(t.ot2)}</td><td class="num">${n(t.koersel)}</td><td>${h(t.udfoert)}</td><td class="muted">${(t.materialer || []).map(x => `${x.antal} × ${h(x.model)}`).join(', ')}</td><td class="num" title="Kostsats: ${n(rt.kostSats)} kr./t">${kr(rt.kost)}</td><td class="num" title="Salgssats: ${n(rt.salgSats)} kr./t">${kr(rt.salg)}</td></tr>`;
+    }).join('') || '<tr><td colspan="11" class="empty">Ingen teknikertimer registreret på sagen.</td></tr>';
+    $('#tidSum').innerHTML = `<td colspan="3">Total</td><td class="num">${n(sum('timer'))}</td><td class="num">${n(sum('ot1'))}</td><td class="num">${n(sum('ot2'))}</td><td class="num">${n(sum('koersel'))}</td><td colspan="2"></td><td class="num">${kr(tidOek.tekniker.kost)}</td><td class="num">${kr(tidOek.tekniker.salg)}</td>`;
+    if ($('#logTidSum')) {
+      $('#logTidSum').innerHTML = `Sum i projektlog: <b>PM ${n(tidOek.pm.timer)} t</b> (kost ${kr(tidOek.pm.kost)} / salg ${kr(tidOek.pm.salg)}) · <b>SE ${n(tidOek.se.timer)} t</b> (kost ${kr(tidOek.se.kost)} / salg ${kr(tidOek.se.salg)}) · <b>UL ${n(tidOek.ul.timer)} t</b> (kost ${kr(tidOek.ul.kost)} / salg ${kr(tidOek.ul.salg)})`;
+    }
+    $('#logRows').innerHTML = p.log.map((l, i) => {
+      const rl = tidOek.raekkeLog(l);
+      const harTimer = (+l.pmTid || 0) + (+l.seTid || 0) + (+l.ulTid || 0) > 0;
+      const beloebInfo = harTimer ? ` · Kost ${kr(rl.kost)} / Salg ${kr(rl.salg)}` : '';
+      return `<li><time>${h(l.dato)}</time><span>${h(l.tekst)}</span><span class="who">${h(emp(l.af).navn)} · PM ${n(l.pmTid)} t / SE ${n(l.seTid)} t / UL ${n(l.ulTid)} t${beloebInfo}${l.af === S.user ? ` · <button class="tlink" data-logdel="${i}">Slet</button>` : ''}</span></li>`;
+    }).join('');
     $$('[data-logdel]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.logdel;
       App.confirmDialog('Slet log-posten?').then(ok => { if (!ok) return; p.log.splice(i, 1); save(); this.render(); toast('Log-post slettet'); });
@@ -9117,7 +9375,7 @@ App.registerPage({
   const RET_CELL_LABEL = { ret: 'Rette', egne: 'Egne sager', laes: 'Læse', '': '–' };
   const RET_ROLE_ORDER = ['Chef', 'PM', 'Tekniker', 'Fakturering', 'Service'];
 
-  const BRU_LABEL = { navn: 'Navn', rolle: 'Rolle', afdeling: 'Afdeling', lederFor: 'Afdelingsleder for' };
+  const BRU_LABEL = { navn: 'Navn', rolle: 'Rolle', afdeling: 'Afdeling', lederFor: 'Afdelingsleder for', timeprisKost: 'Timepris kost (kr./t)', timeprisSalg: 'Timepris salg (kr./t)' };
   const bruStamdataTekst = v => v === true ? 'Ja' : v === false ? 'Nej' : 'Følger rollen';
   const bruHistTekst = p => {
     if (p.felt === 'oprettet') return `Oprettet: ${p.til}`;
@@ -9183,6 +9441,7 @@ App.registerPage({
               <th data-sort="text" scope="col">Afdeling</th>
               <th data-sort="text" scope="col">Afdelingsleder</th>
               <th data-sort="text" scope="col">Stamdata</th>
+              <th class="num" data-sort="num" scope="col">Timepris (kost / salg)</th>
               <th class="num" data-sort="num" scope="col">Aktive projekter</th>
               <th data-sort="text" scope="col">Status</th>
             </tr></thead>
@@ -9259,6 +9518,14 @@ App.registerPage({
               </select>
               <span class="caption muted">Følger rollen betyder, at rettighederne i tabellen nedenfor gælder.</span>
             </label>
+            <label for="bruTimeprisKost">Timepris kost (kr./t)
+              <input type="number" id="bruTimeprisKost" name="timeprisKost" min="0" step="1" placeholder="Tom = rollens standard">
+              <span class="caption muted" id="bruTimeprisKostHint">Standard kostpris for medarbejderen (kan overskrives fra sag til sag).</span>
+            </label>
+            <label for="bruTimeprisSalg">Timepris salg (kr./t)
+              <input type="number" id="bruTimeprisSalg" name="timeprisSalg" min="0" step="1" placeholder="Tom = rollens standard">
+              <span class="caption muted" id="bruTimeprisSalgHint">Standard salgspris for medarbejderen (kan overskrives fra sag til sag).</span>
+            </label>
             <label for="bruMail">Mail
               <input type="text" id="bruMail" disabled value="">
               <span class="caption muted">Hentes fra Securitas' brugerkatalog i det rigtige system.</span>
@@ -9328,6 +9595,7 @@ App.registerPage({
         $('#bruRows').innerHTML = rows.map(m => {
           const aktiv = m.aktiv !== false;
           const aktiveProj = App.aktiveProjekterFor(m.id);
+          const tp = App.medarbejderTimepris ? App.medarbejderTimepris(m) : { kost: m.timeprisKost || 0, salg: m.timeprisSalg || 0 };
           return `<tr class="click${aktiv ? '' : ' muted'}" data-open="${App.h(m.id)}" tabindex="0">
             <td><b>${App.h(m.navn)}</b></td>
             <td>${App.h(m.id)}</td>
@@ -9335,10 +9603,11 @@ App.registerPage({
             <td>${App.h(m.afdeling) || '–'}</td>
             <td>${App.h(m.lederFor) || '–'}</td>
             <td>${App.h(bruStamdataTekst(m.maaRedigereStamdata))}</td>
+            <td class="num" data-value="${tp.kost}">${App.n(tp.kost)} / ${App.n(tp.salg)} kr.</td>
             <td class="num">${aktiveProj}</td>
             <td>${App.st(aktiv ? 'Aktiv' : 'Deaktiveret')}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="8" class="empty">${alle.length ? 'Ingen brugere matcher filteret.' : 'Ingen brugere er oprettet endnu.'}</td></tr>`;
+        }).join('') || `<tr><td colspan="9" class="empty">${alle.length ? 'Ingen brugere matcher filteret.' : 'Ingen brugere er oprettet endnu.'}</td></tr>`;
         App.applySort($('#bruTable'), 'bruTabel');
         renderRollePanel();
       };
@@ -9410,6 +9679,15 @@ App.registerPage({
         const stamVal = m && typeof m.maaRedigereStamdata === 'boolean' ? String(m.maaRedigereStamdata) : '';
         $('#bruStamdata').value = stamVal;
         $('#bruStamdata').disabled = !!laase.alt;
+
+        if ($('#bruTimeprisKost')) {
+          $('#bruTimeprisKost').value = m && +m.timeprisKost > 0 ? m.timeprisKost : '';
+          $('#bruTimeprisKost').disabled = !!laase.alt;
+        }
+        if ($('#bruTimeprisSalg')) {
+          $('#bruTimeprisSalg').value = m && +m.timeprisSalg > 0 ? m.timeprisSalg : '';
+          $('#bruTimeprisSalg').disabled = !!laase.alt;
+        }
 
         $('#bruBtnGem').style.display = laase.alt ? 'none' : '';
 
@@ -9510,13 +9788,18 @@ App.registerPage({
           const raw = fd.get('maaRedigereStamdata');
           aendringer.maaRedigereStamdata = raw === 'true' ? true : raw === 'false' ? false : null;
         }
+        if (has('timeprisKost')) aendringer.timeprisKost = fd.get('timeprisKost');
+        if (has('timeprisSalg')) aendringer.timeprisSalg = fd.get('timeprisSalg');
         res = App.retMedarbejder(id, aendringer);
       } else {
         const raw = fd.get('maaRedigereStamdata');
-        res = App.opretMedarbejder({
+        const payload = {
           navn: fd.get('navn'), id: fd.get('id'), rolle: fd.get('rolle'), afdeling: fd.get('afdeling'),
           lederFor: fd.get('lederFor') || '', maaRedigereStamdata: raw === 'true' ? true : raw === 'false' ? false : null,
-        });
+        };
+        if (has('timeprisKost') && fd.get('timeprisKost') !== '') payload.timeprisKost = fd.get('timeprisKost');
+        if (has('timeprisSalg') && fd.get('timeprisSalg') !== '') payload.timeprisSalg = fd.get('timeprisSalg');
+        res = App.opretMedarbejder(payload);
       }
       if (!res.ok) App.toast(res.fejl); else App.opdaterBrugerskifter();
       return res;
