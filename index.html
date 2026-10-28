@@ -6090,14 +6090,15 @@ App.registerPage({
         <div class="scan" id="scanPanel">
           <div class="scan-drop" id="scanDrop" tabindex="0" role="button" aria-label="Upload faktura til scanning">
             <svg class="ico"><use href="#i-export"/></svg>
-            <div><b>Scan faktura <span class="badge" style="margin-left:6px;font-weight:normal">Gemini 3.8 Flash</span></b><br><span class="muted">Træk en PDF eller et foto hertil, eller vælg en fil. Faktura nr., leverandør, alle materialeposter og beløb inkl. øre udfyldes automatisk.</span></div>
+            <div><b>Scan faktura <span class="badge" style="margin-left:6px;font-weight:normal">Kun i den færdige løsning (AI-model låst i prototype)</span></b><br><span class="muted">Live AI-aflæsning af vilkårlige PDF'er aktiveres først ved go-live af hensyn til API-sikkerhed. I prototypen kan du teste det fulde flow inkl. alle materialeposter og øre-beløb med demo-fakturaerne herunder:</span></div>
             <input type="file" id="scanFile" accept=".pdf,image/*" hidden>
             <div class="scan-demos">Prøv med en demo-faktura:
               <button class="tlink" type="button" data-demo="adi">ADI</button> ·
               <button class="tlink" type="button" data-demo="solar">Solar (143485)</button> ·
+              <button class="tlink" type="button" data-demo="solar143079">Solar (143079)</button> ·
               <button class="tlink" type="button" data-demo="lindpro">Lindpro</button> ·
-              <button class="tlink" type="button" data-demo="renta">Renta</button> ·
-              <button class="tlink" type="button" id="btnScanApiKey" title="Konfigurér Gemini 3.8 Flash API-nøgle til live PDF-scanning">AI-nøgle</button>
+              <button class="tlink" type="button" data-demo="renta">Renta</button>
+              <button class="tlink" type="button" data-demo="renta">Renta</button>
             </div>
           </div>
           <div class="scan-result" id="scanResult" hidden></div>
@@ -6402,6 +6403,16 @@ App.registerPage({
           { varenr: '2210048112', tekst: 'Kabelbakke 100×60 perforeret 2m', antal: 2, enhedspris: 270.175, beloeb: 540.35 },
         ],
         conf: { faktura: .98, leverandoer: .97, ydelse: .93, netto: .98, sag: .88 },
+      },
+      solar143079: {
+        fil: 'Invoice 143079.pdf', faktura: '143079', leverandoer: 'Solar Danmark A/S', dato: today(),
+        ydelse: 'Kabler, føringsveje og sikringsmateriel (3 materialeposter)', netto: 85140.00, moms: 21285.00,
+        linjer: [
+          { varenr: '5703002104', tekst: 'NKT NOX / Brandkabel 2×1,5 mm² skærmet 100m', antal: 25, enhedspris: 1480.00, beloeb: 37000.00 },
+          { varenr: '3412008911', tekst: 'Rittal vægskab AE 600×600×210 mm inkl. montageplade', antal: 10, enhedspris: 3420.00, beloeb: 34200.00 },
+          { varenr: '8810204415', tekst: 'Wago 221-413 samlemuffe 3-leder + installationsmateriel', antal: 40, enhedspris: 348.50, beloeb: 13940.00 },
+        ],
+        conf: { faktura: .99, leverandoer: .98, ydelse: .95, netto: .99, sag: .92 },
       },
       lindpro: {
         fil: 'Lindpro_44211.pdf', faktura: '44211', leverandoer: 'Lindpro', dato: today(),
