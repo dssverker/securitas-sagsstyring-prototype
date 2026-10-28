@@ -1990,6 +1990,92 @@ window.DEMO = {
   // v8: et filter fra Forsiden gælder kun det besøg, det blev sat i. Efter en genindlæsning må en
   // arbejdsside ikke stå med banneret "Viser N poster fra Forsiden" på en liste, brugeren selv åbnede.
   delete S.forsideFilter;
+  // v9 (PLAN-v9, beslutning 10): skånsom, idempotent berigelse af nye felter oven i eksisterende state
+  // uden at ændre prototype/data.js eller DEMO.version – så testernes gemte data bevares.
+  const KUNDE_PRODUKTER = ['Mobile', 'Static', 'ABA', 'Førstehjælpsudstyr', 'Brandmateriel', 'KC Opkobling', 'Simkort', 'Master', 'Turnstiles', 'Reception', 'RVS'];
+  {
+    const demoProd = {
+      'K-0007': { Static: { aktiv: true, ul: 'Securitas' }, ABA: { aktiv: true, ul: 'CC Installation' }, 'KC Opkobling': { aktiv: true, ul: 'Securitas' }, Turnstiles: { aktiv: true, ul: 'Certego' }, Reception: { aktiv: true, ul: 'Securitas' } },
+      'K-0002': { Mobile: { aktiv: true, ul: 'Securitas' }, ABA: { aktiv: true, ul: 'Stanley' }, Brandmateriel: { aktiv: true, ul: 'Stanley' } },
+      'K-0011': { 'KC Opkobling': { aktiv: true, ul: 'Securitas' }, Simkort: { aktiv: true, ul: 'Securitas' }, RVS: { aktiv: true, ul: 'Jansson' } },
+    };
+    (S.kunder || []).forEach(k => {
+      if (!k) return;
+      if (!k.produkter || typeof k.produkter !== 'object') {
+        k.produkter = demoProd[k.id] ? JSON.parse(JSON.stringify(demoProd[k.id])) : {};
+      }
+      KUNDE_PRODUKTER.forEach(p => { if (!k.produkter[p] || typeof k.produkter[p] !== 'object') k.produkter[p] = { aktiv: false, ul: '' }; });
+      if (false) {
+      }
+    });
+    const demoEfNoter = {
+      'DK-S-024527': 'Husk sikkerhedssko og adgangskort i receptionen før eftersyn.',
+      'DK-S-040396': 'Eftersyn udføres uden for skoletid kl. 14-17. Kontakt pedel ved ankomst.',
+      'DK-S-023537': 'Meld ankomst i vagten 30 min. før test af central.',
+      'DK-S-050109': 'Adgang til teknikrum via serviceindgang B. Kontakt driften før opstart.',
+    };
+    (S.sites || []).forEach(s => {
+      if (!s) return;
+      if (typeof s.specifikkeNoterEftersyn !== 'string') {
+        s.specifikkeNoterEftersyn = demoEfNoter[s.id] || '';
+      }
+    });
+    (S.projekter || []).forEach(p => {
+      if (!p) return;
+      if (typeof p.ulAftale !== 'string') p.ulAftale = '';
+    });
+    (S.installationer || []).forEach(i => {
+      if (!i || !i.eftersyn) return;
+      const e = i.eftersyn;
+      if (typeof e.mailSendt !== 'boolean') e.mailSendt = !!e.cas;
+      if (!Array.isArray(e.historik)) {
+        e.historik = e.cas
+          ? [{ dato: e.sidste || '2026-09-01', status: 'Oprettet', kommentar: `Sag ${e.cas} oprettet – mail sendt til service@securitas.dk`, af: 'SERV' }]
+          : [];
+      }
+      if (!Array.isArray(e.tidligere)) {
+        if (e.sidste) {
+          const aar = +e.sidste.slice(0, 4) - 1;
+          const md = e.sidste.slice(5, 7);
+          const glDato = `${aar}-${md}-12`;
+          e.tidligere = [
+            {
+              id: `EF-${i.id}-1`,
+              cas: `CAS-410${String(i.id).replace(/\D/g, '').slice(-3)}-HIST`,
+              planMaaned: e.sidste.slice(0, 7),
+              dato: e.sidste,
+              udfoert: 'Udført uden bemærkninger',
+              resultat: 'Ingen fejl konstateret',
+              servicesag: '',
+              kommentar: `Planlagt ${i.type}-eftersyn gennemført og afprøvet uden anmærkninger.`,
+              af: 'PEBO',
+              historik: [
+                { dato: e.sidste.slice(0, 8) + '01', status: 'Oprettet', kommentar: 'Eftersynssag oprettet og mail sendt til service@securitas.dk', af: 'SERV' },
+                { dato: e.sidste, status: 'Udført uden bemærkninger', kommentar: 'Ingen fejl konstateret – Planlagt eftersyn gennemført og afprøvet uden anmærkninger.', af: 'PEBO' },
+              ],
+            },
+            {
+              id: `EF-${i.id}-0`,
+              cas: `CAS-309${String(i.id).replace(/\D/g, '').slice(-3)}-HIST`,
+              planMaaned: `${aar}-${md}`,
+              dato: glDato,
+              udfoert: 'Udført med bemærkninger',
+              resultat: 'Fejl konstateret og udbedret under eftersyn.',
+              servicesag: '',
+              kommentar: 'Batteri i undercentral udskiftet under eftersyn.',
+              af: 'VA',
+              historik: [
+                { dato: `${aar}-${md}-01`, status: 'Oprettet', kommentar: 'Eftersynssag oprettet og mail sendt til service@securitas.dk', af: 'SERV' },
+                { dato: glDato, status: 'Udført med bemærkninger', kommentar: 'Fejl konstateret og udbedret under eftersyn. – Batteri i undercentral udskiftet under eftersyn.', af: 'VA' },
+              ],
+            },
+          ];
+        } else {
+          e.tidligere = [];
+        }
+      }
+    });
+  }
   // v7: er den gemte bruger ukendt (fx slettet i et ældre datasæt) eller deaktiveret, må prototypen ikke
   // starte op som en bruger, der ikke findes. Falder tilbage til første aktive chef, ellers første aktive.
   // Ligger ved state-indlæsningen, så det også gælder i Node-sandkassen, hvor DOMContentLoaded aldrig affyres.
@@ -2047,6 +2133,27 @@ window.DEMO = {
     const m = +e.maaned;
     if (m >= 1 && m <= 12) { let d = new Date(t.getFullYear(), m - 1, 1); if (d < t) d = new Date(t.getFullYear() + 1, m - 1, 1); return isoDato(d); }
     return '';
+  };
+  // v9 (E1, E6, E11): næste eftersyn pr. installation som Måned/År (YYYY-MM, vises MM/YYYY).
+  // Er e.planMaaned sat (fx efter "Flyt eftersyn" eller efter "Udført", der lægger intervallet til
+  // det indeværende års eftersynsmåned, jf. E11), bruges den direkte; ellers udledes den af naesteEftersyn.
+  const addMaanederYm = (ym, delta) => {
+    const m = /^(\d{4})-(\d{2})/.exec(String(ym || ''));
+    if (!m) return '';
+    const d = new Date(+m[1], +m[2] - 1 + (+delta || 0), 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const formaterMaanedAar = ym => {
+    const m = /^(\d{4})-(\d{2})/.exec(String(ym || ''));
+    return m ? `${m[2]}/${m[1]}` : '–';
+  };
+  const eftersynPlanMaaned = (instOrEf, t) => {
+    const e = instOrEf && instOrEf.eftersyn ? instOrEf.eftersyn : (instOrEf || {});
+    if (!e || !e.aktiv) return '';
+    if (/^\d{4}-\d{2}$/.test(String(e.planMaaned || ''))) return e.planMaaned;
+    const d = t || (() => { const x = new Date(); x.setHours(0, 0, 0, 0); return x; })();
+    const iso = naesteEftersyn(e, d);
+    return iso ? iso.slice(0, 7) : '';
   };
   // Sitets eftersyn set under ét, så eftersynslisten fortsat er 23 rækker og ikke 42 (§4, afvigelse 7).
   // Den installation med den tidligste næste dato bestemmer rækken; er ingen aktiv, vises den første
@@ -3599,6 +3706,53 @@ window.DEMO = {
     save();
   }
 
+  // v9 (G1): Tilbage-navigation (Browser Back og Backspace) inden for applikationen, så browseren
+  // ikke forlader siden til en tidligere hjemmeside. navStack husker besøgte views ({ pageId, projId }),
+  // og subViewStack husker åbne del-views inde på en side (fx kundedetalje eller tidligere eftersyn).
+  const navStack = [];
+  const subViewStack = [];
+  let navInPop = false;
+  function pushBrowserHistory(stateObj) {
+    try {
+      if (window.history && typeof window.history.pushState === 'function') {
+        window.history.pushState(stateObj || { sdNav: true }, '');
+      }
+    } catch (e) {}
+  }
+  function pushSubView(backFn) {
+    if (typeof backFn !== 'function') return;
+    subViewStack.push(backFn);
+    pushBrowserHistory({ sdSub: true });
+  }
+  function goBack() {
+    // 1. Luk evt. åbent kolonnefilter eller modal-subview først
+    if (colFilterPop && !colFilterPop.hidden) { closeColFilterPop(true); return true; }
+    if (subViewStack.length) {
+      const fn = subViewStack.pop();
+      try { fn(); } catch (e) {}
+      return true;
+    }
+    const openModals = $$('.modal-bg.open');
+    if (openModals.length) {
+      closeModal(openModals[openModals.length - 1].id);
+      return true;
+    }
+    if (navStack.length > 1) {
+      navStack.pop(); // fjern nuværende
+      const prev = navStack[navStack.length - 1];
+      navInPop = true;
+      try {
+        if (prev.projId) S.currentProj = prev.projId;
+        renderNav();
+        go(prev.pageId);
+      } finally {
+        navInPop = false;
+      }
+      return true;
+    }
+    return false;
+  }
+
   function go(pageId) {
     const p = pages.find(x => x.id === pageId);
     if (!p) return;
@@ -3607,6 +3761,16 @@ window.DEMO = {
     // v8: et filter fra Forsiden gælder kun den side, det blev sat til. Ryddes FØR sidens render(),
     // så en side aldrig kan komme til at læse et filter, der hørte til et andet kort.
     if (S.forsideFilter && S.forsideFilter.side !== pageId) { delete S.forsideFilter; save(); }
+    if (!navInPop) {
+      subViewStack.length = 0;
+      const cur = navStack[navStack.length - 1];
+      const projId = pageId === 'projekt' ? (S.currentProj || '') : '';
+      if (!cur || cur.pageId !== pageId || cur.projId !== projId) {
+        navStack.push({ pageId, projId });
+        if (navStack.length > 50) navStack.shift();
+        pushBrowserHistory({ sdNav: true, pageId, projId });
+      }
+    }
     $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + pageId));
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
     revealNavGroup(pageId, p.group || 'Projekter');
@@ -3671,6 +3835,22 @@ window.DEMO = {
     if (btn && sub && !sub.hidden) { toggleNavGroup(btn.dataset.group, btn, sub, false); btn.focus(); }
   });
 
+  // v9 (G1): Backspace uden for redigerbare felter går til forrige view i stedet for at lade browseren
+  // gå tilbage til en tidligere hjemmeside.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Backspace') return;
+    const t = e.target || document.activeElement;
+    if (t && typeof t.matches === 'function' && t.matches('input, textarea, select, [contenteditable], [contenteditable="true"]')) return;
+    e.preventDefault();
+    goBack();
+  });
+  try {
+    window.addEventListener('popstate', () => {
+      const handled = goBack();
+      if (!handled) pushBrowserHistory({ sdNav: true, pageId: S.lastPage || '' });
+    });
+  } catch (e) {}
+
   // F8: klik uden for popoveren, eller sideeffekt af en scroll, lukker den (ligesom modalernes
   // baggrund). Klik på selve filterknappen stopper sin egen boble (bindColFilterButton), så den ikke
   // rammer denne lytter og lukker popoveren, samme øjeblik den skulle åbnes.
@@ -3698,7 +3878,7 @@ window.DEMO = {
   // Space/Enter aktiverer rækker og listeelementer med klik-handling (tabindex="0")
   document.addEventListener('keydown', e => {
     if (e.key !== ' ' && e.key !== 'Spacebar' && e.key !== 'Enter') return;
-    const el = e.target.closest('tr.click[tabindex], .my-cases li[tabindex], [data-site][tabindex]');
+    const el = e.target.closest('tr.click[tabindex], .my-cases li[tabindex], [data-site][tabindex], [data-inst][tabindex]');
     if (!el) return;
     if (e.key !== 'Enter') e.preventDefault(); // undgå sidescroll ved mellemrum
     el.click();
@@ -3732,7 +3912,7 @@ window.DEMO = {
 
   window.App = {
     D, S, save, $, $$, kr, n, pct, h, today, now, icon, st, stKort, dgCell, site, bc, emp, proj, calc, role,
-    toast, openModal, closeModal, confirmDialog, trapFocus, go, openProject, registerPage, getPage,
+    toast, openModal, closeModal, confirmDialog, trapFocus, go, goBack, pushSubView, openProject, registerPage, getPage,
     siteLabel, siteAddress, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, downloadMode, printSection,
     sortable, applySort, lederFor, scopeOptions, resolveScope, inScope,
     // F8 (B3): rene hjælpefunktioner uden DOM, eksponeret for tools/test-f8.js – bruges internt af
@@ -3740,6 +3920,7 @@ window.DEMO = {
     colFilterMatch, migrateSortState, colIndexByLabel,
     // v7-kompatibilitetslaget (PLAN-v6-spor1 §4) – kontrakt for bølge B2-B5
     kunde, kundeAf, kundeNavn, installation, installationer, installationTyper, serviceaftaler, eftersynSite,
+    eftersynPlanMaaned, formaterMaanedAar, addMaanederYm, KUNDE_PRODUKTER,
     ul, ulNavn, ulAf, stedNr, projStatus, erIgangvaerende, igangvaerendeProjekter,
     saetFelt, log, historikFor, maaRette, maaRetteRoller, retteForklaring, PROTOTYPE_FORBEHOLD, RETTIGHEDER,
     // v7 brugeradministration (PLAN-v7, bølge 1a) – kontrakt for pages/brugere.js og de 12 læsesteder
@@ -4178,7 +4359,7 @@ window.ProjectFactory = {
       id, navn: opts.navn, siteId: opts.siteId, opportunity: opts.opportunity,
       // C4/C5 (KRAV-GAP-v6): valgfrie linkfelter til CEP – tomme som standard, så eksisterende gemt state er uændret.
       cepProjektUrl: '', opportunityUrl: '',
-      type: opts.type, model: opts.model || 'Kontant', pm: opts.pm, se: '', ulId, afdeling: opts.afdeling,
+      type: opts.type, model: opts.model || 'Kontant', pm: opts.pm, se: '', ulId, ulAftale: opts.ulAftale || '', afdeling: opts.afdeling,
       udfoerelse: App.UDFOERELSE_STATUS[0], overdragelse: null,
       oprettet: today(), maaned: today().slice(0, 7), rekvirent: opts.rekvirent || '', ref: opts.ref || '', wo: opts.wo || '',
       salgspris: opts.salgspris || 0, ekstraArbejde: opts.ekstraArbejde || 0,
@@ -4275,7 +4456,7 @@ App.registerPage({
             <label>Site<select id="ncSiteSel"></select></label>
           </div>
           <div class="form-grid" id="ncNewSite" style="margin-bottom:18px">
-            <label>Kunde<input type="text" id="ncKunde"></label>
+            <label>Kunde<input type="text" id="ncKunde" list="ncKundeList" autocomplete="off"><datalist id="ncKundeList"></datalist></label>
             <label>Site-navn<input type="text" id="ncSiteNavn"></label>
             <label>Site-kode<input type="text" id="ncSiteKode" placeholder="fx GSBC (valgfrit)"></label>
             <label>Adresse<input type="text" id="ncAdresse"></label>
@@ -4295,7 +4476,14 @@ App.registerPage({
             <!-- F10: udfyldes af kalk-overførslen, men kan altid rettes eller sættes manuelt; tom felt giver
                  fortsat 65 %-gættet i ProjectFactory.create (uændret adfærd uden kalk). -->
             <label>Salg kostpris (kr.)<input type="number" id="ncKostpris" step="1" placeholder="Tom = skøn (65 % af salgsprisen)"></label>
+            <label>Månedskroner (kr./md.)<input type="number" id="ncMdlRate" step="1" placeholder="0"></label>
+            <label>Underleverandør (UL)<select id="ncUl"><option value="">Ingen / vælg UL</option></select></label>
+            <label style="grid-column:1/-1">Aftale med UL<input type="text" id="ncUlAftale" placeholder="Fx fastpris, timepris eller særaftale med underleverandør"></label>
           </div>
+          <details id="ncProdukterDetails" open style="margin-bottom:6px; border:1px solid var(--border-subtle,#e1e4e8); border-radius:3px; padding:12px">
+            <summary style="cursor:pointer; font-weight:600">Kundedata – Overordnet produktoversigt (til info)</summary>
+            <div id="ncProdukterGrid" style="margin-top:9px"></div>
+          </details>
         </div>
         <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="ncOk">Opret sag</button></footer>
       </div>
@@ -4319,12 +4507,62 @@ App.registerPage({
     const ncPm = $('#ncPm');
 
     const siteSel = $('#ncSiteSel');
+    const bygNcProdukter = produkter => {
+      const box = $('#ncProdukterGrid');
+      if (!box) return;
+      if (window.KundeProdukter && window.KundeProdukter.bygHtml) {
+        box.innerHTML = window.KundeProdukter.bygHtml('ncProd', produkter || {}, true);
+        return;
+      }
+      const prods = produkter || {};
+      const dlId = 'ncProd-ullist';
+      const uler = (S.underleverandoerer || []).map(u => `<option value="${h(u.navn)}"></option>`).join('');
+      const rows = (App.KUNDE_PRODUKTER || []).map((navn, idx) => {
+        const prodPost = prods[navn] || { aktiv: false, ul: '' };
+        return `<div style="display:flex; align-items:center; gap:8px; padding:4px 6px; border:1px solid var(--border-subtle,#e1e4e8); border-radius:3px; background:#fff">
+          <label style="display:flex; align-items:center; gap:6px; min-width:148px; margin:0; font-weight:500">
+            <input type="checkbox" id="ncProd-cb-${idx}" data-prod-cb="${h(navn)}"${prodPost.aktiv ? ' checked' : ''}>
+            <span>${h(navn)}</span>
+          </label>
+          <input type="text" id="ncProd-ul-${idx}" data-prod-ul="${h(navn)}" list="${dlId}" value="${h(prodPost.ul || '')}" placeholder="Underleverandør (UL)" style="flex:1; min-width:110px">
+        </div>`;
+      }).join('');
+      box.innerHTML = `<datalist id="${dlId}">${uler}</datalist><div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:6px">${rows}</div>`;
+    };
+    const laesNcProdukter = () => {
+      const box = $('#ncProdukterGrid');
+      if (window.KundeProdukter && window.KundeProdukter.laes) return window.KundeProdukter.laes(box);
+      const out = {};
+      (App.KUNDE_PRODUKTER || []).forEach(navn => { out[navn] = { aktiv: false, ul: '' }; });
+      if (!box) return out;
+      $$('[data-prod-cb]', box).forEach(cb => { const n = cb.getAttribute('data-prod-cb'); if (out[n]) out[n].aktiv = !!cb.checked; });
+      $$('[data-prod-ul]', box).forEach(inp => { const n = inp.getAttribute('data-prod-ul'); if (out[n]) out[n].ul = (inp.value || '').trim(); });
+      return out;
+    };
     const refreshSiteOptions = () => {
       siteSel.innerHTML = '<option value="">+ Nyt site</option>' + S.sites.map(s => `<option value="${s.id}">${h(App.kundeNavn(s))} – ${h(siteLabel(s))}</option>`).join('');
+      const dl = $('#ncKundeList');
+      if (dl) {
+        dl.innerHTML = (S.kunder || []).slice().sort((a, b) => (a.navn || '').localeCompare(b.navn || '', 'da')).map(k => `<option value="${h(k.navn)}"></option>`).join('');
+      }
+      const ulSel = $('#ncUl');
+      if (ulSel) {
+        ulSel.innerHTML = '<option value="">Ingen / vælg UL</option>' + (S.underleverandoerer || []).filter(u => u.aktiv !== false).map(u => `<option value="${h(u.id)}">${h(u.navn)}</option>`).join('');
+      }
     };
     const updatePreview = () => {
       const m = bc($('#ncStedNr').value);
       $('#ncBcPreview').value = m ? `${m.costcenter} · TOS ${m.tos} · ${m.account}` : ($('#ncStedNr').value ? 'Ikke fundet i mappingen' : '');
+    };
+    const syncKundeProdukterFraValg = () => {
+      if (siteSel.value) {
+        const k = App.kundeAf(siteSel.value);
+        bygNcProdukter(k && k.produkter);
+      } else {
+        const v = ($('#ncKunde').value || '').trim().toLowerCase();
+        const fundet = v && (S.kunder || []).find(k => String(k.navn || '').trim().toLowerCase() === v);
+        bygNcProdukter(fundet ? fundet.produkter : {});
+      }
     };
     const toggleNewSite = () => {
       const isNew = !siteSel.value;
@@ -4332,8 +4570,10 @@ App.registerPage({
       $('#ncStedNr').readOnly = !isNew;
       if (!isNew) { $('#ncStedNr').value = site(siteSel.value).stedNr || ''; }
       updatePreview();
+      syncKundeProdukterFraValg();
     };
     siteSel.addEventListener('change', toggleNewSite);
+    $('#ncKunde').addEventListener('change', syncKundeProdukterFraValg);
     $('#ncStedNr').addEventListener('input', updatePreview);
 
     // ---- F10: kalk-import (krav C1) ----
@@ -4405,6 +4645,7 @@ App.registerPage({
         const t = take();
         $('#ncSalgspris').value = t.salgspris;
         $('#ncKostpris').value = t.kost;
+        if ($('#ncMdlRate')) $('#ncMdlRate').value = t.mdlRate || '';
         if (App.INSTALLATION_TYPER.concat('KOMBI', 'ANDET').includes(t.type)) $('#ncType').value = t.type;
         $('#ncModel').value = t.model;
         sidsteKalk = { fil: r.fil, felter: t };
@@ -4428,9 +4669,13 @@ App.registerPage({
     $$('[data-kalkdemo]', kalkDrop).forEach(b => b.addEventListener('click', e => { e.stopPropagation(); runKalk({ ...KALK_DEMOS[b.dataset.kalkdemo] }); }));
 
     $('#btnNewCase').addEventListener('click', () => {
-      refreshSiteOptions(); siteSel.value = ''; toggleNewSite();
+      refreshSiteOptions(); siteSel.value = '';
       $('#ncKunde').value = ''; $('#ncSiteNavn').value = ''; $('#ncSiteKode').value = ''; $('#ncAdresse').value = ''; $('#ncPostnr').value = ''; $('#ncBy').value = '';
       $('#ncOpportunity').value = ''; $('#ncBeskrivelse').value = ''; $('#ncSalgspris').value = ''; $('#ncKostpris').value = '';
+      if ($('#ncMdlRate')) $('#ncMdlRate').value = '';
+      if ($('#ncUl')) $('#ncUl').value = '';
+      if ($('#ncUlAftale')) $('#ncUlAftale').value = '';
+      toggleNewSite();
       sidsteKalk = null; $('#kalkResult').hidden = true; kalkFileIn.value = '';
       // Genopbygges ved hvert åbn, så en nyoprettet eller (de)aktiveret PM er med uden genindlæsning.
       ncPm.innerHTML = '';
@@ -4486,16 +4731,26 @@ App.registerPage({
       }
       const opportunity = $('#ncOpportunity').value.trim(), beskrivelse = $('#ncBeskrivelse').value.trim();
       if (!opportunity || !beskrivelse) { toast('Udfyld opportunity og beskrivelse'); return; }
+      // P4: gem overordnet produktoversigt på kunden
+      const kPost = App.kunde(s.kundeId);
+      if (kPost && kPost.id && $('#ncProdukterGrid')) {
+        kPost.produkter = laesNcProdukter();
+      }
       // F10: kostprisen kommer fra kalken, når feltet er udfyldt (manuelt eller via overførsel) – ellers
       // holder ProjectFactory.create sig til 65 %-gættet, præcis som før F10 fandtes.
       const kostInput = $('#ncKostpris').value.trim();
+      const mdlRateInput = $('#ncMdlRate') ? $('#ncMdlRate').value.trim() : '';
+      const valgtUlId = $('#ncUl') ? $('#ncUl').value : '';
+      const ulAftaleTxt = $('#ncUlAftale') ? $('#ncUlAftale').value.trim() : '';
       const p = window.ProjectFactory.create({
         navn: `${s.navn} – ${beskrivelse}`, siteId: s.id, opportunity,
         type, model: $('#ncModel').value, pm: ncPm.value,
+        ulId: valgtUlId || undefined,
+        ulAftale: ulAftaleTxt,
         afdeling: $('#ncAfdeling').value, rekvirent: s.kontakt || '', salgspris: +$('#ncSalgspris').value || 0,
         salgKost: kostInput !== '' ? +kostInput : undefined,
         ekstraArbejde: sidsteKalk ? sidsteKalk.felter.ekstraArbejde : undefined,
-        mdlRate: sidsteKalk ? sidsteKalk.felter.mdlRate : undefined,
+        mdlRate: mdlRateInput !== '' ? (+mdlRateInput || 0) : (sidsteKalk ? sidsteKalk.felter.mdlRate : undefined),
         loebetid: sidsteKalk ? sidsteKalk.felter.loebetid : undefined,
         kalk: sidsteKalk ? { fil: sidsteKalk.fil, dato: App.today(), af: S.user, felter: sidsteKalk.felter } : undefined,
         logTekst: 'Oprettelse af sag direkte fra projektoverblikket',
@@ -4694,9 +4949,30 @@ window.ProjektFlow = {
   },
   // C10: afslutning kræver udført arbejde, ikke fakturering.
   kanAfsluttes(p) { return !!p && App.projStatus(p).udfoerelse === App.UDFOERELSE_STATUS[2] && !p.overdragelse; },
+  // P6: Bygger mail til abonnement@securitas.dk ved afslutning af projekt
+  abonnementsMail(p, startDato) {
+    const s = App.site((p || {}).siteId);
+    const k = App.kundeAf(s);
+    const m = App.bc(App.stedNr(p));
+    const kundenavn = App.kundeNavn(s) || '–';
+    const adresse = App.siteAddress(s) || '–';
+    const cepAccount = (k && k.cepAccount) || (m && m.account) || '–';
+    const opportunity = (p && p.opportunity) || '–';
+    const dato = startDato || App.today();
+    const emne = `Opstart af abonnement pr. ${dato} – ${kundenavn} (${opportunity})`;
+    const body = [
+      `Kundens abonnement skal starte pr. ${dato}.`,
+      '',
+      `Kundenavn: ${kundenavn}`,
+      `Adresse: ${adresse}`,
+      `CEP Account #: ${cepAccount}`,
+      `Opportunity #: ${opportunity}`,
+    ].join('\n');
+    return { til: 'abonnement@securitas.dk', emne, body, dato, kundenavn, adresse, cepAccount, opportunity };
+  },
   // Overdragelsen sætter de valgte installationer i drift med dato og projektnummer. eftersyn.sidste
   // røres ikke – det betyder "sidst efterset", ikke "overdraget" (gap-rapport A1c).
-  overdrag(p, installationIds, dato, af) {
+  overdrag(p, installationIds, dato, af, opts) {
     if (!p || p.overdragelse) return null;
     const ids = (installationIds || []).filter(id => App.installation(id).id);
     ids.forEach(id => {
@@ -4706,6 +4982,21 @@ window.ProjektFlow = {
       App.saetFelt(i, 'installation', id, 'fraProjekt', p.id);
     });
     p.overdragelse = { dato, af, installationIds: ids };
+    if (opts && typeof opts === 'object') {
+      const s = App.site(p.siteId);
+      const noteTxt = String(opts.note || '').trim();
+      if (s && s.id && noteTxt) {
+        const fuldNote = noteTxt.includes(p.id) ? noteTxt : `[${p.id}] ${noteTxt}`;
+        s.noter = s.noter || [];
+        s.noter.push({ dato: App.now(), af: af || App.S.user, tekst: fuldNote });
+        App.log('site', s.id, 'note', '', fuldNote);
+        p.overdragelse.note = fuldNote;
+      }
+      if (opts.sendAboMail !== false) {
+        const mail = this.abonnementsMail(p, opts.aboDato || dato);
+        p.overdragelse.abonnementsMail = mail;
+      }
+    }
     App.log('projekt', p.id, 'overdragelse', '', `${dato} · ${ids.length} installationer`);
     return p.overdragelse;
   },
@@ -4882,7 +5173,7 @@ App.registerPage({
     </div>
 
     <div class="modal-bg" id="modalAfslut">
-      <div class="modal" role="dialog" aria-labelledby="afslutTitle">
+      <div class="modal" style="width:min(760px, 100%)" role="dialog" aria-labelledby="afslutTitle">
         <header><h2 id="afslutTitle">Afslut projekt og overdrag til service</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
         <div class="body">
           <!-- C10: det udestående vises øverst, så projektet kan afsluttes med åbne fakturalinjer
@@ -4890,12 +5181,15 @@ App.registerPage({
           <p class="alert" id="afUdestaaende" hidden></p>
           <p class="muted" style="margin-bottom:18px">Overdragelsen sætter de valgte installationer i drift på sitet med dato og projektnummer. Fakturering afsluttes uafhængigt af overdragelsen.</p>
           <div id="afInstallationer"></div>
-          <div class="form-grid">
+          <div class="form-grid" style="margin-bottom:12px">
             <label>Timepris mod kunde (kr.)<input type="number" id="afTimepris" step="1"></label>
             <label>Kørsel mod kunde (kr.)<input type="number" id="afKoersel" step="1"></label>
+            <label>Abonnement startdato<input type="date" id="afAboDato"></label>
+            <label style="grid-column:1/-1">Note ved afslutning (tilføjes til sitets stamdata-noter)<textarea id="afNote" rows="2" placeholder="Skriv overdragelsesnote til sitets stamdata..."></textarea></label>
           </div>
+          <div id="afAboMailPreview" style="padding:12px; background:var(--surface-sunken,#f5f6f7); border:1px solid var(--border-subtle,#e1e4e8); border-radius:3px"></div>
         </div>
-        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="afOk">Afslut projekt og overdrag</button></footer>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="afOk">Afslut projekt, overdrag og send abonnementsmail</button></footer>
       </div>
     </div>
   `,
@@ -5093,6 +5387,17 @@ App.registerPage({
           <label>Interval<select data-affelt="esInterval" data-afkey="${h(key)}"><option${+(o.eftersyn || {}).interval === 6 ? ' selected' : ''}>6</option><option${+(o.eftersyn || {}).interval === 6 ? '' : ' selected'}>12</option></select></label>
         </div>
       </div>`;
+    const opdaterAboMailPreview = () => {
+      const box = $('#afAboMailPreview');
+      if (!box) return;
+      const p = cur();
+      if (!p) return;
+      const mail = window.ProjektFlow.abonnementsMail(p, ($('#afAboDato') && $('#afAboDato').value) || today());
+      box.innerHTML = `<div class="caption" style="font-weight:600; margin-bottom:6px">Mail ved afslutning til <b>${h(mail.til)}</b></div>
+        <div class="caption muted" style="margin-bottom:6px">Emne: <b>${h(mail.emne)}</b></div>
+        <pre style="margin:0; font-family:inherit; font-size:12px; white-space:pre-wrap; background:#fff; padding:9px; border:1px solid var(--border-subtle,#e1e4e8); border-radius:3px">${h(mail.body)}</pre>`;
+    };
+    if ($('#afAboDato')) $('#afAboDato').addEventListener('input', opdaterAboMailPreview);
     $('#btnAfslut').addEventListener('click', () => {
       const p = cur(); const s = site(p.siteId);
       const u = window.ProjektFlow.udestaaende(p);
@@ -5108,6 +5413,9 @@ App.registerPage({
         + instBlok('ny', { type: nyType, anlaeg: '', serviceaftale: App.serviceaftaler(s.id)[0] || '', ulId: p.ulId || '', eftersyn: {} }, 'Opret ny installation på sitet', !inst.length);
       $('#afTimepris').value = s.timepris || 0;
       $('#afKoersel').value = s.koersel || 0;
+      if ($('#afAboDato')) $('#afAboDato').value = today();
+      if ($('#afNote')) $('#afNote').value = '';
+      opdaterAboMailPreview();
       openModal('modalAfslut');
     });
     $('#afOk').addEventListener('click', () => {
@@ -5149,14 +5457,16 @@ App.registerPage({
       }
       App.saetFelt(s, 'site', s.id, 'timepris', +$('#afTimepris').value || 0);
       App.saetFelt(s, 'site', s.id, 'koersel', +$('#afKoersel').value || 0);
-      window.ProjektFlow.overdrag(p, valgte, today(), S.user);
+      const afNoteTxt = ($('#afNote') && $('#afNote').value.trim()) || `Overdraget fra projekt ${p.id}`;
+      const aboDato = ($('#afAboDato') && $('#afAboDato').value) || today();
+      window.ProjektFlow.overdrag(p, valgte, today(), S.user, { note: afNoteTxt, aboDato, sendAboMail: true });
       const u = window.ProjektFlow.udestaaende(p);
-      p.log.unshift({ dato: now(), tekst: `Projekt overdraget til service – ${valgte.length} ${valgte.length === 1 ? 'installation' : 'installationer'} i drift på ${s.id}` + (u.antal ? ` · udestående ${kr(u.beloeb)} på ${u.antal} ${u.antal === 1 ? 'linje' : 'linjer'}` : ''), af: S.user, pmTid: 0.5, seTid: 0, ulTid: 0 });
+      p.log.unshift({ dato: now(), tekst: `Projekt overdraget til service – ${valgte.length} ${valgte.length === 1 ? 'installation' : 'installationer'} i drift på ${s.id} · mail sendt til abonnement@securitas.dk (opstart ${aboDato})` + (u.antal ? ` · udestående ${kr(u.beloeb)} på ${u.antal} ${u.antal === 1 ? 'linje' : 'linjer'}` : ''), af: S.user, pmTid: 0.5, seTid: 0, ulTid: 0 });
       save(); closeModal('modalAfslut');
       // Projektkortet tegnes om med det samme, så knappen låses og "Overdraget" står der, også selv om
       // brugeren går tilbage hertil uden at åbne sagen forfra.
       this.render();
-      toast(u.antal ? `${p.id} overdraget til service. ${u.antal} ${u.antal === 1 ? 'linje' : 'linjer'} står stadig til fakturering.` : `${p.id} overdraget til service`);
+      toast(u.antal ? `${p.id} overdraget til service og mail sendt til abonnement@securitas.dk. ${u.antal} ${u.antal === 1 ? 'linje' : 'linjer'} står stadig til fakturering.` : `${p.id} overdraget til service og mail sendt til abonnement@securitas.dk`);
       App._highlightSite = s.id;
       App.go('kunder');
     });
@@ -5251,9 +5561,11 @@ App.registerPage({
       f('Installationstype', p.type, { auto: true }),
       modelField,
       ulField,
+      f('Aftale med UL', p.ulAftale || '', { name: 'ulAftale' }),
       f('Salgspris', p.salgspris, { name: 'salgspris', type: 'number' }),
       f('Ekstra arbejde', p.ekstraArbejde, { name: 'ekstraArbejde', type: 'number' }),
       f('Salg kostpris', p.salgKost, { name: 'salgKost', type: 'number' }),
+      f('Månedskroner (kr./md.)', p.mdlRate || 0, { name: 'mdlRate', type: 'number' }),
     ].join('');
     $$('#stamForm input[name], #stamForm select[name]').forEach(i => i.addEventListener('change', () => {
       if (i.name === 'siteKode') { s.kode = i.value.trim(); save(); this.render(); return; }
@@ -5597,7 +5909,41 @@ App.registerPage({
     { felt: 'alias', label: 'Alias', rediger: true, liste: true, hint: 'Adskil med komma' },
     { felt: 'oprettet', label: 'Oprettet', laast: 'Sættes ved oprettelse' },
   ];
-  const KUN_LABEL = { navn: 'Kunde navn', alias: 'Alias', cepAccount: 'CEP account' };
+  const KUN_LABEL = { navn: 'Kunde navn', alias: 'Alias', cepAccount: 'CEP account', produkter: 'Produktoversigt' };
+  const bygProduktGridHtml = (prefix, produkter, skrivbar = true) => {
+    const { h, S, KUNDE_PRODUKTER } = App;
+    const prods = produkter || {};
+    const dlId = `${prefix}-ullist`;
+    const uler = (S.underleverandoerer || []).map(u => `<option value="${h(u.navn)}"></option>`).join('');
+    const rows = (KUNDE_PRODUKTER || []).map((navn, idx) => {
+      const p = prods[navn] || { aktiv: false, ul: '' };
+      const cbId = `${prefix}-cb-${idx}`;
+      const ulId = `${prefix}-ul-${idx}`;
+      return `<div style="display:flex; align-items:center; gap:8px; padding:4px 6px; border:1px solid var(--border-subtle,#e1e4e8); border-radius:3px; background:#fff">
+        <label style="display:flex; align-items:center; gap:6px; min-width:148px; margin:0; font-weight:500; cursor:${skrivbar ? 'pointer' : 'default'}">
+          <input type="checkbox" id="${cbId}" data-prod-cb="${h(navn)}"${p.aktiv ? ' checked' : ''}${skrivbar ? '' : ' disabled'}>
+          <span>${h(navn)}</span>
+        </label>
+        <input type="text" id="${ulId}" data-prod-ul="${h(navn)}" list="${dlId}" value="${h(p.ul || '')}" placeholder="Underleverandør (UL)" style="flex:1; min-width:110px"${skrivbar ? '' : ' readonly'}>
+      </div>`;
+    }).join('');
+    return `<datalist id="${dlId}">${uler}</datalist><div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:6px">${rows}</div>`;
+  };
+  const laesProduktGrid = containerEl => {
+    const out = {};
+    (App.KUNDE_PRODUKTER || []).forEach(navn => { out[navn] = { aktiv: false, ul: '' }; });
+    if (!containerEl) return out;
+    App.$$('[data-prod-cb]', containerEl).forEach(cb => {
+      const navn = cb.getAttribute('data-prod-cb');
+      if (out[navn]) out[navn].aktiv = !!cb.checked;
+    });
+    App.$$('[data-prod-ul]', containerEl).forEach(inp => {
+      const navn = inp.getAttribute('data-prod-ul');
+      if (out[navn]) out[navn].ul = (inp.value || '').trim();
+    });
+    return out;
+  };
+  window.KundeProdukter = { bygHtml: bygProduktGridHtml, laes: laesProduktGrid };
   // Én historikpost som én sætning. Noter og oprettelse er sammensatte hændelser og læses forkert som
   // "fra → til"; feltændringer vises derimod netop sådan, fordi det er dét, krav E3a beder om.
   const kunHistTekst = p => {
@@ -5765,6 +6111,20 @@ App.registerPage({
         </div>
       </div>
 
+      <div class="card" id="kdProdukter">
+        <div class="toolbar">
+          <div>
+            <b>Overordnet produktoversigt (Kundedata)</b>
+            <p class="caption muted" style="margin-top:var(--space-1); max-width:70ch">Oversigt til info over kundens produkter og tilknyttet underleverandør pr. produkt.</p>
+          </div>
+          <span class="spacer"></span>
+          <button class="btn cta" id="kdBtnGemProdukter">Gem produktoversigt</button>
+        </div>
+        <div class="card-body">
+          <div id="kdProdukterGrid"></div>
+        </div>
+      </div>
+
       <div class="card" id="kdStamdata">
         <div class="toolbar">
           <div>
@@ -5791,13 +6151,17 @@ App.registerPage({
     </div>
 
     <div class="modal-bg" id="modalNewKunde">
-      <div class="modal" role="dialog" aria-labelledby="newKundeTitle">
+      <div class="modal" style="width:min(760px, 100%)" role="dialog" aria-labelledby="newKundeTitle">
         <header><h2 id="newKundeTitle">Ny kunde</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
         <div class="body">
           <p class="muted" style="margin-bottom:12px">Opretter kundeposten. Sites (adresse, installation, serviceaftale) tilføjes bagefter med "Nyt site" på kundens side.</p>
-          <div class="form-grid">
+          <div class="form-grid" style="margin-bottom:15px">
             <label>Kunde navn<input type="text" id="nkNavn" required></label>
             <label>CEP account<input type="text" id="nkCepAccount" placeholder="fx DK-A-001234 (valgfrit)"></label>
+          </div>
+          <div>
+            <b style="display:block; margin-bottom:6px">Overordnet produktoversigt (til info)</b>
+            <div id="nkProdukterGrid"></div>
           </div>
         </div>
         <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="nkOk">Opret kunde</button></footer>
@@ -5835,8 +6199,14 @@ App.registerPage({
         if (this.tilfoejKundeNote($('#kdNoteTekst').value)) { $('#kdNoteTekst').value = ''; toast('Noten er tilføjet'); this.renderKundeDetail(); }
         else toast('Skriv en note, før den kan tilføjes');
       });
+      $('#kdBtnGemProdukter').addEventListener('click', () => this.gemKundeProdukter());
 
-      this.openKunde = kundeId => { kCurrentKunde = kundeId; kdSearch = ''; $('#kdSearch').value = ''; kunRedigerer = false; this.render(); };
+      this.openKunde = kundeId => {
+        if (!kCurrentKunde && kundeId && App.pushSubView) {
+          App.pushSubView(() => { kCurrentKunde = null; this.render(); });
+        }
+        kCurrentKunde = kundeId; kdSearch = ''; $('#kdSearch').value = ''; kunRedigerer = false; this.render();
+      };
       // Kaldes af sites.js' "Kunder"-fane, så et fane-skifte altid lander på listen (samme regel som
       // det gamle kView-flag: skift til "Kunder" nulstillede den valgte kunde).
       this.tilbageTilListe = () => { kCurrentKunde = null; };
@@ -5846,6 +6216,7 @@ App.registerPage({
       // Kunden har ingen adresse i v7-modellen – sites tilføjes bagefter via "Nyt site" på kundens side.
       $('#btnNewKunde').addEventListener('click', () => {
         $('#nkNavn').value = ''; $('#nkCepAccount').value = '';
+        if ($('#nkProdukterGrid')) $('#nkProdukterGrid').innerHTML = bygProduktGridHtml('nkProd', {});
         openModal('modalNewKunde');
       });
       $('#nkOk').addEventListener('click', () => {
@@ -5856,9 +6227,10 @@ App.registerPage({
         if (!navn) { toast('Udfyld kunde navn'); return; }
         if ((S.kunder || []).some(k => k.navn.trim().toLowerCase() === navn.toLowerCase())) { toast('Kunden findes allerede'); return; }
         const cepAccount = $('#nkCepAccount').value.trim();
+        const produkter = laesProduktGrid($('#nkProdukterGrid'));
         S.kunder = S.kunder || [];
         const maxK = S.kunder.reduce((a, k) => { const m = /^K-(\d+)$/.exec(k.id); return m ? Math.max(a, +m[1]) : a; }, 0);
-        const k = { id: 'K-' + String(maxK + 1).padStart(4, '0'), navn, cepAccount, cepAccountNavn: cepAccount ? navn : '', alias: [], noter: [], oprettet: today() };
+        const k = { id: 'K-' + String(maxK + 1).padStart(4, '0'), navn, cepAccount, cepAccountNavn: cepAccount ? navn : '', alias: [], noter: [], produkter, oprettet: today() };
         S.kunder.push(k);
         // Oprettelse er en sammensat hændelse: én post i stedet for ét felt ad gangen (planens §3 om
         // App.log til sammensatte ændringer). App.log kalder selv save().
@@ -5927,6 +6299,25 @@ App.registerPage({
       this.renderKundeDetail();
       toast(aendret ? 'Kundens stamdata er gemt' : 'Ingen ændringer at gemme');
       return aendret > 0;
+    },
+
+    // P4: Gem kundens produktoversigt (11 produkter + UL)
+    gemKundeProdukter(nyeProdukter) {
+      const { $, toast } = App;
+      const k = App.kunde(kCurrentKunde);
+      if (!k.id) return false;
+      const ny = nyeProdukter || laesProduktGrid($('#kdProdukterGrid'));
+      const fmt = obj => (App.KUNDE_PRODUKTER || []).filter(p => obj && obj[p] && obj[p].aktiv).map(p => obj[p].ul ? `${p} (${obj[p].ul})` : p).join(', ');
+      const foerTxt = fmt(k.produkter || {});
+      const efterTxt = fmt(ny);
+      k.produkter = ny;
+      if (foerTxt !== efterTxt) {
+        App.log('kunde', k.id, 'produkter', foerTxt || 'Ingen', efterTxt || 'Ingen');
+      }
+      App.save();
+      this.renderKundeDetail();
+      toast('Produktoversigt er gemt på kunden');
+      return true;
     },
 
     // ---------- F5: noter på kunden ----------
@@ -6155,6 +6546,11 @@ App.registerPage({
         : '<span class="muted">Ingen projekter er overdraget til service endnu. Overdragelsen sker fra projektkortets "Afslut projekt".</span>';
       $$('[data-proj]', $('#kdOverdraget')).forEach(b => b.addEventListener('click', () => App.openProject(b.dataset.proj)));
 
+      // P4: Overordnet produktoversigt på kunden
+      if ($('#kdProdukterGrid')) {
+        $('#kdProdukterGrid').innerHTML = bygProduktGridHtml('kdProd', kunde.produkter, true);
+      }
+
       // F2 og F5: stamdata med rettigheder og historik, og kundens noter.
       this.renderStamdata();
       $('#kdNoteListe').innerHTML = kunNoteListe(kunde.noter);
@@ -6284,7 +6680,7 @@ App.registerPage({
     { felt: 'koersel', label: 'Kørsel mod kunde', rediger: true, tal: true },
     { felt: 'kontakt', label: 'Kontakt', rediger: true },
   ];
-  const SI_LABEL = { kode: 'Kode', navn: 'Site-navn', adresse: 'Leveringsadresse', postnr: 'Postnr.', by: 'By', stedNr: 'Sted nr.', kontakt: 'Kontakt', timepris: 'Timepris', koersel: 'Kørsel', type: 'Type', anlaeg: 'Anlæg', serviceaftale: 'Serviceaftale', ulId: 'Underleverandør', status: 'Status' };
+  const SI_LABEL = { kode: 'Kode', navn: 'Site-navn', adresse: 'Leveringsadresse', postnr: 'Postnr.', by: 'By', stedNr: 'Sted nr.', kontakt: 'Kontakt', timepris: 'Timepris', koersel: 'Kørsel', specifikkeNoterEftersyn: 'Specifikke noter til Eftersyn', type: 'Type', anlaeg: 'Anlæg', serviceaftale: 'Serviceaftale', ulId: 'Underleverandør', status: 'Status' };
   // Samme mønster som PRISREG_LABEL, men for hele posten: ulId logges som id og læses lettest som navn.
   const siFeltLabel = felt => PRISREG_LABEL[felt] || SI_LABEL[felt] || felt;
   const siVaerdi = (felt, v) => felt === 'ulId' ? (App.ulNavn(v) || v || '') : v;
@@ -6365,6 +6761,12 @@ App.registerPage({
           <div class="form-grid" id="siteDetail" style="margin-bottom:18px"></div>
           <h3 style="margin-bottom:8px">Installationer</h3>
           <div id="siteInstallationer" style="margin-bottom:18px"></div>
+          <h3 style="margin-bottom:8px">Specifikke noter til Eftersyn</h3>
+          <p class="caption muted" style="margin-bottom:var(--space-2)">Flettes automatisk ind under ”Bemærk evt.” i mailen ved bestilling af eftersyn.</p>
+          <div id="siEftersynNoteForm" style="display:flex; gap:var(--space-3); align-items:flex-end; margin-bottom:18px">
+            <label class="field" style="flex:1">Specifikke noter til Eftersyn<textarea id="siEftersynNote" rows="2" placeholder="Fx adgangsforhold, kontaktperson på stedet eller særlige forhold ved eftersyn"></textarea></label>
+            <button class="btn" id="siEftersynNoteGem">Gem eftersynsnote</button>
+          </div>
           <h3 style="margin-bottom:8px">Noter på sitet</h3>
           <div id="siNoteForm">
             <label class="field">Ny note<textarea id="siNoteTekst" rows="2" placeholder="Skriv en note om sitet"></textarea></label>
@@ -6413,6 +6815,7 @@ App.registerPage({
             <label>Installation<select id="nsInstallation"><option>AIA</option><option>ADK</option><option>TVO</option><option>KOMBI</option><option>ANDET</option></select></label>
             <label>Serviceaftale<select id="nsServiceaftale"><option>Ingen</option><option>Serviceaftale 1</option><option>Serviceaftale 2</option><option>Serviceaftale 4</option><option>Novo rammeaftale</option></select></label>
             <label>UL<input type="text" id="nsUl" placeholder="valgfrit"></label>
+            <label style="grid-column:1/-1">Specifikke noter til Eftersyn<textarea id="nsEftersynNote" rows="2" placeholder="Valgfrit – flettes ind i mailen ved bestilling af eftersyn"></textarea></label>
           </div>
         </div>
         <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="nsOk">Opret site</button></footer>
@@ -6598,9 +7001,10 @@ App.registerPage({
         $('#siBtnAnnuller').style.display = this.siRedigerer ? '' : 'none';
       };
 
-      // ---------- F5: noter på sitet, og kundens noter skrivebeskyttet ----------
+      // ---------- F5 & ST1: noter på sitet, specifikke noter til eftersyn, og kundens noter skrivebeskyttet ----------
       const renderSiteNoter = () => {
         const s = site(this.siOpenId);
+        if ($('#siEftersynNote')) $('#siEftersynNote').value = s.specifikkeNoterEftersyn || '';
         $('#siteNoter').innerHTML = siNoteListe(s.noter, true);
         $$('[data-notedel]', $('#siteNoter')).forEach(b => b.addEventListener('click', () => {
           if (this.sletSiteNote(+b.dataset.notedel)) { toast('Noten er slettet'); this.renderSitePanel(); }
@@ -6659,6 +7063,9 @@ App.registerPage({
         if (this.tilfoejSiteNote($('#siNoteTekst').value)) { $('#siNoteTekst').value = ''; toast('Noten er tilføjet'); this.renderSitePanel(); }
         else toast('Skriv en note, før den kan tilføjes');
       });
+      $('#siEftersynNoteGem').addEventListener('click', () => {
+        this.gemSpecifikkeNoterEftersyn($('#siEftersynNote').value);
+      });
 
       // ---------- nyt site (kaldes af kunder.js' "Nyt site"-knap med en kendt kundekontekst) ----------
       const updateNsPreview = () => {
@@ -6673,6 +7080,7 @@ App.registerPage({
         $('#nsKunde').value = App.kunde(kundeId).navn || '';
         $('#nsNavn').value = ''; $('#nsKode').value = ''; $('#nsAdresse').value = ''; $('#nsPostnr').value = ''; $('#nsBy').value = '';
         $('#nsStedNr').value = ''; $('#nsInstallation').value = 'AIA'; $('#nsServiceaftale').value = 'Ingen'; $('#nsUl').value = '';
+        if ($('#nsEftersynNote')) $('#nsEftersynNote').value = '';
         updateNsPreview();
         openModal('modalNewSite');
       };
@@ -6693,6 +7101,7 @@ App.registerPage({
         const s = {
           id, kundeId: nsKundeId, stedNr: $('#nsStedNr').value.trim(), navn, kode: $('#nsKode').value.trim(),
           adresse, postnr, by, kontakt: '', noter: [],
+          specifikkeNoterEftersyn: ($('#nsEftersynNote') && $('#nsEftersynNote').value.trim()) || '',
         };
         S.sites.push(s);
         let maxI = (S.installationer || []).reduce((a, i) => { const m = /^I-(\d+)$/.exec(i.id); return m ? Math.max(a, +m[1]) : a; }, 0);
@@ -6749,6 +7158,18 @@ App.registerPage({
       this.render();   // site-oversigten bagved skal vise det nye navn, kode og sted nr. med det samme
       toast(aendret ? 'Sitets stamdata er gemt' : 'Ingen ændringer at gemme');
       return aendret > 0;
+    },
+
+    // ST1: Specifikke noter til Eftersyn på sitet
+    gemSpecifikkeNoterEftersyn(tekst) {
+      const s = App.site(this.siOpenId);
+      if (!s.id) return false;
+      const t = String(tekst ?? '').trim();
+      const aendret = App.saetFelt(s, 'site', s.id, 'specifikkeNoterEftersyn', t);
+      App.save();
+      this.renderSitePanel();
+      App.toast(aendret ? 'Specifikke noter til Eftersyn er gemt' : 'Ingen ændringer at gemme');
+      return aendret;
     },
 
     // ---------- F5: noter på sitet ----------
@@ -6981,11 +7402,13 @@ App.registerPage({
     </div>
 
     <div class="modal-bg" id="modalSvcNy">
-      <div class="modal" role="dialog" aria-labelledby="svcNyTitle">
+      <div class="modal" style="width:min(680px, 100%)" role="dialog" aria-labelledby="svcNyTitle">
         <header><h2 id="svcNyTitle">Ny serviceopgave</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
         <div class="body">
           <div class="form-grid">
+            <label>Kunde<select id="svcKundeFilter"><option value="">Alle kunder</option></select></label>
             <label>Site<select id="svcSite"></select></label>
+            <div id="svcSeneste3" style="grid-column:1/-1"></div>
             <label>Type<select id="svcType"><option>Service</option><option>Eftersyn</option><option>Fejl</option></select></label>
             <label>Tekniker<select id="svcTekAssign"></select></label>
             <label>PO<input type="text" id="svcPo" placeholder="Indkøbsordre"></label>
@@ -7039,13 +7462,59 @@ App.registerPage({
     this.table = $('#svcTable');
     // thead genskabes ved hver render (kolonnerne afhænger af rollen), så App.sortable bindes der i stedet.
 
-    // "ny serviceopgave"-modal
+    // "ny serviceopgave"-modal (S1: vis seneste 3 sager/eftersyn/projekter ved valg af kunde/site)
+    const bygSiteValg = (kundeId, beholdSiteId) => {
+      const siteSel = $('#svcSite');
+      siteSel.innerHTML = '';
+      const sites = (S.sites || []).filter(s => !kundeId || s.kundeId === kundeId);
+      sites.forEach(s => siteSel.add(new Option(`${App.kundeNavn(s)} – ${App.siteLabel(s)}`, s.id)));
+      if (beholdSiteId && sites.some(s => s.id === beholdSiteId)) siteSel.value = beholdSiteId;
+    };
+    const opdaterSeneste3 = () => {
+      const box = $('#svcSeneste3');
+      if (!box) return;
+      const siteId = $('#svcSite').value;
+      const kundeId = $('#svcKundeFilter').value;
+      const liste = this.senesteAktiviteter(siteId, kundeId);
+      const s = site(siteId);
+      const overskrift = s.id ? `${App.kundeNavn(s)} · ${App.siteLabel(s, true)}` : 'Valgt kunde';
+      if (!liste.length) {
+        box.innerHTML = `<div class="muted caption" style="padding:6px 9px;background:var(--surface-sunken,#f5f6f7);border-radius:3px">Seneste 3 sager/eftersyn/projekter (${h(overskrift)}): Ingen tidligere aktiviteter registreret.</div>`;
+        return;
+      }
+      box.innerHTML = `<div style="padding:9px;background:var(--surface-sunken,#f5f6f7);border:1px solid var(--border-subtle,#e1e4e8);border-radius:3px">
+        <div class="caption" style="font-weight:600;margin-bottom:6px">Seneste ${liste.length} sager / eftersyn / projekter (${h(overskrift)})</div>
+        <table class="table-dense" style="margin:0;background:#fff">
+          <thead><tr><th>Type</th><th>Sag / ID</th><th>Dato</th><th>Status</th><th>Beskrivelse</th></tr></thead>
+          <tbody>${liste.map(x => `<tr>
+            <td><span class="pill">${h(x.type)}</span></td>
+            <td><b>${h(x.id)}</b></td>
+            <td>${h(x.dato || '–')}</td>
+            <td>${App.st(x.status)}</td>
+            <td class="cut w-m" title="${h(x.tekst)}">${h(x.tekst)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+    };
+    $('#svcKundeFilter').addEventListener('change', () => {
+      bygSiteValg($('#svcKundeFilter').value, '');
+      opdaterSeneste3();
+    });
+    $('#svcSite').addEventListener('change', () => {
+      opdaterSeneste3();
+    });
     $('#svcNy').addEventListener('click', () => {
-      const siteSel = $('#svcSite'); siteSel.innerHTML = '';
-      (S.sites || []).forEach(s => siteSel.add(new Option(`${App.kundeNavn(s)} – ${App.siteLabel(s)}`, s.id)));
+      const kSel = $('#svcKundeFilter');
+      if (kSel) {
+        kSel.innerHTML = '<option value="">Alle kunder</option>';
+        (S.kunder || []).slice().sort((a, b) => (a.navn || '').localeCompare(b.navn || '', 'da')).forEach(k => kSel.add(new Option(k.navn, k.id)));
+        kSel.value = '';
+      }
+      bygSiteValg('', '');
       const tekAssign = $('#svcTekAssign'); tekAssign.innerHTML = '';
       teknikere(true).forEach(t => tekAssign.add(new Option(t.navn, t.id)));
       $('#svcType').value = 'Service'; $('#svcPo').value = ''; $('#svcPris').value = ''; $('#svcBeskrivelse').value = '';
+      opdaterSeneste3();
       openModal('modalSvcNy');
     });
     $('#svcNyOk').addEventListener('click', () => {
@@ -7271,6 +7740,54 @@ App.registerPage({
     `;
     const canGodkend = c.status === 'Åben' || c.status === 'Lukket til fakturering';
     $('#svcKladdeActions').innerHTML = `<button class="btn" id="svcKladdePdf">Gem som PDF</button>` + (canGodkend ? `<button class="btn cta" id="svcKladdeGodkend">Godkend og send til fakturering</button>` : '');
+  },
+  // S1: Samlet liste med de 3 nyeste aktiviteter på tværs af serviceopgaver, eftersyn og projekter for valgt site/kunde.
+  senesteAktiviteter(siteId, kundeId) {
+    const { S, site } = App;
+    const matchSite = sid => {
+      if (siteId) return sid === siteId;
+      if (kundeId) return site(sid).kundeId === kundeId;
+      return false;
+    };
+    const items = [];
+    const seenCas = new Set();
+    (S.serviceopgaver || []).forEach(o => {
+      if (!matchSite(o.siteId)) return;
+      seenCas.add(o.id);
+      items.push({
+        type: o.type || 'Service',
+        id: o.id,
+        dato: o.lukket || o.oprettet || '',
+        status: o.status || 'Åben',
+        tekst: o.beskrivelse || '',
+      });
+    });
+    (S.installationer || []).forEach(inst => {
+      if (!matchSite(inst.siteId)) return;
+      const ef = inst.eftersyn || {};
+      (ef.tidligere || []).forEach(t => {
+        if (t.cas && seenCas.has(t.cas)) return;
+        items.push({
+          type: 'Eftersyn',
+          id: t.cas || inst.id,
+          dato: t.dato || '',
+          status: t.udfoertType || 'Udført',
+          tekst: `${inst.type} – ${t.resultat || t.kommentar || 'Eftersyn udført'}`,
+        });
+      });
+    });
+    (S.projekter || []).forEach(p => {
+      if (!matchSite(p.siteId)) return;
+      const dato = (p.afsluttet && p.afsluttet.dato) || (p.oprettet ? p.oprettet.slice(0, 10) : '') || (p.maaned ? p.maaned + '-01' : '');
+      items.push({
+        type: 'Projekt',
+        id: p.id,
+        dato,
+        status: App.projekteringsStatus ? App.projekteringsStatus(p) : (p.status || ''),
+        tekst: p.navn || '',
+      });
+    });
+    return items.sort((a, b) => (b.dato || '').localeCompare(a.dato || '') || (b.id || '').localeCompare(a.id || '')).slice(0, 3);
   },
   // Forside-filterets rene rækkeudvælgelse (PLAN-v8, bølge 2b): ids er ét pr. opgave, så et simpelt
   // idSet-match er nok – ingen forretningsregel gentages her. rows er allerede rettighedsafgrænset af
@@ -9015,12 +9532,10 @@ App.registerPage({
 
 </script>
 <script>
-// Eftersyn – kalender og status for alle sites med eftersynsaftale.
-// Erstatter kolonnerne Eftersyn, ES-måned, interval, "Eftersyn til kunden" og "CAS eftersyn 2025/2026" i Kundekartotek.
+// Eftersyn (PLAN-v9, E1–E11) – én række pr. installation med filtre på år/kvartal/måned,
+// klikbar underleverandør-popup, oprettelse med mail til service@securitas.dk, gensendelse med bekræftelse,
+// flytning af eftersynsmåned/-år, historik, manuelle noter, udført-registrering og tidligere eftersyn.
 
-// ---------- lokal helper (kernen har ingen "UL-navne pr. site" – kun pr. installation via ulId, jf. pages/kunder.js) ----------
-// Navngivet med ef-præfiks: top-level const i søskende-<script>-tags deler samme leksikalske scope i browseren,
-// og pages/kunder.js har allerede en "ulNavneForSite" – to ens navne giver en SyntaxError ved indlæsning.
 const efUlNavneForSite = siteId => [...new Set(App.installationer(siteId).map(i => App.ulNavn(i.ulId)).filter(Boolean))];
 
 App.registerPage({
@@ -9028,22 +9543,25 @@ App.registerPage({
   roles: ['Chef', 'PM', 'Service', 'Tekniker', 'Fakturering'],
   html: `
     <style>
-      /* Sidste udvej (kun denne side, jf. PLAN-v2): 11 kolonner passer ikke i 1280 px med standard
-         table-dense-bredder. Tættere kunde/serviceaftale/UL/CAS-kolonner og trunkeret status (alle med
-         title) her, indtil kernen evt. gør main-området bredere. */
-      #efTable td.cut.w-xs { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+      #efTable th, #efTable td { padding: var(--space-2) 6px; }
+      #efTable td.cut.w-xs { max-width: 105px; overflow: hidden; text-overflow: ellipsis; }
       #efTable td.st-cut { max-width: 116px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #modalEfDetaljer .modal { width: min(860px, 100%); }
+      #modalEfUdfoert .modal { width: min(640px, 100%); }
+      #modalEfOpretMail .modal { width: min(680px, 100%); }
+      .ef-check-group { display: flex; flex-direction: column; gap: 6px; padding: 9px 12px; border: 1px solid var(--border-subtle, #e1e4e8); border-radius: 3px; background: #fff; }
+      .ef-check-group label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; cursor: pointer; }
     </style>
     <div class="page-head">
       <div>
         <h1>Eftersyn</h1>
-        <p>Overblik over næste eftersyn pr. site, beregnet ud fra sidste eftersyn og interval – eller ES-måned, hvis der endnu ikke er registreret et udført eftersyn.</p>
+        <p>Overblik over eftersyn pr. installation. Næste eftersynsmåned følger den planlagte måned + interval, uanset hvilken dag på måneden eftersynet afsluttes.</p>
       </div>
       <div class="replaces">Erstatter kolonnerne <b>Eftersyn</b>, <b>ES-måned</b>, <b>interval</b>, <b>Eftersyn til kunden</b> og <b>CAS eftersyn 2025/2026</b> i Kundekartotek</div>
     </div>
     <div class="stats" id="efStats"></div>
     <div class="card">
-      <div class="toolbar">
+      <div class="toolbar" style="flex-wrap:wrap; gap:9px">
         <div class="ftabs" id="efTabs" role="group" aria-label="Status">
           <button class="ftab on" data-v="">Alle</button>
           <button class="ftab" data-v="over">Overskredet</button>
@@ -9051,20 +9569,43 @@ App.registerPage({
           <button class="ftab" data-v="90">90 dage</button>
           <button class="ftab" data-v="uden">Uden aftale</button>
         </div>
+        <label class="field">År <select id="efAar"><option value="">Alle</option></select></label>
+        <label class="field">Kvartal <select id="efKvartal">
+          <option value="">Alle</option>
+          <option value="1">1. kvartal</option>
+          <option value="2">2. kvartal</option>
+          <option value="3">3. kvartal</option>
+          <option value="4">4. kvartal</option>
+        </select></label>
+        <label class="field">Måned <select id="efMaaned">
+          <option value="">Alle</option>
+          <option value="1">01 · Januar</option>
+          <option value="2">02 · Februar</option>
+          <option value="3">03 · Marts</option>
+          <option value="4">04 · April</option>
+          <option value="5">05 · Maj</option>
+          <option value="6">06 · Juni</option>
+          <option value="7">07 · Juli</option>
+          <option value="8">08 · August</option>
+          <option value="9">09 · September</option>
+          <option value="10">10 · Oktober</option>
+          <option value="11">11 · November</option>
+          <option value="12">12 · December</option>
+        </select></label>
         <div class="ftabs" id="efViewTabs" role="group" aria-label="Visning">
           <button class="ftab on" data-v="liste">Liste</button>
           <button class="ftab" data-v="kalender">Kalender</button>
         </div>
-        <label class="field">Søg <input type="text" id="efSearch" placeholder="Site, kunde, installation" size="26"></label>
+        <label class="field">Søg <input type="text" id="efSearch" placeholder="Kunde, site, installation, CAS" size="22"></label>
       </div>
       <div id="efForsideBanner"></div>
       <div class="table-wrap" id="efListWrap">
         <table class="table-dense" id="efTable">
           <thead><tr>
             <th data-sort="text">Kunde</th><th data-sort="text">Site</th><th data-sort="text">Installation</th>
-            <th data-sort="text">Serviceaftale</th><th data-sort="text">UL</th>
-            <th data-sort="date">Sidst</th><th data-sort="date">Næste</th><th data-sort="num">Interval</th>
-            <th data-sort="text">Status</th><th data-sort="text">CAS-nr.</th><th></th>
+            <th data-sort="text">Serviceaftale</th><th data-sort="text">Underleverandør</th>
+            <th data-sort="date">Sidste</th><th data-sort="text">Næste (Måned/År)</th><th data-sort="num">Interval</th>
+            <th data-sort="text">Status</th><th data-sort="text">CAS-nummer</th><th>Opret sag</th>
           </tr></thead>
           <tbody id="efRows"></tbody>
         </table>
@@ -9072,11 +9613,109 @@ App.registerPage({
       <div class="card-body" id="efCalWrap" style="display:none"></div>
     </div>
 
+    <!-- E3: Underleverandør-detaljer pop-up -->
+    <div class="modal-bg" id="modalEfUl">
+      <div class="modal" role="dialog" aria-labelledby="efUlTitle">
+        <header><h2 id="efUlTitle">Underleverandør</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body" id="efUlBody"></div>
+        <footer><button class="btn" data-close>Luk</button></footer>
+      </div>
+    </div>
+
+    <!-- E4: Opret sag / send mail til service@securitas.dk -->
+    <div class="modal-bg" id="modalEfOpretMail">
+      <div class="modal" role="dialog" aria-labelledby="efOpretMailTitle">
+        <header><h2 id="efOpretMailTitle">Opret eftersynssag – mail til Service</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <div class="form-grid" style="margin-bottom:12px">
+            <label>Til<input type="text" id="efOpretTil" value="service@securitas.dk" readonly></label>
+            <label>Fra<input type="text" id="efOpretFra" readonly></label>
+            <label style="grid-column:1/-1">Emnefelt<input type="text" id="efOpretEmne" readonly></label>
+          </div>
+          <label class="field">Mailindhold<textarea id="efOpretBody" rows="8" readonly style="width:100%; font-family:inherit"></textarea></label>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="efOpretMailSend">Send mail og opret sag</button></footer>
+      </div>
+    </div>
+
+    <!-- E5: Bekræft genopret sag / gensend mail -->
+    <div class="modal-bg" id="modalEfGensendBekraeft">
+      <div class="modal" style="width:min(480px, 100%)" role="dialog" aria-labelledby="efGensendTitle">
+        <header><h2 id="efGensendTitle">Genopret sag / gensend mail</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <p>Er du sikker på, at du vil sende en ny mail til <b>service@securitas.dk</b> for dette eftersyn?</p>
+          <p class="caption muted" style="margin-top:6px">Denne bekræftelse forhindrer, at der sendes en ekstra bestillingsmail ved en fejl.</p>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="efGensendJa">Ja, send ny mail</button></footer>
+      </div>
+    </div>
+
+    <!-- E6: Flyt eftersyn (måned/år) -->
+    <div class="modal-bg" id="modalEfFlyt">
+      <div class="modal" style="width:min(460px, 100%)" role="dialog" aria-labelledby="efFlytTitle">
+        <header><h2 id="efFlytTitle">Flyt eftersyn</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <p class="muted" style="margin-bottom:12px">Vælg ny måned og år for eftersynet. Fremtidige eftersyn følger den nye måned ud fra intervallet.</p>
+          <div class="form-grid">
+            <label>Måned<select id="efFlytMaaned">
+              <option value="1">01 · Januar</option><option value="2">02 · Februar</option><option value="3">03 · Marts</option>
+              <option value="4">04 · April</option><option value="5">05 · Maj</option><option value="6">06 · Juni</option>
+              <option value="7">07 · Juli</option><option value="8">08 · August</option><option value="9">09 · September</option>
+              <option value="10">10 · Oktober</option><option value="11">11 · November</option><option value="12">12 · December</option>
+            </select></label>
+            <label>År<input type="number" id="efFlytAar" min="2024" max="2035" step="1"></label>
+          </div>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="efFlytOk">Bekræft ny dato</button></footer>
+      </div>
+    </div>
+
+    <!-- E8: Udført eftersyn (obligatoriske felter) -->
+    <div class="modal-bg" id="modalEfUdfoert">
+      <div class="modal" role="dialog" aria-labelledby="efUdfoertTitle">
+        <header><h2 id="efUdfoertTitle">Afslut eftersyn (Udført)</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <div class="body">
+          <div style="margin-bottom:12px">
+            <b style="display:block; margin-bottom:6px">Udført (obligatorisk)</b>
+            <div class="ef-check-group" id="efUdfoertTypeGrp">
+              <label><input type="checkbox" name="efUdfoertType" value="Udført med bemærkninger" id="efUdfoertMedBem"> <span>Udført med bemærkninger</span></label>
+              <label><input type="checkbox" name="efUdfoertType" value="Udført uden bemærkninger" id="efUdfoertUdenBem"> <span>Udført uden bemærkninger</span></label>
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <b style="display:block; margin-bottom:6px">Resultat af eftersyn (obligatorisk)</b>
+            <div class="ef-check-group" id="efUdfoertResGrp">
+              <label><input type="checkbox" name="efUdfoertRes" value="Ingen fejl konstateret" id="efResIngenFejl"> <span>Ingen fejl konstateret</span></label>
+              <label><input type="checkbox" name="efUdfoertRes" value="Fejl konstateret og udbedret under eftersyn." id="efResUdbedret"> <span>Fejl konstateret og udbedret under eftersyn.</span></label>
+              <label><input type="checkbox" name="efUdfoertRes" value="Fejl konstateret, servicesag oprettet" id="efResServicesag"> <span>Fejl konstateret, servicesag oprettet</span></label>
+            </div>
+          </div>
+          <div id="efUdfoertServicesagWrap" style="margin-bottom:12px; display:none">
+            <label class="field">Servicesag (obligatorisk CAS-nummer)<input type="text" id="efUdfoertServicesag" placeholder="Fx CAS-123456-ABCDEF"></label>
+          </div>
+          <div class="form-grid" style="margin-bottom:12px">
+            <label>Dato for udført eftersyn (dd.mm.åååå – obligatorisk)<input type="text" id="efUdfoertDato" placeholder="dd.mm.åååå"></label>
+            <label>Vælg fra kalender<input type="date" id="efUdfoertDatoPicker"></label>
+          </div>
+          <div>
+            <label class="field">Kommentarfelt (obligatorisk)<textarea id="efUdfoertKommentar" rows="3" placeholder="Skriv kommentar til det udførte eftersyn..."></textarea></label>
+          </div>
+        </div>
+        <footer><button class="btn" data-close>Annullér</button><button class="btn cta" id="efUdfoertOk">Registrér som udført</button></footer>
+      </div>
+    </div>
+
+    <!-- E5, E6, E7, E8, E9, E10: Eftersynssag detalje-modal -->
     <div class="modal-bg" id="modalEfDetaljer">
       <div class="modal" role="dialog" aria-labelledby="efDetTitle">
-        <header><h2 id="efDetTitle">Eftersyn</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
+        <header><h2 id="efDetTitle">Eftersynssag</h2><button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button></header>
         <div class="body" id="efDetBody"></div>
-        <footer><button class="btn" data-close>Luk</button><button class="btn cta" id="efSendPaamindelse">Send påmindelse til kunde</button></footer>
+        <footer>
+          <button class="btn" data-close>Luk</button>
+          <button class="btn" id="efSendPaamindelse">Send påmindelse til kunde</button>
+          <button class="btn" id="efBtnGensend">Genopret sag (gensend mail)</button>
+          <button class="btn cta" id="efBtnUdfoert">Afslut eftersyn (Udført)</button>
+        </footer>
       </div>
     </div>
 
@@ -9095,23 +9734,70 @@ App.registerPage({
     </div>
   `,
   init() {
-    const { $, $$, D, S, save, toast, today, h, kr, openModal, closeModal, emp, site } = App;
+    const { $, $$, S, save, toast, today, h, openModal, closeModal, emp, site } = App;
 
-    // ---------- lokale datohjælpere (dansk format, TZ-sikre) ----------
-    const parseISO = s => { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
-    const ddmm = s => { if (!s) return '–'; const [y, m, d] = s.split('-'); return `${d}.${m}.${y}`; };
-    const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+    // ---------- lokale datohjælpere ----------
+    const parseISO = s => { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d || 1); };
+    const ddmm = s => {
+      if (!s) return '–';
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return s;
+      const [y, m, d] = s.split('-');
+      return d ? `${d}.${m}.${y}` : `${m}/${y}`;
+    };
+    const parseDdmmToIso = raw => {
+      const v = String(raw || '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      const m = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/.exec(v);
+      if (!m) return '';
+      const dd = String(+m[1]).padStart(2, '0');
+      const mm = String(+m[2]).padStart(2, '0');
+      const yyyy = m[3];
+      if (+mm < 1 || +mm > 12 || +dd < 1 || +dd > 31) return '';
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const startOfToday = () => {
+      const [y, m, d] = today().split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
 
-    // Læser via App.eftersynSite(siteId) (§4) i stedet for sitets egne eftersynsfelter – det er kernens
-    // aggregat over installationernes eftersyn (tidligste aktive), så eftersynslisten forbliver én række pr. site.
+    // Bevares af hensyn til tools/test-forside.js' statiske kontrol af eftersynsopgave-reglen
+    const opgaveFor = s => (S.serviceopgaver || []).find(o => o.siteId === s.id && o.type === 'Eftersyn' && o.status === 'Åben');
+    const opgaveForInst = (inst, s) => {
+      const ef = (inst && inst.eftersyn) || {};
+      if (ef.cas) {
+        const byCas = (S.serviceopgaver || []).find(o => o.id === ef.cas);
+        if (byCas) return byCas;
+      }
+      return (S.serviceopgaver || []).find(o => o.installationId === inst.id && o.type === 'Eftersyn' && o.status === 'Åben')
+        || (s ? opgaveFor(s) : null);
+    };
+
     const nextEftersyn = (s, t) => {
       const e = App.eftersynSite(s.id);
       return e.naeste ? parseISO(e.naeste) : null;
     };
 
-    const opgaveFor = s => (S.serviceopgaver || []).find(o => o.siteId === s.id && o.type === 'Eftersyn' && o.status === 'Åben');
+    const instRowInfo = (inst, t) => {
+      const s = site(inst.siteId);
+      const ef = inst.eftersyn || { aktiv: false, maaned: 0, interval: 12, sidste: '', cas: '' };
+      const planYm = ef.aktiv ? App.eftersynPlanMaaned(inst, t) : '';
+      const nd = planYm ? parseISO(planYm + '-01') : null;
+      let status, cls, label;
+      if (!ef.aktiv || !nd) { status = 'uden'; cls = ''; label = 'Uden aftale'; }
+      else {
+        const curYm = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
+        const diff = Math.round((nd - t) / 86400000);
+        if (planYm < curYm) { status = 'over'; cls = 'over'; label = 'Overskredet'; }
+        else if (planYm === curYm || diff <= 30) { status = '30'; cls = 'snart'; label = 'Inden for 30 dage'; }
+        else if (diff <= 90) { status = '90'; cls = 'snart'; label = 'Inden for 90 dage'; }
+        else { status = 'planlagt'; cls = ''; label = 'Planlagt'; }
+      }
+      return { inst, site: s, ef, planYm, planMmYyyy: App.formaterMaanedAar(planYm), nextDate: nd, status, cls, label };
+    };
 
-    const rowInfo = (s, t) => {
+    const rowInfo = (sOrInst, t) => {
+      if (sOrInst && sOrInst.siteId) return instRowInfo(sOrInst, t);
+      const s = sOrInst;
       const ef = App.eftersynSite(s.id);
       const nd = ef.aktiv ? nextEftersyn(s, t) : null;
       let status, cls, label;
@@ -9132,12 +9818,9 @@ App.registerPage({
       return `CAS-${digits()}-${chars()}`;
     };
 
-    this.helpers = { parseISO, ddmm, startOfToday, nextEftersyn, opgaveFor, rowInfo };
+    this.helpers = { parseISO, ddmm, parseDdmmToIso, startOfToday, nextEftersyn, opgaveFor, opgaveForInst, instRowInfo, rowInfo, genCasId };
 
     // ---------- toolbar ----------
-    // Grill-rettelse B2: status-fanerne og søgefeltet forlader Forside-visningen først (ellers så
-    // filteret aktivt ud, men reagerede ikke) – App.rydForsideFilter() ændrer intet, hvis der ikke er
-    // noget at rydde. Liste/Kalender er en visning, ikke et filter (samme rækker i begge), og rører den ikke.
     $$('#efTabs .ftab').forEach(b => b.addEventListener('click', () => {
       App.rydForsideFilter();
       $$('#efTabs .ftab').forEach(x => x.classList.toggle('on', x === b));
@@ -9147,109 +9830,587 @@ App.registerPage({
       $$('#efViewTabs .ftab').forEach(x => x.classList.toggle('on', x === b));
       this.fView = b.dataset.v; this.render();
     }));
+    ['#efAar', '#efKvartal', '#efMaaned'].forEach(sel => {
+      if ($(sel)) $(sel).addEventListener('change', () => { App.rydForsideFilter(); this.render(); });
+    });
     $('#efSearch').addEventListener('input', () => { App.rydForsideFilter(); this.render(); });
 
     this.table = $('#efTable');
-    App.sortable(this.table, 'eftersyn-liste', { col: 7, dir: 'asc' });
+    App.sortable(this.table, 'eftersyn-liste', { col: 6, dir: 'asc' });
 
     // ---------- rækkehandlinger ----------
     $('#efRows').addEventListener('click', e => {
       const btn = e.target.closest('[data-act]');
       if (btn) {
-        const s = site(btn.dataset.id);
-        if (!s || !s.id) return;
-        // Aktive installationer på sitet – begge handlinger skriver på dem (§4), ikke på sitets spejlfelter alene.
-        const aktive = App.installationer(s.id).filter(i => i.eftersyn && i.eftersyn.aktiv);
-        if (btn.dataset.act === 'opret') {
-          const forsteTekniker = (App.medarbejdere({ aktive: true, rolle: 'Tekniker' })[0] || {}).id || '';
-          const id = genCasId();
-          S.serviceopgaver = S.serviceopgaver || [];
-          S.serviceopgaver.push({ id, siteId: s.id, beskrivelse: `Eftersyn – ${App.siteLabel(s)}`, tekniker: forsteTekniker, status: 'Åben', type: 'Eftersyn', oprettet: today(), lukket: '', po: '', pris: 0 });
-          aktive.forEach(i => { i.eftersyn.cas = id; });
-          save(); toast(`Eftersynsopgave ${id} oprettet`); this.render();
-        } else if (btn.dataset.act === 'udfoert') {
-          aktive.forEach(i => { i.eftersyn.sidste = today(); });
-          const opg = opgaveFor(s);
-          if (opg) { opg.status = 'Lukket til fakturering'; opg.lukket = today(); }
-          save(); toast(`${s.id} markeret som udført`); this.render();
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        if (act === 'ul-info') {
+          this.openUlDetaljer(btn.dataset.ul);
+          return;
+        }
+        if (act === 'opret') {
+          this.openOpretMailModal(btn.dataset.id, false);
+          return;
+        }
+        if (act === 'udfoert') {
+          this.openUdfoertModal(btn.dataset.id);
+          return;
         }
         return;
       }
-      const tr = e.target.closest('tr[data-site]');
-      if (tr) this.openDetaljer(tr.dataset.site);
+      const tr = e.target.closest('tr[data-inst]');
+      if (tr) this.openDetaljer(tr.dataset.inst);
     });
 
     $('#efCalWrap').addEventListener('click', e => {
-      const li = e.target.closest('[data-site]');
-      if (li) this.openDetaljer(li.dataset.site);
+      const li = e.target.closest('[data-inst]');
+      if (li) this.openDetaljer(li.dataset.inst);
     });
 
-    // ---------- detalje-modal ----------
+    // E4: Send mail og opret sag
+    $('#efOpretMailSend').addEventListener('click', () => {
+      const instId = this._opretInstId;
+      if (!instId) return;
+      if (this._opretErGensend) {
+        this.gensendMail(instId);
+        closeModal('modalEfOpretMail');
+        this.openDetaljer(instId);
+      } else {
+        this.bekraeftOpretSag(instId);
+        closeModal('modalEfOpretMail');
+      }
+    });
+
+    // E5: Genopret sag / gensend mail med bekræftelses-popup
+    $('#efBtnGensend').addEventListener('click', () => {
+      if (!this._curInstId) return;
+      openModal('modalEfGensendBekraeft');
+    });
+    $('#efGensendJa').addEventListener('click', () => {
+      closeModal('modalEfGensendBekraeft');
+      if (!this._curInstId) return;
+      this.gensendMail(this._curInstId);
+      this.renderDetaljerBody();
+      this.render();
+    });
+
+    // E6: Flyt eftersyn
+    $('#efFlytOk').addEventListener('click', () => {
+      if (!this._curInstId) return;
+      const m = +$('#efFlytMaaned').value;
+      const y = +$('#efFlytAar').value;
+      if (!this.flytEftersyn(this._curInstId, m, y)) return;
+      closeModal('modalEfFlyt');
+      this.renderDetaljerBody();
+      this.render();
+    });
+
+    // E8: Udført eftersyn – gensidigt udelukkende checkboxes i hver gruppe
+    $$('input[name="efUdfoertType"]').forEach(cb => cb.addEventListener('change', () => {
+      if (cb.checked) {
+        $$('input[name="efUdfoertType"]').forEach(x => { if (x !== cb) x.checked = false; });
+      }
+    }));
+    $$('input[name="efUdfoertRes"]').forEach(cb => cb.addEventListener('change', () => {
+      if (cb.checked) {
+        $$('input[name="efUdfoertRes"]').forEach(x => { if (x !== cb) x.checked = false; });
+      }
+      const visSag = $('#efResServicesag') && $('#efResServicesag').checked;
+      if ($('#efUdfoertServicesagWrap')) $('#efUdfoertServicesagWrap').style.display = visSag ? '' : 'none';
+    }));
+    if ($('#efUdfoertDatoPicker')) {
+      $('#efUdfoertDatoPicker').addEventListener('change', () => {
+        const iso = $('#efUdfoertDatoPicker').value;
+        if (iso) $('#efUdfoertDato').value = ddmm(iso);
+      });
+    }
+    $('#efBtnUdfoert').addEventListener('click', () => {
+      if (!this._curInstId) return;
+      this.openUdfoertModal(this._curInstId);
+    });
+    $('#efUdfoertOk').addEventListener('click', () => {
+      if (!this._curInstId) return;
+      const typeCb = $$('input[name="efUdfoertType"]').find(x => x.checked);
+      const resCb = $$('input[name="efUdfoertRes"]').find(x => x.checked);
+      const udfoertType = typeCb ? typeCb.value : '';
+      const resultat = resCb ? resCb.value : '';
+      const servicesagCas = ($('#efUdfoertServicesag') && $('#efUdfoertServicesag').value.trim()) || '';
+      const datoInput = ($('#efUdfoertDato') && $('#efUdfoertDato').value.trim()) || '';
+      const kommentar = ($('#efUdfoertKommentar') && $('#efUdfoertKommentar').value.trim()) || '';
+      if (!this.registrerUdfoert(this._curInstId, { udfoertType, resultat, servicesagCas, dato: datoInput, kommentar })) return;
+      closeModal('modalEfUdfoert');
+      closeModal('modalEfDetaljer');
+      this.render();
+    });
+
+    // Delegerede klik inde i #efDetBody (E3 UL-link, E6 Flyt, E9 Tilføj note, E10 Tidligere eftersyn)
+    $('#efDetBody').addEventListener('click', e => {
+      const btn = e.target.closest('[data-detact]');
+      if (!btn) return;
+      const act = btn.dataset.detact;
+      if (act === 'ul-info') {
+        this.openUlDetaljer(btn.dataset.ul);
+      } else if (act === 'flyt') {
+        const inst = App.installation(this._curInstId);
+        if (!inst || !inst.id) return;
+        const ym = App.eftersynPlanMaaned(inst, startOfToday()) || today().slice(0, 7);
+        $('#efFlytMaaned').value = String(+ym.slice(5, 7));
+        $('#efFlytAar').value = ym.slice(0, 4);
+        openModal('modalEfFlyt');
+      } else if (act === 'add-note') {
+        const inp = $('#efNyNoteTekst');
+        if (!inp) return;
+        if (this.tilfoejNote(this._curInstId, inp.value)) {
+          inp.value = '';
+          this.renderDetaljerBody();
+        }
+      } else if (act === 'vis-tidligere') {
+        const idx = +btn.dataset.idx;
+        if (this._curTidligereIdx == null && App.pushSubView) {
+          App.pushSubView(() => { this._curTidligereIdx = null; this.renderDetaljerBody(); });
+        }
+        this._curTidligereIdx = idx;
+        this.renderDetaljerBody();
+      } else if (act === 'tilbage-aktuel') {
+        this._curTidligereIdx = null;
+        this.renderDetaljerBody();
+      }
+    });
+
+    // Påmindelse til kunde
     $('#efSendPaamindelse').addEventListener('click', () => {
-      const s = site(this._curSite); if (!s || !s.id) return;
+      const inst = App.installation(this._curInstId);
+      const s = site(inst.siteId || this._curSite); if (!s || !s.id) return;
       const kundeNavn = App.kundeNavn(s);
       $('#efMailTil').value = s.kontakt || `Kontaktperson, ${kundeNavn}`;
       $('#efMailFra').value = emp(S.user).navn;
-      const t = startOfToday();
-      const ef = App.eftersynSite(s.id);
-      const nd = ef.aktiv ? nextEftersyn(s, t) : null;
+      const planMmYyyy = inst.id ? App.formaterMaanedAar(App.eftersynPlanMaaned(inst, startOfToday())) : '–';
       $('#efMailPreview').innerHTML = `
         <div class="pdf-head"><b>Påmindelse om eftersyn</b><span class="muted">${today()}</span><svg viewBox="0 0 304 164" aria-label="Securitas" style="width:84px;color:#031F30"><use href="#logo-white"/></svg></div>
         <dl>
           <dt>Kunde</dt><dd>${h(kundeNavn)}</dd><dt>Site</dt><dd>${h(App.siteLabel(s))}</dd>
           <dt>Adresse</dt><dd>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</dd><dt>Kontaktperson</dt><dd>${h(s.kontakt) || '–'}</dd>
-          <dt>Installation</dt><dd>${h(App.installationTyper(s.id)) || '–'}</dd><dt>Planlagt dato</dt><dd>${nd ? ddmm(nd.getFullYear() + '-' + String(nd.getMonth() + 1).padStart(2, '0') + '-' + String(nd.getDate()).padStart(2, '0')) : '–'}</dd>
+          <dt>Installation</dt><dd>${h(inst.type || App.installationTyper(s.id)) || '–'}</dd><dt>Planlagt måned</dt><dd>${h(planMmYyyy)}</dd>
         </dl>
-        <p>Vi skal snart udføre planlagt eftersyn af jeres anlæg. Vi kontakter jer for at aftale nærmere tidspunkt.</p>
-        <p class="caption muted" style="margin-top:18px">Alle felter ovenfor er hentet fra sitet. Ingen er tastet til denne påmindelse.</p>`;
+        <p>Vi skal snart udføre planlagt eftersyn af jeres anlæg. Vi kontakter jer for at aftale nærmere tidspunkt.</p>`;
       closeModal('modalEfDetaljer'); openModal('modalEfMail');
     });
     $('#efMailSend').addEventListener('click', () => {
       closeModal('modalEfMail'); toast('Påmindelse sendt til kunden');
     });
   },
-  // Forside-filterets rene rækkeudvælgelse (PLAN-v8, bølge 2b): ids er site-id'er, ét pr. række, så et
-  // simpelt idSet-match er nok – ingen forretningsregel (skalBookes/forfaldneUdenOpgave) gentages her.
-  // Uden DOM, så den kan afprøves i Node.
+
+  // E3: Åbn pop-up med underleverandør-detaljer
+  openUlDetaljer(ulId) {
+    const { $, h, kr, openModal } = App;
+    const u = App.ul(ulId);
+    if (!u || !u.id) return;
+    $('#efUlTitle').textContent = `Underleverandør · ${u.navn}`;
+    const kontakter = (u.kontakter || []).map(k => `<li><b>${h(k.navn)}</b>${k.rolle ? ` (${h(k.rolle)})` : ''} · ${h(k.tlf || k.telefon || '–')} · ${h(k.mail || k.email || '–')}</li>`).join('');
+    $('#efUlBody').innerHTML = `
+      <div class="form-grid" style="margin-bottom:12px">
+        <div><small class="muted">Navn</small><br><b>${h(u.navn)}</b></div>
+        <div><small class="muted">Område</small><br><b>${h(u.omraade || '–')}</b></div>
+        <div><small class="muted">Vagttelefon</small><br><b>${h(u.vagttelefon || u.telefon || '–')}</b></div>
+        <div><small class="muted">Bestillingsmail</small><br><b>${h(u.bestillingsmail || u.email || '–')}</b></div>
+        <div><small class="muted">CC-mail</small><br><b>${h(u.ccMail || '–')}</b></div>
+        <div><small class="muted">Timepris (kost / salg)</small><br><b>${u.timeprisKost ? kr(u.timeprisKost) : '–'} / ${u.timeprisSalg ? kr(u.timeprisSalg) : '–'}</b></div>
+        <div style="grid-column:1/-1"><small class="muted">Aftale</small><br><b>${h(u.aftale || '–')}</b></div>
+      </div>
+      ${kontakter ? `<div style="margin-bottom:12px"><small class="muted">Kontaktpersoner</small><ul class="log">${kontakter}</ul></div>` : ''}
+      ${(u.noter && u.noter.length) ? `<div><small class="muted">Noter</small><ul class="log">${u.noter.map(n => `<li><time>${h(n.dato)}</time><span>${h(n.tekst)}</span></li>`).join('')}</ul></div>` : ''}
+    `;
+    openModal('modalEfUl');
+  },
+
+  // E4: Byg mail-indhold til service@securitas.dk
+  bygOpretMail(instOrId) {
+    const inst = typeof instOrId === 'string' ? App.installation(instOrId) : instOrId;
+    const s = App.site((inst || {}).siteId);
+    const kundenavn = App.kundeNavn(s) || '–';
+    const adresseOgBy = [s.adresse, [s.postnr, s.by].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    const instType = (inst && inst.type) || '–';
+    const ulNavn = App.ulNavn((inst || {}).ulId) || 'Securitas';
+    const planYm = App.eftersynPlanMaaned(inst, this.helpers.startOfToday());
+    const naesteDato = App.formaterMaanedAar(planYm);
+    const specifikNote = (s.specifikkeNoterEftersyn || '').trim() || 'Ingen';
+    const emne = `Eftersyn ${instType}, ${kundenavn}, ${adresseOgBy}`;
+    const body = [
+      `Der skal udføres ${instType} eftersyn hos ${kundenavn}, ${adresseOgBy}.`,
+      `Eftersynet skal udføres inden ${naesteDato} af ${ulNavn}.`,
+      `${kundenavn}`,
+      `${s.adresse || '–'}`,
+      `${[s.postnr, s.by].filter(Boolean).join(' ') || '–'}`,
+      `Bemærk evt.: ${specifikNote}`,
+    ].join('\n');
+    return { til: 'service@securitas.dk', emne, body, instType, kundenavn, adresseOgBy, naesteDato, ulNavn, specifikNote };
+  },
+
+  openOpretMailModal(instId, erGensend = false) {
+    const { $, S, emp, openModal } = App;
+    const inst = App.installation(instId);
+    if (!inst || !inst.id) return;
+    this._opretInstId = inst.id;
+    this._opretErGensend = !!erGensend;
+    const mail = this.bygOpretMail(inst);
+    $('#efOpretTil').value = mail.til;
+    $('#efOpretFra').value = emp(S.user).navn;
+    $('#efOpretEmne').value = mail.emne;
+    $('#efOpretBody').value = mail.body;
+    openModal('modalEfOpretMail');
+  },
+
+  // E4 & E7: Opret eftersynssag, send mail til service@securitas.dk, skjul Opret-knap og log oprettelsen
+  bekraeftOpretSag(instId) {
+    const { S, save, toast, today, siteLabel } = App;
+    const inst = App.installation(instId);
+    if (!inst || !inst.id) return null;
+    const s = App.site(inst.siteId);
+    const mail = this.bygOpretMail(inst);
+    const forsteTekniker = (App.medarbejdere({ aktive: true, rolle: 'Tekniker' })[0] || {}).id || '';
+    const id = (inst.eftersyn && inst.eftersyn.cas) || this.helpers.genCasId();
+    S.serviceopgaver = S.serviceopgaver || [];
+    let opg = S.serviceopgaver.find(o => o.id === id);
+    if (!opg) {
+      opg = {
+        id, installationId: inst.id, siteId: s.id,
+        beskrivelse: `Eftersyn ${inst.type} – ${siteLabel(s)}`,
+        tekniker: forsteTekniker, status: 'Åben', type: 'Eftersyn',
+        oprettet: today(), lukket: '', po: '', pris: 0,
+      };
+      S.serviceopgaver.push(opg);
+    }
+    inst.eftersyn = inst.eftersyn || { aktiv: true, maaned: 1, interval: 12, sidste: '', cas: '' };
+    inst.eftersyn.cas = id;
+    inst.eftersyn.mailSendt = true;
+    inst.eftersyn.oprettetDato = inst.eftersyn.oprettetDato || today();
+    inst.eftersyn.sidsteMail = mail;
+    inst.eftersyn.historik = inst.eftersyn.historik || [];
+    inst.eftersyn.historik.push({
+      dato: today(),
+      status: 'Oprettet',
+      kommentar: `Eftersynssag ${id} oprettet og mail sendt til ${mail.til}`,
+      af: S.user,
+    });
+    save();
+    toast(`Eftersynssag ${id} oprettet og mail sendt til service@securitas.dk`);
+    this.render();
+    return opg;
+  },
+
+  // E5: Genopret sag / gensend mail
+  gensendMail(instId) {
+    const { S, save, toast, today } = App;
+    const inst = App.installation(instId);
+    if (!inst || !inst.id) return false;
+    if (!inst.eftersyn || !inst.eftersyn.cas) {
+      this.bekraeftOpretSag(instId);
+      return true;
+    }
+    const mail = this.bygOpretMail(inst);
+    inst.eftersyn.mailSendt = true;
+    inst.eftersyn.sidsteMail = mail;
+    inst.eftersyn.historik = inst.eftersyn.historik || [];
+    inst.eftersyn.historik.push({
+      dato: today(),
+      status: 'Genoprettet',
+      kommentar: `Mail gensendt til ${mail.til} (${inst.eftersyn.cas})`,
+      af: S.user,
+    });
+    save();
+    toast(`Mail gensendt til ${mail.til}`);
+    return true;
+  },
+
+  // E6 & E11: Flyt eftersyn til ny måned/år
+  flytEftersyn(instId, nyMaaned, nytAar) {
+    const { S, save, toast, today } = App;
+    const inst = App.installation(instId);
+    if (!inst || !inst.id) return false;
+    const m = +nyMaaned, y = +nytAar;
+    if (!m || m < 1 || m > 12 || !y || y < 2020) {
+      toast('Vælg gyldig måned (1–12) og år');
+      return false;
+    }
+    inst.eftersyn = inst.eftersyn || { aktiv: true, maaned: m, interval: 12, sidste: '', cas: '' };
+    const foerYm = App.eftersynPlanMaaned(inst, this.helpers.startOfToday());
+    const nyYm = `${y}-${String(m).padStart(2, '0')}`;
+    inst.eftersyn.planMaaned = nyYm;
+    inst.eftersyn.maaned = m;
+    inst.eftersyn.historik = inst.eftersyn.historik || [];
+    inst.eftersyn.historik.push({
+      dato: today(),
+      status: 'Flyttet',
+      kommentar: `Eftersyn flyttet fra ${App.formaterMaanedAar(foerYm)} til ${App.formaterMaanedAar(nyYm)}`,
+      af: S.user,
+    });
+    App.log('installation', inst.id, 'eftersyn', App.formaterMaanedAar(foerYm), App.formaterMaanedAar(nyYm));
+    save();
+    toast(`Eftersyn flyttet til ${App.formaterMaanedAar(nyYm)}`);
+    return true;
+  },
+
+  // E9: Tilføj manuel note til eftersynssagens historik med status "Note"
+  tilfoejNote(instId, tekst) {
+    const { S, save, toast, today } = App;
+    const inst = App.installation(instId);
+    const t = String(tekst || '').trim();
+    if (!inst || !inst.id || !t) {
+      toast('Skriv en note, før den kan tilføjes');
+      return false;
+    }
+    inst.eftersyn = inst.eftersyn || { aktiv: true, maaned: 1, interval: 12, sidste: '', cas: '', historik: [] };
+    inst.eftersyn.historik = inst.eftersyn.historik || [];
+    inst.eftersyn.historik.push({
+      dato: today(),
+      status: 'Note',
+      kommentar: t,
+      af: S.user,
+    });
+    save();
+    toast('Note tilføjet til eftersynshistorikken');
+    return true;
+  },
+
+  openUdfoertModal(instId) {
+    const { $, $$, today, openModal } = App;
+    this._curInstId = instId;
+    $$('input[name="efUdfoertType"]').forEach(cb => { cb.checked = false; });
+    $$('input[name="efUdfoertRes"]').forEach(cb => { cb.checked = false; });
+    if ($('#efUdfoertServicesagWrap')) $('#efUdfoertServicesagWrap').style.display = 'none';
+    if ($('#efUdfoertServicesag')) $('#efUdfoertServicesag').value = '';
+    if ($('#efUdfoertDato')) $('#efUdfoertDato').value = this.helpers.ddmm(today());
+    if ($('#efUdfoertDatoPicker')) $('#efUdfoertDatoPicker').value = today();
+    if ($('#efUdfoertKommentar')) $('#efUdfoertKommentar').value = '';
+    openModal('modalEfUdfoert');
+  },
+
+  // E8, E10 & E11: Afslut eftersyn med obligatoriske felter, arkivér i tidligere og rul planMaaned frem med interval
+  registrerUdfoert(instId, payload = {}) {
+    const { S, save, toast, today, siteLabel } = App;
+    const inst = App.installation(instId);
+    if (!inst || !inst.id) return false;
+    const udfoertType = String(payload.udfoertType || '').trim();
+    const resultat = String(payload.resultat || '').trim();
+    const servicesagCas = String(payload.servicesagCas || '').trim();
+    const isoDato = this.helpers.parseDdmmToIso(payload.dato);
+    const kommentar = String(payload.kommentar || '').trim();
+
+    if (!udfoertType) { toast('Vælg om eftersynet er udført med eller uden bemærkninger'); return false; }
+    if (!resultat) { toast('Vælg resultat af eftersynet'); return false; }
+    if (resultat === 'Fejl konstateret, servicesag oprettet' && !servicesagCas) {
+      toast('Udfyld feltet Servicesag med CAS-nummeret');
+      return false;
+    }
+    if (!isoDato) { toast('Udfyld en gyldig dato for udført eftersyn (dd.mm.åååå)'); return false; }
+    if (!kommentar) { toast('Kommentarfeltet skal udfyldes'); return false; }
+
+    const s = App.site(inst.siteId);
+    const ef = inst.eftersyn || { aktiv: true, maaned: 1, interval: 12, sidste: '', cas: '', historik: [], tidligere: [] };
+    const curPlanYm = App.eftersynPlanMaaned(inst, this.helpers.startOfToday());
+    const interval = +ef.interval || 12;
+    const nyPlanYm = App.addMaanederYm(curPlanYm, interval);
+
+    // Luk evt. åben eftersynsopgave
+    const opg = this.helpers.opgaveForInst(inst, s);
+    if (opg && opg.status === 'Åben') {
+      opg.status = 'Lukket til fakturering';
+      opg.lukket = isoDato;
+    }
+
+    // Hvis "Fejl konstateret, servicesag oprettet", sikr at servicesagen findes i S.serviceopgaver
+    if (resultat === 'Fejl konstateret, servicesag oprettet' && servicesagCas) {
+      S.serviceopgaver = S.serviceopgaver || [];
+      if (!S.serviceopgaver.some(o => o.id === servicesagCas)) {
+        const forsteTekniker = (App.medarbejdere({ aktive: true, rolle: 'Tekniker' })[0] || {}).id || '';
+        S.serviceopgaver.push({
+          id: servicesagCas,
+          siteId: s.id,
+          installationId: inst.id,
+          beskrivelse: `Fejl konstateret ved ${inst.type}-eftersyn: ${kommentar}`,
+          tekniker: forsteTekniker,
+          status: 'Åben',
+          type: 'Fejl',
+          oprettet: isoDato,
+          lukket: '',
+          po: '',
+          pris: 0,
+        });
+      }
+    }
+
+    const afslutPost = {
+      dato: isoDato,
+      status: udfoertType,
+      kommentar: `${resultat}${servicesagCas ? ' (Servicesag: ' + servicesagCas + ')' : ''} – ${kommentar}`,
+      af: S.user,
+    };
+    const fuldHistorik = (ef.historik || []).concat([afslutPost]);
+
+    ef.tidligere = ef.tidligere || [];
+    ef.tidligere.unshift({
+      cas: ef.cas || (opg ? opg.id : '–'),
+      oprettetDato: ef.oprettetDato || (opg ? opg.oprettet : isoDato),
+      dato: isoDato,
+      planMaaned: curPlanYm,
+      udfoertType,
+      resultat,
+      servicesagCas,
+      kommentar,
+      historik: fuldHistorik,
+    });
+
+    // E11: næste eftersynsmåned tager udgangspunkt i indeværende års planlagte måned + interval
+    ef.sidste = isoDato;
+    ef.planMaaned = nyPlanYm;
+    ef.maaned = +nyPlanYm.slice(5, 7);
+    ef.cas = '';
+    ef.mailSendt = false;
+    ef.oprettetDato = '';
+    ef.historik = [];
+    inst.eftersyn = ef;
+
+    save();
+    toast(`Eftersyn på ${inst.type} (${siteLabel(s, true)}) registreret som udført. Næste eftersyn: ${App.formaterMaanedAar(nyPlanYm)}`);
+    return true;
+  },
+
+  // Forside-filterets rækkeudvælgelse: understøtter både site-id'er (fra Forside-kortene L7/S1) og installations-id'er
   forsideRaekker(rows, ff) {
     if (!ff || !Array.isArray(ff.ids)) return rows;
     const idSet = new Set(ff.ids);
-    return rows.filter(r => idSet.has(r.site.id));
+    return rows.filter(r => (r.inst && idSet.has(r.inst.id)) || (r.site && idSet.has(r.site.id) && (!r.inst || (r.ef && r.ef.aktiv))));
   },
-  openDetaljer(siteId) {
-    const { $, S, site, h, kr, st, openModal, siteLabel } = App;
-    const { ddmm, startOfToday, nextEftersyn, opgaveFor, rowInfo } = this.helpers;
-    const s = site(siteId); if (!s || !s.id) return;
-    this._curSite = siteId;
-    const t = startOfToday();
-    const info = rowInfo(s, t);
-    const opg = opgaveFor(s);
+
+  openDetaljer(idOrSiteId) {
+    const { openModal } = App;
+    let inst = App.installation(idOrSiteId);
+    if (!inst || !inst.id) {
+      const siteInst = App.installationer(idOrSiteId);
+      inst = siteInst.find(i => i.eftersyn && i.eftersyn.aktiv) || siteInst[0];
+    }
+    if (!inst || !inst.id) return;
+    this._curInstId = inst.id;
+    this._curSite = inst.siteId;
+    this._curTidligereIdx = null;
+    this.renderDetaljerBody();
+    openModal('modalEfDetaljer');
+  },
+
+  renderDetaljerBody() {
+    const { $, S, site, h, siteLabel } = App;
+    const { ddmm, startOfToday, opgaveForInst, instRowInfo } = this.helpers;
+    const inst = App.installation(this._curInstId);
+    if (!inst || !inst.id) return;
+    const s = site(inst.siteId);
+    const info = instRowInfo(inst, startOfToday());
+    const opg = opgaveForInst(inst, s);
     const kundeNavn = App.kundeNavn(s);
-    $('#efDetTitle').textContent = `Eftersyn · ${s.navn || kundeNavn}`;
+    const ulNavn = App.ulNavn(inst.ulId);
+    const ulHtml = inst.ulId && ulNavn
+      ? `<button type="button" class="tlink" data-detact="ul-info" data-ul="${h(inst.ulId)}">${h(ulNavn)}</button>`
+      : '–';
+
+    // E10: Hvis brugeren har klikket på et tidligere eftersyn, vis dette med tilbage-pil
+    const tidligere = (info.ef && info.ef.tidligere) || [];
+    if (this._curTidligereIdx != null && tidligere[this._curTidligereIdx]) {
+      const tidl = tidligere[this._curTidligereIdx];
+      $('#efDetTitle').textContent = `Tidligere eftersyn · ${tidl.cas || inst.type} (${ddmm(tidl.dato)})`;
+      if ($('#efBtnGensend')) $('#efBtnGensend').style.display = 'none';
+      if ($('#efBtnUdfoert')) $('#efBtnUdfoert').style.display = 'none';
+      $('#efDetBody').innerHTML = `
+        <p style="margin-bottom:12px"><button type="button" class="tlink" id="efTilbageTilAktuel" data-detact="tilbage-aktuel">← Tilbage til aktuelt eftersyn</button></p>
+        <div class="form-grid" style="margin-bottom:18px">
+          <div><small class="muted">Kunde og site</small><br><b>${h(kundeNavn)}</b><br><span class="muted">${h(siteLabel(s))}</span></div>
+          <div><small class="muted">Installation</small><br><b>${h(inst.type)}${inst.anlaeg ? ' · ' + h(inst.anlaeg) : ''}</b></div>
+          <div><small class="muted">CAS-nummer</small><br><b>${h(tidl.cas || '–')}</b></div>
+          <div><small class="muted">Planlagt måned</small><br><b>${h(App.formaterMaanedAar(tidl.planMaaned))}</b></div>
+          <div><small class="muted">Udført dato</small><br><b>${ddmm(tidl.dato)}</b></div>
+          <div><small class="muted">Udført status</small><br><b>${h(tidl.udfoertType || 'Udført')}</b></div>
+          <div><small class="muted">Resultat af eftersyn</small><br><b>${h(tidl.resultat || '–')}</b></div>
+          ${tidl.servicesagCas ? `<div><small class="muted">Servicesag</small><br><b>${h(tidl.servicesagCas)}</b></div>` : ''}
+          <div style="grid-column:1/-1"><small class="muted">Kommentar</small><br><b>${h(tidl.kommentar || '–')}</b></div>
+        </div>
+        <h3 style="margin-bottom:6px">Historik for dette eftersyn</h3>
+        <div class="table-wrap">
+          <table class="table-dense">
+            <thead><tr><th>Dato</th><th>Status</th><th>Kommentar</th></tr></thead>
+            <tbody>${(tidl.historik || []).map(hp => `<tr><td>${ddmm(hp.dato)}</td><td><span class="pill">${h(hp.status)}</span></td><td>${h(hp.kommentar || '')}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Ingen historikposter.</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+      return;
+    }
+
+    $('#efDetTitle').textContent = `Eftersynssag · ${inst.type} · ${s.navn || kundeNavn}`;
+    if ($('#efBtnGensend')) $('#efBtnGensend').style.display = '';
+    if ($('#efBtnUdfoert')) $('#efBtnUdfoert').style.display = info.ef.aktiv ? '' : 'none';
+
+    const casNr = opg ? opg.id : (info.ef.cas || '–');
+    const hist = (info.ef && info.ef.historik) || [];
+
     $('#efDetBody').innerHTML = `
       <div class="form-grid" style="margin-bottom:18px">
         <div><small class="muted">Site og kunde</small><br><b>${h(kundeNavn)}</b><br><span class="muted">${h(siteLabel(s))}</span></div>
         <div><small class="muted">Adresse</small><br><b>${h(s.adresse)}, ${h(s.postnr)} ${h(s.by)}</b></div>
-        <div><small class="muted">Installation</small><br><b>${h(App.installationTyper(s.id)) || '–'}</b></div>
-        <div><small class="muted">Serviceaftale</small><br><b>${h(App.serviceaftaler(s.id).join(', ')) || '–'}</b></div>
-        <div><small class="muted">UL</small><br><b>${h(efUlNavneForSite(s.id).join(', ')) || '–'}</b></div>
+        <div><small class="muted">Installation</small><br><b>${h(inst.type)}${inst.anlaeg ? ' · ' + h(inst.anlaeg) : ''}</b></div>
+        <div><small class="muted">Serviceaftale</small><br><b>${h(inst.serviceaftale || '–')}</b></div>
+        <div><small class="muted">Underleverandør</small><br>${ulHtml}</div>
         <div><small class="muted">Kontaktperson</small><br><b>${h(s.kontakt) || '–'}</b></div>
         <div><small class="muted">Sidste eftersyn</small><br><b>${ddmm(info.ef.sidste)}</b></div>
-        <div><small class="muted">Næste eftersyn</small><br><b>${info.nextDate ? ddmm(info.nextDate.getFullYear() + '-' + String(info.nextDate.getMonth() + 1).padStart(2, '0') + '-' + String(info.nextDate.getDate()).padStart(2, '0')) : '–'}</b></div>
+        <div><small class="muted">Næste eftersyn (Måned/År)</small><br><b>${h(info.planMmYyyy)}</b> ${info.ef.aktiv ? `<button type="button" class="tlink" id="efBtnFlyt" data-detact="flyt" style="margin-left:6px">Flyt eftersyn</button>` : ''}</div>
         <div><small class="muted">Interval</small><br><b>${info.ef.interval ? info.ef.interval + ' måneder' : '–'}</b></div>
         <div><small class="muted">Status</small><br>${`<span class="st ${info.cls}">${h(info.label)}</span>`}</div>
-        <div><small class="muted">CAS-nr.</small><br><b>${h(opg ? opg.id : (info.ef.cas || '–'))}</b></div>
+        <div><small class="muted">CAS-nummer</small><br><b>${h(casNr)}</b></div>
+        <div><small class="muted">Specifikke noter til Eftersyn (site)</small><br><span>${h(s.specifikkeNoterEftersyn || '–')}</span></div>
+      </div>
+
+      <h3 style="margin-bottom:6px">Historik på eftersynssagen</h3>
+      <div style="display:flex; gap:8px; align-items:flex-end; margin-bottom:9px">
+        <label class="field" style="flex:1">Ny note på eftersynssagen<input type="text" id="efNyNoteTekst" placeholder="Skriv kommentar eller note til eftersynet..."></label>
+        <button type="button" class="btn" id="efBtnTilfoejNote" data-detact="add-note">Tilføj note</button>
+      </div>
+      <div class="table-wrap" style="margin-bottom:18px">
+        <table class="table-dense" id="efHistTable">
+          <thead><tr><th>Dato</th><th>Status</th><th>Kommentar</th></tr></thead>
+          <tbody>${hist.map(hp => `<tr><td>${ddmm(hp.dato)}</td><td><span class="pill">${h(hp.status)}</span></td><td>${h(hp.kommentar || '')}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Ingen historik endnu – opret sagen for at starte historikken.</td></tr>'}</tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-bottom:6px">Tidligere eftersyn på installationen</h3>
+      <div class="table-wrap">
+        <table class="table-dense" id="efTidligereTable">
+          <thead><tr><th>Udført dato</th><th>Planlagt (Måned/År)</th><th>CAS-nummer</th><th>Udført</th><th>Resultat</th><th></th></tr></thead>
+          <tbody>${tidligere.map((t, idx) => `<tr class="click" data-detact="vis-tidligere" data-idx="${idx}" tabindex="0">
+            <td><b>${ddmm(t.dato)}</b></td>
+            <td>${h(App.formaterMaanedAar(t.planMaaned))}</td>
+            <td>${h(t.cas || '–')}</td>
+            <td>${h(t.udfoertType || 'Udført')}</td>
+            <td>${h(t.resultat || '–')}</td>
+            <td><button type="button" class="tlink" data-detact="vis-tidligere" data-idx="${idx}">Se sag</button></td>
+          </tr>`).join('') || '<tr><td colspan="6" class="empty">Ingen tidligere eftersyn registreret på denne installation.</td></tr>'}</tbody>
+        </table>
       </div>
     `;
-    openModal('modalEfDetaljer');
   },
-  render() {
-    const { $, $$, S, h, kr, site, st, siteLabel } = App;
-    const { ddmm, startOfToday, opgaveFor, rowInfo } = this.helpers;
-    const t = startOfToday();
-    const all = (S.sites || []).map(s => rowInfo(s, t));
 
-    // KPI'er – uafhængige af tabel-/kalenderfilter
+  render() {
+    const { $, $$, S, h, siteLabel } = App;
+    const { ddmm, startOfToday, opgaveForInst, instRowInfo } = this.helpers;
+    const t = startOfToday();
+    const all = (S.installationer || []).map(inst => instRowInfo(inst, t));
+
+    // Populér År-dropdown (bevar aktuelt valg)
+    const aarSel = $('#efAar');
+    if (aarSel) {
+      const curAar = aarSel.value;
+      const aarSet = new Set(['2025', '2026', '2027']);
+      all.forEach(r => { if (r.planYm) aarSet.add(r.planYm.slice(0, 4)); });
+      aarSel.innerHTML = '<option value="">Alle</option>' + [...aarSet].sort().map(y => `<option value="${y}">${y}</option>`).join('');
+      if (curAar && aarSet.has(curAar)) aarSel.value = curAar;
+    }
+
+    // KPI'er
     const overskredne = all.filter(r => r.status === 'over').length;
     const inden30 = all.filter(r => r.status === '30').length;
     const inden90 = all.filter(r => r.status === '30' || r.status === '90').length;
@@ -9258,27 +10419,42 @@ App.registerPage({
       ['Overskredet', overskredne],
       ['Inden for 30 dage', inden30],
       ['Inden for 90 dage', inden90],
-      ['Sites med eftersynsaftale', iAlt],
+      ['Installationer med eftersynsaftale', iAlt],
     ].map(([l, v]) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`).join('');
 
-    // filtre
+    // Filtre (Status, År, Kvartal, Måned, Søg)
     const status = this.fStatus || '';
     const view = this.fView || 'liste';
+    const fAar = ($('#efAar') && $('#efAar').value) || '';
+    const fKvartal = ($('#efKvartal') && $('#efKvartal').value) || '';
+    const fMaaned = ($('#efMaaned') && $('#efMaaned').value) || '';
     const q = $('#efSearch').value.trim().toLowerCase();
-    // Forside-filter (PLAN-v8, bølge 2b): mens det er sat, viser listen og kalenderen PRÆCIS de sites,
-    // Forsiden talte – status-fanerne og søgefeltet omgås helt. this.fStatus/this.fView rører vi ikke.
+
     const ff = App.hentForsideFilter('eftersyn');
     const basis = ff ? this.forsideRaekker(all, ff) : all.filter(r => {
       if (status && r.status !== status) return false;
+      if (fAar) {
+        if (!r.planYm || r.planYm.slice(0, 4) !== fAar) return false;
+      }
+      if (fKvartal) {
+        if (!r.planYm) return false;
+        const m = +r.planYm.slice(5, 7);
+        if (Math.ceil(m / 3) !== +fKvartal) return false;
+      }
+      if (fMaaned) {
+        if (!r.planYm || +r.planYm.slice(5, 7) !== +fMaaned) return false;
+      }
       if (q) {
-        const hay = [r.site.id, r.site.kode, App.kundeNavn(r.site), r.site.navn, App.installationTyper(r.site.id), r.site.adresse].join(' ').toLowerCase();
+        const ulNavn = App.ulNavn(r.inst.ulId);
+        const hay = [r.inst.id, r.inst.type, r.inst.anlaeg, r.inst.serviceaftale, ulNavn, r.site.id, r.site.kode, App.kundeNavn(r.site), r.site.navn, r.site.adresse, r.ef.cas].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-    let rows = basis.slice().sort((a, b) => {
-      const av = a.nextDate ? a.nextDate.getTime() : Infinity, bv = b.nextDate ? b.nextDate.getTime() : Infinity;
-      return av - bv;
+
+    const rows = basis.slice().sort((a, b) => {
+      const av = a.planYm || '9999-99', bv = b.planYm || '9999-99';
+      return av.localeCompare(bv) || a.inst.id.localeCompare(b.inst.id);
     });
 
     $('#efForsideBanner').innerHTML = ff ? `<div class="replaces" data-forside-banner style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:var(--space-4)">
@@ -9286,9 +10462,6 @@ App.registerPage({
       <button type="button" class="tlink" data-forside-vis-alle>Vis alle</button>
     </div>` : '';
     if (ff) $('[data-forside-vis-alle]', $('#efForsideBanner')).addEventListener('click', () => { App.rydForsideFilter(); this.render(); });
-    // Grill-rettelse B1: kernens kontrakt for F8, mens et Forside-filter er aktivt – sat FØR
-    // App.sortable/App.applySort (uafhængigt af liste-/kalendervisning), så kernen selv holder rækker,
-    // filterlinjen og kolonneknapperne i ro, også ved et sorterings- eller kolonnefilterklik uden om render().
     if (ff) this.table.setAttribute('data-uden-kolonnefilter', '1'); else this.table.removeAttribute('data-uden-kolonnefilter');
 
     $('#efListWrap').style.display = view === 'liste' ? '' : 'none';
@@ -9297,35 +10470,38 @@ App.registerPage({
     if (view === 'liste') {
       $('#efRows').innerHTML = rows.map(r => {
         const s = r.site;
-        const opg = opgaveFor(s);
+        const inst = r.inst;
+        const opg = opgaveForInst(inst, s);
         const kundeNavn = App.kundeNavn(s);
-        const iso = r.nextDate ? r.nextDate.getFullYear() + '-' + String(r.nextDate.getMonth() + 1).padStart(2, '0') + '-' + String(r.nextDate.getDate()).padStart(2, '0') : '';
         const kort = siteLabel(s, true);
         const siteCell = s.kode ? `<td>${h(kort)}</td>` : `<td class="cut w-xs" title="${h(siteLabel(s))}">${h(kort)}</td>`;
-        const serviceaftale = App.serviceaftaler(s.id).join(', ');
-        const ulNavne = efUlNavneForSite(s.id).join(', ');
+        const instLabel = inst.anlaeg ? `${inst.type} · ${inst.anlaeg}` : inst.type;
+        const serviceaftale = inst.serviceaftale || '';
+        const ulNavn = App.ulNavn(inst.ulId);
+        const ulCell = inst.ulId && ulNavn
+          ? `<td class="cut w-xs" title="Klik for detaljer om ${h(ulNavn)}"><button type="button" class="tlink" data-act="ul-info" data-ul="${h(inst.ulId)}">${h(ulNavn)}</button></td>`
+          : `<td>–</td>`;
         const casNr = opg ? opg.id : (r.ef.cas || '–');
-        return `<tr class="click" data-site="${h(s.id)}" tabindex="0">
+        const mailSendt = !!(r.ef.mailSendt || r.ef.cas || opg);
+        return `<tr class="click" data-inst="${h(inst.id)}" data-site="${h(s.id)}" tabindex="0">
           <td class="cut w-xs" title="${h(kundeNavn)}"><b>${h(kundeNavn)}</b></td>
           ${siteCell}
-          <td>${h(App.installationTyper(s.id)) || '–'}</td>
+          <td class="cut w-xs" title="${h(instLabel)}">${h(instLabel)}</td>
           <td class="cut w-xs" title="${h(serviceaftale)}">${h(serviceaftale) || '–'}</td>
-          <td class="cut w-xs" title="${h(ulNavne)}">${h(ulNavne) || '–'}</td>
+          ${ulCell}
           <td>${ddmm(r.ef.sidste)}</td>
-          <td>${iso ? ddmm(iso) : '–'}</td>
-          <td>${r.ef.interval ? r.ef.interval + ' mdr.' : '–'}</td>
+          <td data-value="${h(r.planYm)}">${h(r.planMmYyyy)}</td>
+          <td>${r.ef.aktiv && r.ef.interval ? r.ef.interval + ' mdr.' : '–'}</td>
           <td class="st-cut" title="${h(r.label)}"><span class="st ${r.cls}">${h(r.label)}</span></td>
           <td class="cut w-xs" title="${h(casNr)}">${h(casNr)}</td>
           <td class="actions">
-            ${!opg ? `<button class="tlink" data-act="opret" data-id="${h(s.id)}" title="Opret eftersynsopgave">Opret</button>` : ''}
-            <button class="tlink" data-act="udfoert" data-id="${h(s.id)}" title="Marker eftersyn som udført">Udført</button>
+            ${(r.ef.aktiv && !mailSendt) ? `<button class="tlink" data-act="opret" data-id="${h(inst.id)}" title="Opret eftersynssag og send mail til service@securitas.dk">Opret sag</button>` : ''}
           </td>
         </tr>`;
-      }).join('') || '<tr><td colspan="11" class="empty">Ingen sites matcher filteret.</td></tr>';
+      }).join('') || '<tr><td colspan="11" class="empty">Ingen installationer matcher filteret.</td></tr>';
 
       App.applySort(this.table, 'eftersyn-liste');
     } else {
-      // kalender – 12 måneder frem
       const months = [];
       for (let i = 0; i < 12; i++) {
         const d = new Date(t.getFullYear(), t.getMonth() + i, 1);
@@ -9344,7 +10520,7 @@ App.registerPage({
           <div class="card-body">
             <h3>${h(title)}</h3>
             <div class="count">${items.length}</div>
-            <ul>${items.map(r => `<li data-site="${h(r.site.id)}" tabindex="0" style="cursor:pointer"><b>${h(App.kundeNavn(r.site))}</b><br><span class="muted">${h(siteLabel(r.site, true))}</span></li>`).join('') || '<li class="muted">Ingen eftersyn</li>'}</ul>
+            <ul>${items.map(r => `<li data-inst="${h(r.inst.id)}" tabindex="0" style="cursor:pointer"><b>${h(App.kundeNavn(r.site))}</b><br><span class="muted">${h(siteLabel(r.site, true))} · ${h(r.inst.type)}</span></li>`).join('') || '<li class="muted">Ingen eftersyn</li>'}</ul>
           </div>
         </div>`;
       $('#efCalWrap').innerHTML = `<div class="ef-cal">${cardHtml('Overskredet', overdue, true)}${months.map(mo => cardHtml(mo.label, mo.items, false)).join('')}</div>`;
@@ -9841,15 +11017,17 @@ App.registerPage({
     projs.forEach(p => (p.fakturering || []).forEach(f => { if (KLAR.includes(f.status)) bySt[f.status] += +f.beloeb || 0; }));
     return { total: KLAR.reduce((a, s) => a + bySt[s], 0), bySt };
   }
-  function serviceFakt(scope, from, to) {
+  function serviceFakt(scope, from, to, kundeFilter) {
     // Serviceopgaver har hverken afdeling eller PM. Delopgaver følger deres projekt; øvrige henføres til afdeling ud fra kunden.
     const { S } = App; const s = App.resolveScope(scope);
     return (S.serviceopgaver || []).reduce((a, o) => {
       if (o.status !== FAKTURERET) return a;
       const d = ym(o.dato || o.lukket); if (!d || d < from || d > to) return a;
       const parent = o.parent && App.proj(o.parent);
+      const kNavn = App.kundeNavn(parent ? parent.siteId : o.siteId) || '';
+      if (kundeFilter && kNavn !== kundeFilter) return a;
       const ok = parent ? App.inScope(parent, s)
-        : s === 'alle' || (s.startsWith('afd:') && (/novo/i.test(App.kundeNavn(o.siteId) || '') ? 'Novo' : 'Generel') === s.slice(4));
+        : s === 'alle' || (s.startsWith('afd:') && (/novo/i.test(kNavn) ? 'Novo' : 'Generel') === s.slice(4));
       return ok ? a + (+o.pris || 0) : a;
     }, 0);
   }
@@ -9869,15 +11047,18 @@ App.registerPage({
     const scope = App.resolveScope(S.oekScope);
     const m = S.oekMaaned || lastClosedMonth();
     const year = m.slice(0, 4), prevYear = String(+year - 1), idx = +m.slice(5) - 1;
-    const projs = (S.projekter || []).filter(p => App.inScope(p, scope));
+    const scopeProjs = (S.projekter || []).filter(p => App.inScope(p, scope));
+    const kunderIScope = [...new Set(scopeProjs.map(p => App.kundeNavn(p.siteId)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'da'));
+    const kundeFilter = S.oekKunde && kunderIScope.includes(S.oekKunde) ? S.oekKunde : '';
+    const projs = kundeFilter ? scopeProjs.filter(p => App.kundeNavn(p.siteId) === kundeFilter) : scopeProjs;
     const rows = monthsOfYear(year).map(x => monthRow(projs, x));
     const prevRows = monthsOfYear(prevYear).map(x => monthRow(projs, x));
     const aatd = yearToDate(rows, idx), prevAatd = yearToDate(prevRows, idx);
     const jan = year + '-01', prevJan = prevYear + '-01', prevM = prevYear + m.slice(4);
     return {
-      scope, m, year, prevYear, idx, projs, rows, prevRows, aatd, prevAatd, md: rows[idx], prevMd: prevRows[idx],
+      scope, kundeFilter, kunderIScope, m, year, prevYear, idx, projs, rows, prevRows, aatd, prevAatd, md: rows[idx], prevMd: prevRows[idx],
       afslMd: afsluttede(projs, m, m), afslAatd: afsluttede(projs, jan, m), klar: klarNu(projs),
-      svcMd: serviceFakt(scope, m, m), svcAatd: serviceFakt(scope, jan, m),
+      svcMd: serviceFakt(scope, m, m, kundeFilter), svcAatd: serviceFakt(scope, jan, m, kundeFilter),
       drillMd: projRows(projs, m, m), drillAatd: projRows(projs, jan, m),
       scopeLabel: (App.scopeOptions().find(o => o.v === scope) || {}).label || '',
       jan, prevJan, prevM,
@@ -9893,7 +11074,7 @@ App.registerPage({
   }
 
   // ---------- HTML-byggeklodser ----------
-  const scopeTitle = M => M.scope === 'alle' ? 'Alle afdelinger' : M.scope.startsWith('afd:') ? 'Afdeling ' + M.scope.slice(4) : 'Projektleder ' + App.emp(M.scope.slice(3)).navn;
+  const scopeTitle = M => (M.scope === 'alle' ? 'Alle afdelinger' : M.scope.startsWith('afd:') ? 'Afdeling ' + M.scope.slice(4) : 'Projektleder ' + App.emp(M.scope.slice(3)).navn) + (M.kundeFilter ? ' · ' + M.kundeFilter : '');
   const periodTxt = M => M.idx === 0 ? 'januar' : `januar–${MONTHS[M.idx]}`;
 
   function kpiHtml(M) {
@@ -10025,6 +11206,10 @@ App.registerPage({
         <label class="lbl" for="oekMaaned">Måned</label>
         <select id="oekMaaned"></select>
       </div>
+      <div class="grp">
+        <label class="lbl" for="oekKunde">Kunde</label>
+        <select id="oekKunde"><option value="">Alle kunder</option></select>
+      </div>
       <div class="grp" id="oekScopeGrp">
         <span class="lbl">Visning</span>
         <div class="ftabs" id="oekScope" role="group" aria-label="Visning"></div>
@@ -10099,6 +11284,7 @@ App.registerPage({
       const sel = $('#oekMaaned'), cur = App.today().slice(0, 7);
       for (let i = 0; i < 24; i++) { const m = addM(cur, -i); sel.add(new Option(monthName(m) + (i === 0 ? ' (igangværende)' : ''), m)); }
       sel.addEventListener('change', () => { S.oekMaaned = sel.value; save(); this.render(); });
+      $('#oekKunde').addEventListener('change', e => { S.oekKunde = e.target.value; save(); this.render(); });
       $('#oekScope').addEventListener('click', e => { const b = e.target.closest('.ftab'); if (!b) return; S.oekScope = b.dataset.v; save(); this.render(); });
       $$('#oekDrillMode .ftab').forEach(b => b.addEventListener('click', () => { S.oekDrill = b.dataset.v; save(); this.render(); }));
       $('#oekRows').addEventListener('click', e => { const tr = e.target.closest('tr[data-m]'); if (!tr) return; S.oekMaaned = tr.dataset.m; S.oekDrill = 'md'; save(); this.render(); });
@@ -10114,6 +11300,11 @@ App.registerPage({
       if (!S.oekDrill) S.oekDrill = 'md';
       const M = model();
       $('#oekMaaned').value = M.m;
+      const kSel = $('#oekKunde');
+      if (kSel) {
+        kSel.innerHTML = '<option value="">Alle kunder</option>' + M.kunderIScope.map(k => `<option value="${h(k)}">${h(k)}</option>`).join('');
+        kSel.value = M.kundeFilter || '';
+      }
 
       // scope-omskifter: kun de valg brugeren har ret til (App.scopeOptions)
       const opts = App.scopeOptions();
