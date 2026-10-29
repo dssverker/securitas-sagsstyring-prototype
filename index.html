@@ -5990,7 +5990,7 @@ window.ProjektFlow = {
   // C10: afslutning kræver udført arbejde, ikke fakturering.
   kanAfsluttes(p) { return !!p && App.projStatus(p).udfoerelse === App.UDFOERELSE_STATUS[2] && !p.overdragelse; },
   // P6: Bygger mail til abonnement@securitas.dk ved afslutning af projekt
-  abonnementsMail(p, startDato) {
+  abonnementsMail(p, startDato, serviceInfo) {
     const s = App.site((p || {}).siteId);
     const k = App.kundeAf(s);
     const m = App.bc(App.stedNr(p));
@@ -5999,16 +5999,21 @@ window.ProjektFlow = {
     const cepAccount = (k && k.cepAccount) || (m && m.account) || '–';
     const opportunity = (p && p.opportunity) || '–';
     const dato = startDato || App.today();
+    const info = serviceInfo !== undefined ? String(serviceInfo || '').trim() : (s && s.specifikkeNoterEftersyn ? String(s.specifikkeNoterEftersyn).trim() : '');
     const emne = `Opstart af abonnement pr. ${dato} – ${kundenavn} (${opportunity})`;
-    const body = [
+    const bodyLines = [
       `Kundens abonnement skal starte pr. ${dato}.`,
       '',
       `Kundenavn: ${kundenavn}`,
       `Adresse: ${adresse}`,
       `CEP Account #: ${cepAccount}`,
       `Opportunity #: ${opportunity}`,
-    ].join('\n');
-    return { til: 'abonnement@securitas.dk', emne, body, dato, kundenavn, adresse, cepAccount, opportunity };
+    ];
+    if (info) {
+      bodyLines.push('', 'Særlig info til service:', info);
+    }
+    const body = bodyLines.join('\n');
+    return { til: 'abonnement@securitas.dk', emne, body, dato, kundenavn, adresse, cepAccount, opportunity, serviceInfo: info };
   },
   // Overdragelsen sætter de valgte installationer i drift med dato og projektnummer. eftersyn.sidste
   // røres ikke – det betyder "sidst efterset", ikke "overdraget" (gap-rapport A1c).
@@ -6032,8 +6037,13 @@ window.ProjektFlow = {
         App.log('site', s.id, 'note', '', fuldNote);
         p.overdragelse.note = fuldNote;
       }
+      if (s && s.id && opts.serviceInfo !== undefined) {
+        const sInfo = String(opts.serviceInfo || '').trim();
+        App.saetFelt(s, 'site', s.id, 'specifikkeNoterEftersyn', sInfo);
+        p.overdragelse.serviceInfo = sInfo;
+      }
       if (opts.sendAboMail !== false) {
-        const mail = this.abonnementsMail(p, opts.aboDato || dato);
+        const mail = this.abonnementsMail(p, opts.aboDato || dato, opts.serviceInfo);
         p.overdragelse.abonnementsMail = mail;
       }
     }
@@ -6121,11 +6131,11 @@ App.registerPage({
             <tfoot><tr id="fakSum"></tr></tfoot>
           </table>
         </div>
-        <form class="inline-form" id="fakForm" novalidate style="grid-template-columns: 2.5fr 1fr 1fr auto">
-          <label>Fakturatekst <input type="text" name="tekst" required></label>
-          <label>Rekv. / PO <input type="text" name="rekv"></label>
+        <form class="inline-form" id="fakForm" novalidate style="grid-template-columns: 2.5fr 1fr 1fr auto; align-items: start">
+          <label>Fakturatekst (flere linjer understøttes)<textarea name="tekst" rows="2" required placeholder="Arbejdsbeskrivelse / specifikation..." style="resize:vertical"></textarea></label>
+          <label>Rekv. / PO <input type="text" name="rekv" placeholder="Valgfri"></label>
           <label>Beløb (kr.) <input type="number" name="beloeb" step="1" required></label>
-          <button class="btn" type="submit">Tilføj linje</button>
+          <button class="btn" type="submit" style="margin-top:22px">Tilføj linje</button>
         </form>
         <div class="card-body" style="display:flex; gap:18px; align-items:center; flex-wrap:wrap; border-top:1px solid var(--border-default)">
           <button class="btn cta" id="btnSendFak">Send faktureringsanmodning</button>
@@ -6240,6 +6250,7 @@ App.registerPage({
             <label>Timepris mod kunde (kr.)<input type="number" id="afTimepris" step="1"></label>
             <label>Kørsel mod kunde (kr.)<input type="number" id="afKoersel" step="1"></label>
             <label>Abonnement startdato<input type="date" id="afAboDato"></label>
+            <label style="grid-column:1/-1">Særlig info til service (fx 'Der skal bruges lift', adgangsforhold m.v.)<textarea id="afServiceInfo" rows="2" placeholder="fx Skal bruge 12m saxlift; kontakt portvagt for nøgle..."></textarea></label>
             <label style="grid-column:1/-1">Note ved afslutning (tilføjes til sitets stamdata-noter)<textarea id="afNote" rows="2" placeholder="Skriv overdragelsesnote til sitets stamdata..."></textarea></label>
           </div>
           <div id="afAboMailPreview" class="mail-preview"></div>
@@ -6615,12 +6626,14 @@ App.registerPage({
       if (!box) return;
       const p = cur();
       if (!p) return;
-      const mail = window.ProjektFlow.abonnementsMail(p, ($('#afAboDato') && $('#afAboDato').value) || today());
+      const sInfo = ($('#afServiceInfo') && $('#afServiceInfo').value) || '';
+      const mail = window.ProjektFlow.abonnementsMail(p, ($('#afAboDato') && $('#afAboDato').value) || today(), sInfo);
       box.innerHTML = `<div class="caption" style="font-weight:700; margin-bottom:var(--space-2)">Mail ved afslutning til <b>${h(mail.til)}</b></div>
         <div class="caption muted" style="margin-bottom:var(--space-2)">Emne: <b>${h(mail.emne)}</b></div>
         <pre class="ds-panel" style="margin:0; font-family:inherit; font-size:var(--text-small); white-space:pre-wrap; background:var(--surface-default)">${h(mail.body)}</pre>`;
     };
     if ($('#afAboDato')) $('#afAboDato').addEventListener('input', opdaterAboMailPreview);
+    if ($('#afServiceInfo')) $('#afServiceInfo').addEventListener('input', opdaterAboMailPreview);
     $('#btnAfslut').addEventListener('click', () => {
       const p = cur(); const s = site(p.siteId);
       const u = window.ProjektFlow.udestaaende(p);
@@ -6637,6 +6650,7 @@ App.registerPage({
       $('#afTimepris').value = s.timepris || 0;
       $('#afKoersel').value = s.koersel || 0;
       if ($('#afAboDato')) $('#afAboDato').value = today();
+      if ($('#afServiceInfo')) $('#afServiceInfo').value = s.specifikkeNoterEftersyn || '';
       if ($('#afNote')) $('#afNote').value = '';
       opdaterAboMailPreview();
       openModal('modalAfslut');
@@ -6680,9 +6694,10 @@ App.registerPage({
       }
       App.saetFelt(s, 'site', s.id, 'timepris', +$('#afTimepris').value || 0);
       App.saetFelt(s, 'site', s.id, 'koersel', +$('#afKoersel').value || 0);
+      const afServiceInfo = ($('#afServiceInfo') && $('#afServiceInfo').value.trim()) || '';
       const afNoteTxt = ($('#afNote') && $('#afNote').value.trim()) || `Overdraget fra projekt ${p.id}`;
       const aboDato = ($('#afAboDato') && $('#afAboDato').value) || today();
-      window.ProjektFlow.overdrag(p, valgte, today(), S.user, { note: afNoteTxt, aboDato, sendAboMail: true });
+      window.ProjektFlow.overdrag(p, valgte, today(), S.user, { note: afNoteTxt, serviceInfo: afServiceInfo, aboDato, sendAboMail: true });
       const u = window.ProjektFlow.udestaaende(p);
       p.log.unshift({ dato: now(), tekst: `Projekt overdraget til service – ${valgte.length} ${valgte.length === 1 ? 'installation' : 'installationer'} i drift på ${s.id} · mail sendt til abonnement@securitas.dk (opstart ${aboDato})` + (u.antal ? ` · udestående ${kr(u.beloeb)} på ${u.antal} ${u.antal === 1 ? 'linje' : 'linjer'}` : ''), af: S.user, pmTid: 0.5, seTid: 0, ulTid: 0 });
       save(); closeModal('modalAfslut');
@@ -6708,7 +6723,7 @@ App.registerPage({
           <dt>WO</dt><dd>${h(p.wo) || '–'}</dd><dt>PO / rekv. nr.</dt><dd>${h(lines[0]?.rekv) || '–'}</dd>
         </dl>
         <table><thead><tr><th>Arbejdsbeskrivelse</th><th class="num">Beløb</th></tr></thead>
-        <tbody>${lines.map(f => `<tr><td>${h(f.tekst)}</td><td class="num">${kr(f.beloeb)}</td></tr>`).join('')}</tbody>
+        <tbody>${lines.map(f => `<tr><td style="white-space:pre-line">${h(f.tekst)}</td><td class="num">${kr(f.beloeb)}</td></tr>`).join('')}</tbody>
         <tfoot><tr><td>Samlet pris ekskl. moms</td><td class="num">${kr(lines.reduce((a, f) => a + +f.beloeb, 0))}</td></tr></tfoot></table>
         <p class="caption muted" style="margin-top:18px">Alle felter ovenfor er hentet fra projektet. Ingen er tastet til denne anmodning.</p>`;
       openModal('modalFak');
@@ -6875,7 +6890,7 @@ App.registerPage({
       const handling = faktureret ? ''
         : sendt ? (maaRettes ? `<button class="tlink" data-faktilbage="${i}">Træk tilbage</button>` : '')
           : `<button class="tlink" data-fakedit="${i}">Rediger</button> <button class="tlink" data-fakdel="${i}">Slet</button>`;
-      return `<tr><td>${h(fl.tekst)}</td><td>${h(fl.rekv)}</td><td class="num">${kr(fl.beloeb)}</td>
+      return `<tr><td style="white-space:pre-line">${h(fl.tekst)}</td><td>${h(fl.rekv)}</td><td class="num">${kr(fl.beloeb)}</td>
       <td>${statusCelle}</td>
       <td class="muted">${h(sendt ? fl.sendtDato || '' : fl.dato)}</td><td>${h(fl.initialer)}</td>
       <td>${handling}</td></tr>`;
@@ -10428,7 +10443,7 @@ App.registerPage({
           <dt>PO / rekv. nr.</dt><dd>${h(rekv) || '–'}</dd><dt>TOS</dt><dd>${m ? h(m.tos) : '–'}</dd>
         </dl>
         <table><thead><tr><th>Arbejdsbeskrivelse</th><th class="num">Beløb</th></tr></thead>
-        <tbody><tr><td>${h(tekst)}</td><td class="num">${kr(beloeb)}</td></tr></tbody>
+        <tbody><tr><td style="white-space:pre-line">${h(tekst)}</td><td class="num">${kr(beloeb)}</td></tr></tbody>
         <tfoot><tr><td>Samlet pris ekskl. moms</td><td class="num">${kr(beloeb)}</td></tr></tfoot></table>
         <p class="caption muted" style="margin-top:18px">Alle felter ovenfor er hentet fra sagen.</p>`;
       $('#fkGodkendtInfo').hidden = true; $('#fkGodkendtInfo').textContent = '';
