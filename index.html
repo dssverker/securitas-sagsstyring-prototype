@@ -20872,11 +20872,11 @@ App.registerPage({
             <div class="login-error" id="gateErr" hidden>Forkert adgangskode. Prøv igen.</div>
             <div class="login-field">
               <label for="loginEmail">Email</label>
-              <input id="loginEmail" type="text" inputmode="email" value="" placeholder="din@email.dk" autocomplete="email">
+              <input id="loginEmail" type="text" inputmode="email" value="demo@securitas.dk" placeholder="din@email.dk" autocomplete="email">
             </div>
             <div class="login-field">
               <label for="gatePw">Adgangskode</label>
-              <input id="gatePw" type="password" value="" placeholder="••••••••" autocomplete="current-password">
+              <input id="gatePw" type="password" value="" placeholder="••••••••" autocomplete="current-password" autofocus>
             </div>
             <button type="submit" class="login-btn" id="loginSubmitBtn"><span id="loginBtnLabel">Log ind</span></button>
           </form>
@@ -21265,14 +21265,23 @@ App.registerPage({
   // ---------- Bruger-match på email / initialer ----------
   function matchBrugerFraEmail(rawEmail) {
     const clean = String(rawEmail || '').trim().toLowerCase();
-    if (!clean || !window.App || !App.S || !Array.isArray(App.S.medarbejdere)) return null;
+    if (!clean || clean === 'demo@securitas.dk' || clean === 'din@email.dk') return null;
+    if (!window.App || !App.S || !Array.isArray(App.S.medarbejdere)) return null;
     const aktive = typeof App.medarbejdere === 'function' ? App.medarbejdere({ aktive: true }) : App.S.medarbejdere.filter(m => m && m.aktiv !== false);
     const localPart = clean.split('@')[0].trim();
     const normLocal = localPart.replace(/[._-]+/g, ' ').trim();
+    const ord = normLocal.split(/\s+/).filter(Boolean);
 
     let hit = aktive.find(m => m.id.toLowerCase() === localPart || m.id.toLowerCase() === clean);
     if (!hit) hit = aktive.find(m => m.email && m.email.toLowerCase() === clean);
     if (!hit) hit = aktive.find(m => m.navn && (m.navn.toLowerCase() === normLocal || m.navn.toLowerCase().replace(/\s+/g, '.') === localPart));
+    if (!hit && ord.length >= 2) {
+      const delHits = aktive.filter(m => {
+        const n = (m.navn || '').toLowerCase();
+        return ord.every(w => n.includes(w));
+      });
+      if (delHits.length === 1) hit = delHits[0];
+    }
     if (!hit && normLocal.length >= 2) {
       const fornavnHits = aktive.filter(m => m.navn && m.navn.toLowerCase().split(/\s+/)[0] === normLocal);
       if (fornavnHits.length === 1) hit = fornavnHits[0];
@@ -21328,7 +21337,7 @@ App.registerPage({
       $('#resetEmail').value = $('#loginEmail').value || '';
       setTimeout(() => $('#resetEmail').focus(), 30);
     } else {
-      setTimeout(() => $('#loginEmail').focus(), 30);
+      setTimeout(() => $('#gatePw').focus(), 30);
     }
   };
   $('#loginForgotBtn').addEventListener('click', () => visGlemtKode(true));
@@ -21372,6 +21381,10 @@ App.registerPage({
     document.documentElement.classList.add('gated');
     visGlemtKode(false);
     $('#gateErr').hidden = true;
+    let gemtEmail = '';
+    try { gemtEmail = localStorage.getItem('proto-gate-email') || ''; } catch (e) {}
+    if (gemtEmail) $('#loginEmail').value = gemtEmail;
+    else if (!($('#loginEmail').value || '').trim()) $('#loginEmail').value = 'demo@securitas.dk';
     $('#gatePw').value = '';
     $('#loginSubmitBtn').disabled = false;
     $('#loginSubmitBtn').innerHTML = '<span id="loginBtnLabel">Log ind</span>';
@@ -21381,7 +21394,7 @@ App.registerPage({
     $('#gate').hidden = false;
     startDotSpace();
     setTimeout(() => {
-      const target = ($('#loginEmail').value || '').trim() ? $('#gatePw') : $('#loginEmail');
+      const target = $('#gatePw');
       if (target) target.focus();
     }, 50);
   }
@@ -21420,8 +21433,11 @@ App.registerPage({
     e.preventDefault();
     if (inFlight) return;
     $('#gateErr').hidden = true;
-    const pw = $('#gatePw').value.trim().toLowerCase();
-    if (!pw) {
+    const pwRaw = $('#gatePw').value.trim().toLowerCase();
+    const emailRaw = ($('#loginEmail').value || '').trim();
+    // Hvis en tester kommer til at indsætte adgangskoden i Email-feltet og trykker Enter, tillades det også
+    const kandidatPw = pwRaw || emailRaw.toLowerCase();
+    if (!kandidatPw) {
       $('#gateErr').textContent = 'Indtast adgangskoden for at logge ind.';
       $('#gateErr').hidden = false;
       $('#gatePw').focus();
@@ -21432,7 +21448,7 @@ App.registerPage({
     $('#loginSubmitBtn').disabled = true;
     $('#loginSubmitBtn').innerHTML = '<span class="jumping-dots" aria-label="Logger ind"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
 
-    const ok = (await sha(pw)) === CFG.passwordHash;
+    const ok = (await sha(kandidatPw)) === CFG.passwordHash || (pwRaw && emailRaw && (await sha(emailRaw.toLowerCase())) === CFG.passwordHash);
     if (!ok) {
       inFlight = false;
       $('#loginSubmitBtn').disabled = false;
@@ -21443,7 +21459,10 @@ App.registerPage({
       return;
     }
 
-    const matchedEmp = matchBrugerFraEmail($('#loginEmail').value);
+    if (pwRaw && emailRaw) {
+      try { localStorage.setItem('proto-gate-email', emailRaw); } catch (err) {}
+    }
+    const matchedEmp = matchBrugerFraEmail(emailRaw);
     if (matchedEmp) skiftTilBruger(matchedEmp);
 
     localStorage.setItem('proto-gate', CFG.passwordHash);
