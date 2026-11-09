@@ -101,7 +101,7 @@
   .sidebar .user { margin-top: auto; padding: var(--space-3); border-top: var(--stroke) solid var(--ui-blue-700); font-size: 12px; line-height: 18px; color: var(--text-on-dark-muted); display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
   .sidebar .user select { width: 100%; background: var(--surface-framework-deep); color: var(--sec-white); border: var(--stroke) solid var(--ui-blue-600); border-radius: var(--radius-overlay); padding: var(--space-2) var(--space-3); }
   .sidebar .user .link { color: var(--sec-white); font-size: 12px; line-height: 18px; }
-  .sidebar .user-links { display: flex; gap: var(--space-3); align-items: center; }
+  .sidebar .user-links { display: flex; gap: var(--space-1) var(--space-3); align-items: center; flex-wrap: wrap; width: 100%; }
 
   /* ---------- Menu med undermenuer (B6/F1) ---------- */
   /* Søg (fast, global knap) + "Aktiv sag" ligger over grupperne, adskilt med en linje. */
@@ -396,6 +396,67 @@
   .gate-logo { width: 120px; height: auto; color: var(--sec-navy-blue); }
   .gate-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: var(--space-2); }
   html.gated .sidebar, html.gated .main, html.gated .fb-btn { visibility: hidden; }
+  html.gated, html.gated body, html:has(.gate:not([hidden])), html:has(.gate:not([hidden])) body { overflow: hidden; height: 100vh; }
+  .auth-layer { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; background: #031F30; opacity: 1; transition: opacity 320ms cubic-bezier(0.2, 0, 0.2, 1); }
+  .auth-layer[data-phase="entering-app"] { opacity: 0; }
+  .auth-layer .login-bg-canvas { position: absolute; inset: 0; pointer-events: none; }
+  .auth-layer .login-bg-canvas canvas { display: block; width: 100%; height: 100%; }
+  .auth-status { position: absolute; left: 50%; bottom: clamp(28px, 6vh, 56px); transform: translateX(-50%) translateY(6px); display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 16px; border-radius: 999px; background: rgba(3, 31, 48, 0.72); background: color-mix(in srgb, #031F30 72%, transparent); -webkit-backdrop-filter: blur(10px) saturate(140%); backdrop-filter: blur(10px) saturate(140%); border: 1px solid rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.78); font-family: var(--font-brand); font-size: 0.85rem; font-weight: 400; letter-spacing: 0.3px; white-space: nowrap; opacity: 0; transition: opacity 240ms cubic-bezier(0.2, 0, 0.2, 1), transform 240ms cubic-bezier(0.2, 0, 0.2, 1); }
+  .auth-layer[data-phase="waiting"] .auth-status { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .auth-status .jumping-dots .dot { background: #8D5FFF; }
+  @keyframes securitas-dot-jump { 0%, 60%, 100% { transform: translateY(0); opacity: 0.45; } 30% { transform: translateY(-5px); opacity: 1; } }
+  .jumping-dots { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 1em; }
+  .jumping-dots .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: securitas-dot-jump 1.05s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+  .jumping-dots .dot:nth-child(2) { animation-delay: 0.15s; }
+  .jumping-dots .dot:nth-child(3) { animation-delay: 0.30s; }
+  .login-page { position: fixed; inset: 0; z-index: 81; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: transparent; padding: 1rem; overflow: hidden; isolation: isolate; }
+  .login-page > :not(.login-bg-canvas) { position: relative; z-index: 1; }
+  .login-page[data-phase="leaving-login"] .login-card, .login-page[data-phase="leaving-login"] .login-footer, .login-page[data-phase="leaving-login"] .login-meta, .login-page[data-phase="waiting"] .login-card, .login-page[data-phase="waiting"] .login-footer, .login-page[data-phase="waiting"] .login-meta { opacity: 0; transform: translateY(-8px) scale(0.985); pointer-events: none; }
+  .login-card { width: 100%; max-width: 380px; padding: 2.5rem; background: rgba(3, 31, 48, 0.88); background: color-mix(in srgb, #031F30 88%, transparent); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 16px 48px rgba(3, 31, 48, 0.10), 0 4px 12px rgba(3, 31, 48, 0.06); color: #FFFFFF; transition: opacity 200ms cubic-bezier(0.2, 0, 0.2, 1), transform 200ms cubic-bezier(0.2, 0, 0.2, 1); }
+  .login-card.welcome-card { max-width: 580px; display: flex; flex-direction: column; gap: 1.1rem; }
+  .login-card.welcome-card h1 { font-size: 1.35rem; line-height: 1.3; color: #FFFFFF; text-align: center; }
+  .login-card.welcome-card p { font-size: 0.9rem; line-height: 1.5; color: rgba(255, 255, 255, 0.78); }
+  .login-card.welcome-card .gate-list { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.88rem; line-height: 1.45; color: rgba(255, 255, 255, 0.78); }
+  .login-card.welcome-card .gate-list b { color: #FFFFFF; }
+  .login-brand { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 1.25rem; }
+  .login-logo { width: 156px; aspect-ratio: 304 / 164; height: auto; display: block; margin-bottom: 4px; color: #FFFFFF; }
+  .login-product-name { font-size: 1rem; font-weight: 700; letter-spacing: 0.5px; color: #FFFFFF; margin: 0; }
+  .login-tagline { font-size: 0.75rem; line-height: 1.4; color: rgba(255, 255, 255, 0.4); margin: 0; text-align: center; }
+  .login-divider { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 0 0 1.5rem; }
+  .login-form { display: flex; flex-direction: column; gap: 1.25rem; }
+  .login-field { display: flex; flex-direction: column; gap: 6px; }
+  .login-field label { font-size: 0.8rem; line-height: 1.2; font-weight: 500; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.5px; }
+  .login-page .login-field input { width: 100%; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.06); color: #FFFFFF; font-family: inherit; font-size: 0.95rem; line-height: 1.4; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; outline: none; }
+  .login-page .login-field input::placeholder { color: rgba(255, 255, 255, 0.25); }
+  .login-page .login-field input:focus, .login-page .login-field input:focus-visible { border-color: #8D5FFF; background: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 3px rgba(141, 95, 255, 0.25); outline: none; }
+  .login-btn { width: 100%; padding: 0.8rem; margin-top: 0.5rem; border-radius: 6px; border: none; background: #FFFFFF; color: #0d1b2a; font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; min-height: 48px; display: flex; align-items: center; justify-content: center; }
+  .login-btn:hover { opacity: 0.92; }
+  .login-btn:active { transform: scale(0.99); }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-error { background: rgba(226, 0, 26, 0.12); border: 1px solid rgba(226, 0, 26, 0.25); color: #ff6b6b; padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.85rem; line-height: 1.35; text-align: center; }
+  .login-forgot { display: block; width: 100%; margin-top: 0.75rem; background: transparent; border: none; color: rgba(255, 255, 255, 0.3); font-family: inherit; font-size: 0.7rem; text-align: center; cursor: pointer; padding: 0.3rem; transition: color 0.15s; }
+  .login-forgot:hover { color: rgba(255, 255, 255, 0.6); }
+  .login-reset-title { color: #FFFFFF; font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem; text-align: center; }
+  .login-reset-desc { color: rgba(255, 255, 255, 0.45); font-size: 0.8rem; margin: 0 0 0.25rem; text-align: center; line-height: 1.4; }
+  .login-reset-msg { background: rgba(39, 174, 96, 0.12); border: 1px solid rgba(39, 174, 96, 0.25); color: #6fcf97; padding: 0.75rem 0.85rem; border-radius: 6px; font-size: 0.82rem; text-align: center; line-height: 1.4; margin-bottom: 1rem; }
+  .login-back-btn { display: block; width: 100%; margin-top: 0.5rem; padding: 0.6rem; background: transparent; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px; color: rgba(255, 255, 255, 0.5); font-family: inherit; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
+  .login-back-btn:hover { border-color: rgba(255, 255, 255, 0.25); color: #FFFFFF; }
+  .login-footer { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 1.5rem; transition: opacity 200ms cubic-bezier(0.2, 0, 0.2, 1), transform 200ms cubic-bezier(0.2, 0, 0.2, 1); }
+  .login-footer-dots { display: flex; gap: 6px; }
+  .login-footer-dot { width: 6px; height: 6px; border-radius: 50%; background: #FC273F; opacity: 0.5; }
+  .login-footer-text { font-size: 0.7rem; color: rgba(255, 255, 255, 0.25); letter-spacing: 0.5px; }
+  .login-meta { margin-top: 10px; text-align: center; transition: opacity 200ms cubic-bezier(0.2, 0, 0.2, 1), transform 200ms cubic-bezier(0.2, 0, 0.2, 1); }
+  .login-meta-link { background: none; border: none; color: rgba(255, 255, 255, 0.45); font-family: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; padding: 4px 8px; transition: color 0.15s; }
+  .login-meta-link:hover { color: rgba(255, 255, 255, 0.8); }
+  .login-gdpr-backdrop { position: fixed; inset: 0; z-index: 90; background: rgba(1, 21, 35, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .login-gdpr-card { width: min(560px, 100%); max-height: 85vh; overflow: auto; padding: 2rem; background: rgba(3, 31, 48, 0.96); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; box-shadow: 0 20px 56px rgba(0, 0, 0, 0.45); color: #FFFFFF; display: flex; flex-direction: column; gap: 1rem; }
+  .login-gdpr-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 0.75rem; }
+  .login-gdpr-head h2 { font-size: 1.05rem; color: #FFFFFF; margin: 0; }
+  .login-gdpr-close { background: transparent; border: 1px solid rgba(255, 255, 255, 0.15); color: rgba(255, 255, 255, 0.7); border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 1rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+  .login-gdpr-close:hover { color: #FFFFFF; border-color: rgba(255, 255, 255, 0.35); }
+  .login-gdpr-body { display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.82rem; line-height: 1.5; color: rgba(255, 255, 255, 0.75); }
+  .login-gdpr-body h3 { font-size: 0.85rem; color: #FFFFFF; margin: 0 0 0.2rem; }
+  .login-gdpr-body p { margin: 0; }
   @media (max-width: 900px) {
     .fb-overlay { grid-template-columns: 1fr; overflow: auto; }
     .fb-item { grid-template-columns: 1fr; }
@@ -516,6 +577,8 @@
     body.menu-skinne .sidebar .user { font-size: 0; padding: var(--space-2) 0; }
     body.menu-skinne .sidebar .user select { font-size: 12px; padding: var(--space-1); }
     body.menu-skinne .sidebar .user-links { justify-content: center; }
+    body.menu-skinne .sidebar .user #logoutBtn { display: inline-block; font-size: 11px; line-height: 14px; color: var(--text-on-dark-muted); text-decoration: none; }
+    body.menu-skinne .sidebar .user #logoutBtn:hover { color: var(--sec-white); text-decoration: underline; }
 
     /* Skinnens egne punkter – kun dem, der står direkte i menuen. Knapperne i udslaget er bevidst
        IKKE med: de skal se ud som i den brede menu, og det gør de af sig selv med standardreglerne. */
@@ -20775,26 +20838,119 @@ App.registerPage({
 
 </script>
 <script>
-// Adgangskode og velkomstskærm til den delte testadresse.
+// Adgangskode, 3D Dot Space-baggrund og velkomstskærm (1:1 med SecuriShift).
 // Bruger window.PROTO_CONFIG.passwordHash (SHA-256 hex). Uden hash vises ingen adgangskode.
 (function () {
   const CFG = window.PROTO_CONFIG || {};
+  const LEAVE_MS = 200;
+  const MIN_MS = 900;
+  const ENTER_MS = 320;
+
   const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('');
+
   const el = document.createElement('div');
   el.innerHTML = `
-    <div class="gate" id="gate" hidden>
-      <form class="gate-card" id="gateForm" novalidate>
-        <svg class="gate-logo" aria-label="Securitas" viewBox="0 0 304 164"><use href="#logo-white"/></svg>
-        <h1>Sagsstyring – prototype</h1>
-        <p class="muted">Skriv adgangskoden, du har fået tilsendt, for at åbne prototypen.</p>
-        <label class="field">Adgangskode<input type="password" id="gatePw" autocomplete="off" autofocus></label>
-        <p class="alert" id="gateErr" hidden>Forkert adgangskode. Prøv igen.</p>
-        <button class="btn cta" type="submit">Åbn prototypen</button>
-      </form>
+    <div class="auth-layer gate" id="authLayer" data-phase="idle" hidden>
+      <div class="login-bg-canvas" id="loginBgCanvas" aria-hidden="true"></div>
+      <div class="auth-status" id="authStatus" aria-live="polite">
+        <span class="auth-status-text">Henter dine indstillinger</span>
+        <span class="jumping-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+      </div>
     </div>
-    <div class="gate" id="welcome" hidden>
-      <div class="gate-card gate-wide">
-        <svg class="gate-logo" aria-label="Securitas" viewBox="0 0 304 164"><use href="#logo-white"/></svg>
+
+    <div class="login-page gate" id="gate" data-phase="idle" hidden>
+      <div class="login-card" id="loginCard">
+        <div class="login-brand">
+          <svg class="login-logo" aria-label="Securitas" viewBox="0 0 304 164"><use href="#logo-white"/></svg>
+          <p class="login-product-name">Solution Delivery</p>
+          <p class="login-tagline">Sagsstyring for projekter, service og fakturering.</p>
+        </div>
+        <div class="login-divider"></div>
+
+        <div id="loginMainView">
+          <form class="login-form" id="gateForm" novalidate>
+            <div class="login-error" id="gateErr" hidden>Forkert adgangskode. Prøv igen.</div>
+            <div class="login-field">
+              <label for="loginEmail">Email</label>
+              <input id="loginEmail" type="text" inputmode="email" value="" placeholder="din@email.dk" autocomplete="email">
+            </div>
+            <div class="login-field">
+              <label for="gatePw">Adgangskode</label>
+              <input id="gatePw" type="password" value="" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button type="submit" class="login-btn" id="loginSubmitBtn"><span id="loginBtnLabel">Log ind</span></button>
+          </form>
+          <button type="button" class="login-forgot" id="loginForgotBtn">Glemt adgangskode?</button>
+        </div>
+
+        <div id="loginResetView" hidden>
+          <h2 class="login-reset-title">Nulstil adgangskode</h2>
+          <div id="loginResetSuccess" hidden>
+            <div class="login-reset-msg">Hvis emailen findes i systemet, har vi sendt et link til at nulstille din adgangskode. Tjek din indbakke.</div>
+            <button type="button" class="login-back-btn" id="loginBackFromSuccessBtn">Tilbage til login</button>
+          </div>
+          <form class="login-form" id="loginResetForm" novalidate>
+            <p class="login-reset-desc">Indtast din email, så sender vi et link til at nulstille din adgangskode.</p>
+            <div class="login-error" id="loginResetErr" hidden>Indtast en gyldig emailadresse.</div>
+            <div class="login-field">
+              <label for="resetEmail">Email</label>
+              <input id="resetEmail" type="text" inputmode="email" value="" placeholder="din@email.dk" autocomplete="email">
+            </div>
+            <button type="submit" class="login-btn" id="resetSubmitBtn">Send nulstillingslink</button>
+            <button type="button" class="login-back-btn" id="loginBackBtn">Tilbage til login</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="login-footer">
+        <div class="login-footer-dots">
+          <span class="login-footer-dot"></span>
+          <span class="login-footer-dot"></span>
+          <span class="login-footer-dot"></span>
+        </div>
+        <span class="login-footer-text">powered by Daigen</span>
+      </div>
+
+      <div class="login-meta">
+        <button type="button" class="login-meta-link" id="loginGdprBtn">Behandling af persondata (GDPR)</button>
+      </div>
+    </div>
+
+    <div class="login-gdpr-backdrop gate" id="loginGdprModal" hidden role="dialog" aria-modal="true" aria-labelledby="loginGdprTitle">
+      <div class="login-gdpr-card">
+        <div class="login-gdpr-head">
+          <h2 id="loginGdprTitle">Behandling af persondata (GDPR)</h2>
+          <button type="button" class="login-gdpr-close" id="loginGdprCloseX" aria-label="Luk">×</button>
+        </div>
+        <div class="login-gdpr-body">
+          <div>
+            <h3>1. Dataansvarlig</h3>
+            <p>Securitas A/S er dataansvarlig for behandlingen af personoplysninger i Solution Delivery Sagsstyring.</p>
+          </div>
+          <div>
+            <h3>2. Formål og retsgrundlag</h3>
+            <p>Oplysningerne behandles til planlægning, udførelse, tidsregistrering, eftersyn og fakturering af tekniske sikringsprojekter og serviceopgaver (databeskyttelsesforordningens art. 6, stk. 1, litra b og f).</p>
+          </div>
+          <div>
+            <h3>3. Kategorier af oplysninger</h3>
+            <p>Almindelige arbejdsrelaterede stamdata (navn, initialer, arbejdsmail, rolle og afdeling) samt registrerede timer, opgaver og ændringshistorik på sager.</p>
+          </div>
+          <div>
+            <h3>4. Opbevaring og prototype-forbehold</h3>
+            <p>I den færdige løsning opbevares data krypteret inden for EU/EØS og slettes i henhold til Securitas' slettepolitik og bogføringsloven. I denne prototype er alle data syntetiske demodata, der udelukkende gemmes lokalt i din egen browser.</p>
+          </div>
+        </div>
+        <button type="button" class="login-btn" id="loginGdprOkBtn">Luk</button>
+      </div>
+    </div>
+
+    <div class="login-page gate" id="welcome" hidden>
+      <div class="login-card welcome-card">
+        <div class="login-brand">
+          <svg class="login-logo" aria-label="Securitas" viewBox="0 0 304 164"><use href="#logo-white"/></svg>
+          <p class="login-product-name">Solution Delivery</p>
+        </div>
+        <div class="login-divider"></div>
         <h1>Velkommen til prototypen</h1>
         <p>Det er en klikbar skitse af ét system til projekter, service og fakturering. Alt data er demodata, og intet du gør, sendes videre til rigtige systemer.</p>
         <ul class="gate-list">
@@ -20803,26 +20959,531 @@ App.registerPage({
           <li><b>Giv feedback</b> med knappen nederst til højre. Tag et skærmbillede, markér det du taler om, og skriv en kommentar. Alle indsendte punkter kan ses under Feedback i menuen.</li>
           <li>Knapper der viser beskeden "Kun i den færdige løsning", er med for at vise flowet, ikke fordi noget er gået i stykker.</li>
         </ul>
-        <button class="btn cta" id="welcomeOk" type="button">Start</button>
+        <button class="login-btn" id="welcomeOk" type="button">Start</button>
       </div>
     </div>`;
   document.body.appendChild(el);
+
   const $ = s => document.querySelector(s);
+
+  // ---------- 3D WebGL "Securitas Dot Space" (1:1 fra AnimatedDotSpace.jsx) ----------
+  const GRID_COLS = 280;
+  const GRID_ROWS = 155;
+  const SPACING = 1.0;
+  const Z_FAR = -135.0;
+
+  const VERTEX_SHADER = `
+    attribute vec3 position;
+    uniform mat4 uProjMatrix;
+    uniform mat4 uViewMatrix;
+    uniform float uTime;
+    uniform float uPixelRatio;
+    uniform float uBaseSize;
+    uniform float uAmplitude;
+    uniform float uZFar;
+
+    varying float vDepthFade;
+    varying float vCrest;
+
+    void main() {
+      vec3 pos = position;
+      float t = uTime;
+      float wx = pos.x;
+      float wz = pos.z;
+
+      float w1 = sin(wx * 0.055 + t * 0.95) * cos(wz * 0.048 + t * 0.70) * 6.0;
+      float w2 = sin((wx * 0.032 - wz * 0.040) + t * 0.60) * 4.4;
+      float w3 = cos((wx * 0.095 + wz * 0.082) - t * 1.15) * 1.7;
+      float w4 = sin(wz * 0.022 - t * 0.42) * 3.0;
+      float h = (w1 + w2 + w3 + w4) * uAmplitude;
+      pos.y += h;
+
+      pos.x += cos(wz * 0.04 + t * 0.5) * 0.35;
+
+      vec4 mvPos = uViewMatrix * vec4(pos, 1.0);
+      gl_Position = uProjMatrix * mvPos;
+
+      vCrest = clamp((h + 10.0) / 20.0, 0.0, 1.0);
+      float vSizeScale = mix(0.65, 1.55, smoothstep(0.25, 0.95, vCrest));
+
+      float depthNorm = clamp((-pos.z) / (-uZFar), 0.0, 1.0);
+      float farFade = pow(1.0 - depthNorm, 1.55);
+      float nearFade = smoothstep(0.0, 0.06, depthNorm);
+
+      float xNorm = clamp(abs(pos.x) / 135.0, 0.0, 1.0);
+      float sideFade = 1.0 - smoothstep(0.68, 1.0, xNorm);
+
+      vDepthFade = farFade * nearFade * sideFade;
+
+      gl_PointSize = uBaseSize * vSizeScale * uPixelRatio * (35.0 / max(1.0, -mvPos.z));
+    }
+  `;
+
+  const FRAGMENT_SHADER = `
+    precision highp float;
+    uniform vec3 uColor;
+    uniform float uOpacity;
+    varying float vDepthFade;
+    varying float vCrest;
+
+    void main() {
+      vec2 p = gl_PointCoord - vec2(0.5);
+      p.y *= 1.45;
+      float d = length(p);
+      if (d > 0.5) discard;
+
+      float core = smoothstep(0.5, 0.08, d);
+      float alpha = core * vDepthFade * uOpacity * (0.62 + 0.38 * vCrest);
+      gl_FragColor = vec4(uColor, alpha);
+    }
+  `;
+
+  function makePerspective(fovRad, aspect, near, far) {
+    const f = 1.0 / Math.tan(fovRad / 2);
+    const nf = 1 / (near - far);
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + near) * nf, -1,
+      0, 0, (2 * far * near) * nf, 0,
+    ]);
+  }
+
+  function makeLookAt(eye, target, up) {
+    let zx = eye[0] - target[0], zy = eye[1] - target[1], zz = eye[2] - target[2];
+    let zLen = Math.hypot(zx, zy, zz) || 1;
+    zx /= zLen; zy /= zLen; zz /= zLen;
+
+    let xx = up[1] * zz - up[2] * zy;
+    let xy = up[2] * zx - up[0] * zz;
+    let xz = up[0] * zy - up[1] * zx;
+    let xLen = Math.hypot(xx, xy, xz) || 1;
+    xx /= xLen; xy /= xLen; xz /= xLen;
+
+    const yx = zy * xz - zz * xy;
+    const yy = zz * xx - zx * xz;
+    const yz = zx * xy - zy * xx;
+
+    return new Float32Array([
+      xx, yx, zx, 0,
+      xy, yy, zy, 0,
+      xz, yz, zz, 0,
+      -(xx * eye[0] + xy * eye[1] + xz * eye[2]),
+      -(yx * eye[0] + yy * eye[1] + yz * eye[2]),
+      -(zx * eye[0] + zy * eye[1] + zz * eye[2]),
+      1,
+    ]);
+  }
+
+  let dotSpaceCtrl = null;
+  function initDotSpace() {
+    if (dotSpaceCtrl) return dotSpaceCtrl;
+    const container = $('#loginBgCanvas');
+    if (!container) return null;
+    const canvas = document.createElement('canvas');
+    container.innerHTML = '';
+    container.appendChild(canvas);
+
+    let reducedMotion = false;
+    try { reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+    let gl = null;
+    try {
+      gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'high-performance' })
+        || canvas.getContext('experimental-webgl');
+    } catch (e) {}
+
+    const viewMatrix = makeLookAt([0, 4.4, 24], [0, -14.5, -70], [0, 1, 0]);
+    const fovRad = (55 * Math.PI) / 180;
+
+    if (gl) {
+      const compile = (type, src) => {
+        const sh = gl.createShader(type);
+        gl.shaderSource(sh, src);
+        gl.compileShader(sh);
+        return sh;
+      };
+      const vs = compile(gl.VERTEX_SHADER, VERTEX_SHADER);
+      const fs = compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+      const prog = gl.createProgram();
+      gl.attachShader(prog, vs);
+      gl.attachShader(prog, fs);
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      const total = GRID_COLS * GRID_ROWS;
+      const positions = new Float32Array(total * 3);
+      const halfCols = (GRID_COLS - 1) * 0.5;
+      let ptr = 0;
+      for (let iz = 0; iz < GRID_ROWS; iz++) {
+        const z = -iz * SPACING;
+        for (let ix = 0; ix < GRID_COLS; ix++) {
+          positions[ptr++] = (ix - halfCols) * SPACING;
+          positions[ptr++] = 0;
+          positions[ptr++] = z;
+        }
+      }
+
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+      const posLoc = gl.getAttribLocation(prog, 'position');
+      gl.enableVertexAttribArray(posLoc);
+      gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+      const uProj = gl.getUniformLocation(prog, 'uProjMatrix');
+      const uView = gl.getUniformLocation(prog, 'uViewMatrix');
+      const uTime = gl.getUniformLocation(prog, 'uTime');
+      const uPixelRatio = gl.getUniformLocation(prog, 'uPixelRatio');
+      const uBaseSize = gl.getUniformLocation(prog, 'uBaseSize');
+      const uAmplitude = gl.getUniformLocation(prog, 'uAmplitude');
+      const uZFar = gl.getUniformLocation(prog, 'uZFar');
+      const uColor = gl.getUniformLocation(prog, 'uColor');
+      const uOpacity = gl.getUniformLocation(prog, 'uOpacity');
+
+      gl.uniformMatrix4fv(uView, false, viewMatrix);
+      gl.uniform1f(uBaseSize, 6.2);
+      gl.uniform1f(uAmplitude, 1.0);
+      gl.uniform1f(uZFar, Z_FAR);
+      gl.uniform3f(uColor, 0.32, 0.16, 1.0);
+      gl.uniform1f(uOpacity, 0.78);
+
+      gl.clearColor(3 / 255, 31 / 255, 48 / 255, 1.0);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+      const updateSize = () => {
+        const w = container.clientWidth || window.innerWidth || 1280;
+        const h = container.clientHeight || window.innerHeight || 800;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform1f(uPixelRatio, dpr);
+        gl.uniformMatrix4fv(uProj, false, makePerspective(fovRad, w / Math.max(1, h), 0.5, 400));
+      };
+
+      const drawFrame = tSec => {
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform1f(uTime, tSec);
+        gl.drawArrays(gl.POINTS, 0, total);
+      };
+
+      updateSize();
+      window.addEventListener('resize', updateSize);
+
+      let rafId = 0;
+      let running = false;
+      const t0 = performance.now();
+
+      const loop = () => {
+        if (!running) return;
+        const elapsed = (performance.now() - t0) * 0.001;
+        drawFrame(elapsed * 0.38);
+        rafId = requestAnimationFrame(loop);
+      };
+
+      dotSpaceCtrl = {
+        start() {
+          updateSize();
+          if (reducedMotion) {
+            drawFrame(14.0);
+            return;
+          }
+          if (!running) {
+            running = true;
+            loop();
+          }
+        },
+        stop() {
+          running = false;
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+          }
+        },
+      };
+      return dotSpaceCtrl;
+    }
+
+    // 2D-canvas fallback hvis WebGL er slået helt fra i et testmiljø
+    const ctx = canvas.getContext('2d');
+    const draw2d = tSec => {
+      if (!ctx) return;
+      const w = container.clientWidth || window.innerWidth || 1280;
+      const h = container.clientHeight || window.innerHeight || 800;
+      canvas.width = w;
+      canvas.height = h;
+      ctx.fillStyle = '#031F30';
+      ctx.fillRect(0, 0, w, h);
+      const proj = makePerspective(fovRad, w / Math.max(1, h), 0.5, 400);
+      const halfCols = (GRID_COLS - 1) * 0.5;
+      for (let iz = 0; iz < GRID_ROWS; iz += 2) {
+        const wz = -iz * SPACING;
+        const depthNorm = Math.min(1, Math.max(0, (-wz) / (-Z_FAR)));
+        const farFade = Math.pow(1 - depthNorm, 1.55);
+        const nearFade = depthNorm < 0.06 ? depthNorm / 0.06 : 1;
+        for (let ix = 0; ix < GRID_COLS; ix += 2) {
+          const wx = (ix - halfCols) * SPACING;
+          const w1 = Math.sin(wx * 0.055 + tSec * 0.95) * Math.cos(wz * 0.048 + tSec * 0.70) * 6.0;
+          const w2 = Math.sin((wx * 0.032 - wz * 0.040) + tSec * 0.60) * 4.4;
+          const wy = w1 + w2;
+          const mvX = viewMatrix[0] * wx + viewMatrix[4] * wy + viewMatrix[8] * wz + viewMatrix[12];
+          const mvY = viewMatrix[1] * wx + viewMatrix[5] * wy + viewMatrix[9] * wz + viewMatrix[13];
+          const mvZ = viewMatrix[2] * wx + viewMatrix[6] * wy + viewMatrix[10] * wz + viewMatrix[14];
+          if (-mvZ <= 0.5) continue;
+          const clipX = (proj[0] * mvX) / (-mvZ);
+          const clipY = (proj[5] * mvY) / (-mvZ);
+          const sx = (clipX * 0.5 + 0.5) * w;
+          const sy = (0.5 - clipY * 0.5) * h;
+          const alpha = Math.min(0.85, farFade * nearFade * 0.65);
+          if (alpha <= 0.02) continue;
+          ctx.fillStyle = `rgba(141, 95, 255, ${alpha.toFixed(3)})`;
+          const r = Math.max(1.1, 2.6 * (35 / -mvZ));
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    };
+    dotSpaceCtrl = {
+      start() { draw2d(14.0); },
+      stop() {},
+    };
+    return dotSpaceCtrl;
+  }
+
+  function startDotSpace() {
+    const ctrl = initDotSpace();
+    if (ctrl) ctrl.start();
+  }
+  function stopDotSpace() {
+    if (dotSpaceCtrl) dotSpaceCtrl.stop();
+  }
+
+  // ---------- Bruger-match på email / initialer ----------
+  function matchBrugerFraEmail(rawEmail) {
+    const clean = String(rawEmail || '').trim().toLowerCase();
+    if (!clean || !window.App || !App.S || !Array.isArray(App.S.medarbejdere)) return null;
+    const aktive = typeof App.medarbejdere === 'function' ? App.medarbejdere({ aktive: true }) : App.S.medarbejdere.filter(m => m && m.aktiv !== false);
+    const localPart = clean.split('@')[0].trim();
+    const normLocal = localPart.replace(/[._-]+/g, ' ').trim();
+
+    let hit = aktive.find(m => m.id.toLowerCase() === localPart || m.id.toLowerCase() === clean);
+    if (!hit) hit = aktive.find(m => m.email && m.email.toLowerCase() === clean);
+    if (!hit) hit = aktive.find(m => m.navn && (m.navn.toLowerCase() === normLocal || m.navn.toLowerCase().replace(/\s+/g, '.') === localPart));
+    if (!hit && normLocal.length >= 2) {
+      const fornavnHits = aktive.filter(m => m.navn && m.navn.toLowerCase().split(/\s+/)[0] === normLocal);
+      if (fornavnHits.length === 1) hit = fornavnHits[0];
+    }
+    return hit || null;
+  }
+
+  function skiftTilBruger(empObj) {
+    if (!empObj || !window.App || !App.S) return;
+    App.S.user = empObj.id;
+    if (typeof App.save === 'function') App.save();
+    if (typeof App.opdaterBrugerskifter === 'function') App.opdaterBrugerskifter();
+    const us = $('#userSel');
+    if (us) {
+      us.value = empObj.id;
+      try { us.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    }
+  }
+
+  // ---------- Velkomst & Gate-flow ----------
   const showWelcome = () => {
-    if (localStorage.getItem('proto-welcome-seen')) return;
-    $('#welcome').hidden = false; $('#welcomeOk').focus();
-    $('#welcomeOk').addEventListener('click', () => { localStorage.setItem('proto-welcome-seen', '1'); $('#welcome').hidden = true; });
+    if (localStorage.getItem('proto-welcome-seen')) {
+      $('#authLayer').hidden = true;
+      stopDotSpace();
+      return;
+    }
+    $('#authLayer').dataset.phase = 'idle';
+    $('#authLayer').hidden = false;
+    startDotSpace();
+    $('#welcome').hidden = false;
+    $('#welcomeOk').focus();
   };
+
+  $('#welcomeOk').addEventListener('click', () => {
+    localStorage.setItem('proto-welcome-seen', '1');
+    $('#welcome').hidden = true;
+    $('#authLayer').dataset.phase = 'entering-app';
+    setTimeout(() => {
+      $('#authLayer').hidden = true;
+      $('#authLayer').dataset.phase = 'idle';
+      stopDotSpace();
+    }, ENTER_MS);
+  });
+
+  // Glemt adgangskode-visning
+  const visGlemtKode = vis => {
+    $('#loginMainView').hidden = !!vis;
+    $('#loginResetView').hidden = !vis;
+    $('#loginResetSuccess').hidden = true;
+    $('#loginResetForm').hidden = false;
+    $('#loginResetErr').hidden = true;
+    if (vis) {
+      $('#resetEmail').value = $('#loginEmail').value || '';
+      setTimeout(() => $('#resetEmail').focus(), 30);
+    } else {
+      setTimeout(() => $('#loginEmail').focus(), 30);
+    }
+  };
+  $('#loginForgotBtn').addEventListener('click', () => visGlemtKode(true));
+  $('#loginBackBtn').addEventListener('click', () => visGlemtKode(false));
+  $('#loginBackFromSuccessBtn').addEventListener('click', () => visGlemtKode(false));
+
+  $('#loginResetForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const val = ($('#resetEmail').value || '').trim();
+    if (!val || !val.includes('@')) {
+      $('#loginResetErr').hidden = false;
+      $('#resetEmail').focus();
+      return;
+    }
+    $('#loginResetErr').hidden = true;
+    $('#loginResetForm').hidden = true;
+    $('#loginResetSuccess').hidden = false;
+  });
+
+  // GDPR-modal
+  const saetGdprModal = aaben => {
+    $('#loginGdprModal').hidden = !aaben;
+    if (aaben) $('#loginGdprOkBtn').focus();
+    else $('#loginGdprBtn').focus();
+  };
+  $('#loginGdprBtn').addEventListener('click', () => saetGdprModal(true));
+  $('#loginGdprCloseX').addEventListener('click', () => saetGdprModal(false));
+  $('#loginGdprOkBtn').addEventListener('click', () => saetGdprModal(false));
+  $('#loginGdprModal').addEventListener('click', e => {
+    if (e.target === $('#loginGdprModal')) saetGdprModal(false);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('#loginGdprModal').hidden) {
+      e.stopPropagation();
+      saetGdprModal(false);
+    }
+  });
+
+  // Åbn login-skærmen (bruges ved opstart og ved "Log ud")
+  function aabnLoginSkaerm() {
+    document.documentElement.classList.add('gated');
+    visGlemtKode(false);
+    $('#gateErr').hidden = true;
+    $('#gatePw').value = '';
+    $('#loginSubmitBtn').disabled = false;
+    $('#loginSubmitBtn').innerHTML = '<span id="loginBtnLabel">Log ind</span>';
+    $('#gate').dataset.phase = 'idle';
+    $('#authLayer').dataset.phase = 'idle';
+    $('#authLayer').hidden = false;
+    $('#gate').hidden = false;
+    startDotSpace();
+    setTimeout(() => {
+      const target = ($('#loginEmail').value || '').trim() ? $('#gatePw') : $('#loginEmail');
+      if (target) target.focus();
+    }, 50);
+  }
+
+  // Log ud-knap i sidebarens brugerboks
+  function tilfoejLogUdKnap() {
+    if ($('#logoutBtn')) return;
+    const links = $('.sidebar .user-links') || $('.sidebar .user');
+    if (!links) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'logoutBtn';
+    btn.className = 'tlink link';
+    btn.textContent = 'Log ud';
+    btn.addEventListener('click', () => {
+      try { localStorage.removeItem('proto-gate'); } catch (e) {}
+      aabnLoginSkaerm();
+    });
+    links.appendChild(btn);
+    if (window.App) window.App.logout = aabnLoginSkaerm;
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tilfoejLogUdKnap);
+  } else {
+    tilfoejLogUdKnap();
+  }
+
+  // Tjek om brugeren allerede er logget ind
   if (!CFG.passwordHash || !crypto.subtle) { showWelcome(); return; }
   if (localStorage.getItem('proto-gate') === CFG.passwordHash) { showWelcome(); return; }
-  document.documentElement.classList.add('gated');
-  $('#gate').hidden = false; setTimeout(() => $('#gatePw').focus(), 50);
+
+  aabnLoginSkaerm();
+
+  let inFlight = false;
   $('#gateForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const ok = (await sha($('#gatePw').value.trim().toLowerCase())) === CFG.passwordHash;
-    if (!ok) { $('#gateErr').hidden = false; $('#gatePw').select(); return; }
+    if (inFlight) return;
+    $('#gateErr').hidden = true;
+    const pw = $('#gatePw').value.trim().toLowerCase();
+    if (!pw) {
+      $('#gateErr').textContent = 'Indtast adgangskoden for at logge ind.';
+      $('#gateErr').hidden = false;
+      $('#gatePw').focus();
+      return;
+    }
+
+    inFlight = true;
+    $('#loginSubmitBtn').disabled = true;
+    $('#loginSubmitBtn').innerHTML = '<span class="jumping-dots" aria-label="Logger ind"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
+
+    const ok = (await sha(pw)) === CFG.passwordHash;
+    if (!ok) {
+      inFlight = false;
+      $('#loginSubmitBtn').disabled = false;
+      $('#loginSubmitBtn').innerHTML = '<span id="loginBtnLabel">Log ind</span>';
+      $('#gateErr').textContent = 'Forkert adgangskode. Prøv igen.';
+      $('#gateErr').hidden = false;
+      $('#gatePw').select();
+      return;
+    }
+
+    const matchedEmp = matchBrugerFraEmail($('#loginEmail').value);
+    if (matchedEmp) skiftTilBruger(matchedEmp);
+
     localStorage.setItem('proto-gate', CFG.passwordHash);
-    $('#gate').hidden = true; document.documentElement.classList.remove('gated'); showWelcome();
+
+    let reducedMotion = false;
+    try { reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) {}
+
+    if (reducedMotion) {
+      inFlight = false;
+      $('#gate').hidden = true;
+      document.documentElement.classList.remove('gated');
+      showWelcome();
+      return;
+    }
+
+    // SecuriShift 900ms bølge-overgang: kortet fader ud på 200ms, Dot Space fortsætter i 900ms, derefter åbner appen
+    $('#gate').dataset.phase = 'leaving-login';
+    $('#authLayer').dataset.phase = 'leaving-login';
+
+    setTimeout(() => {
+      $('#gate').dataset.phase = 'waiting';
+      $('#authLayer').dataset.phase = 'waiting';
+    }, LEAVE_MS);
+
+    setTimeout(() => {
+      inFlight = false;
+      $('#gate').hidden = true;
+      $('#gate').dataset.phase = 'idle';
+      document.documentElement.classList.remove('gated');
+      if (!localStorage.getItem('proto-welcome-seen')) {
+        showWelcome();
+      } else {
+        $('#authLayer').dataset.phase = 'entering-app';
+        setTimeout(() => {
+          $('#authLayer').hidden = true;
+          $('#authLayer').dataset.phase = 'idle';
+          stopDotSpace();
+        }, ENTER_MS);
+      }
+    }, MIN_MS);
   });
 })();
 
