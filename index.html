@@ -216,8 +216,15 @@
   .tab:hover { color: var(--text-primary); }
   .tabpane { display: none; }
   .tabpane.active { display: block; }
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3) var(--space-4); }
-  .form-grid label { display: flex; flex-direction: column; gap: var(--space-1); font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3) var(--space-4); align-items: start; }
+  .form-grid > * { min-width: 0; }
+  .form-grid label { display: flex; flex-direction: column; gap: var(--space-1); font-size: 12px; line-height: 18px; color: var(--text-secondary); min-width: 0; }
+  .form-grid input:not([type=checkbox]):not([type=radio]),
+  .form-grid select,
+  .form-grid textarea,
+  label.field > input:not([type=checkbox]):not([type=radio]),
+  label.field > select,
+  label.field > textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
   .form-grid .auto input { border-color: transparent; background: var(--ui-purple-100); color: var(--text-primary); }
   .hint { font-size: 12px; line-height: 18px; color: var(--text-secondary); display: flex; align-items: center; gap: var(--space-2); }
   .hint .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--ui-purple-100); }
@@ -28019,13 +28026,13 @@ App.registerPage({
 
     <!-- Modal 1: Varemodtagelse -->
     <div class="modal-bg" id="modalLagerModtag">
-      <div class="modal" role="dialog" aria-labelledby="modtagTitle">
+      <div class="modal" role="dialog" aria-labelledby="modtagTitle" style="width:min(760px,100%)">
         <header>
           <h2 id="modtagTitle">Varemodtagelse</h2>
           <button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button>
         </header>
         <div class="body">
-          <form class="form-grid" id="formLagerModtag" onsubmit="return false">
+          <form class="form-grid" id="formLagerModtag" style="grid-template-columns:repeat(2,minmax(0,1fr))" onsubmit="return false">
             <label class="field">Modtag på lager *
               <select id="modtagLager" required></select>
             </label>
@@ -28034,28 +28041,24 @@ App.registerPage({
                 <option value="">Vælg vare fra prisliste...</option>
               </select>
             </label>
-            <div style="display:grid; grid-template-columns:1fr 2fr; gap:var(--space-3)">
-              <label class="field">Varenummer *
-                <input type="text" id="modtagVarenr" required placeholder="fx 5703002104">
-              </label>
-              <label class="field">Varetekst *
-                <input type="text" id="modtagTekst" required placeholder="Varebeskrivelse">
-              </label>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-3)">
-              <label class="field">Antal *
-                <input type="number" id="modtagAntal" min="1" step="1" value="1" required>
-              </label>
-              <label class="field">Kostpris kr. pr. enhed *
-                <input type="number" id="modtagKostpris" min="0" step="0.01" value="0.00" required>
-              </label>
-            </div>
-            <label class="field">Tilknyt sag direkte (valgfri)
+            <label class="field">Varenummer *
+              <input type="text" id="modtagVarenr" required placeholder="fx 5703002104">
+            </label>
+            <label class="field">Varetekst *
+              <input type="text" id="modtagTekst" required placeholder="Varebeskrivelse">
+            </label>
+            <label class="field">Antal *
+              <input type="number" id="modtagAntal" min="1" step="1" value="1" required>
+            </label>
+            <label class="field">Kostpris kr. pr. enhed *
+              <input type="number" id="modtagKostpris" min="0" step="0.01" value="0.00" required>
+            </label>
+            <label class="field" style="grid-column:1 / -1">Tilknyt sag direkte (valgfri)
               <select id="modtagSag">
                 <option value="">Ingen (lægges alene på lager)</option>
               </select>
             </label>
-            <label class="field">Note / leverandør / følgeseddel
+            <label class="field" style="grid-column:1 / -1">Note / leverandør / følgeseddel
               <input type="text" id="modtagNote" placeholder="F.eks. Solar ordre 88214">
             </label>
           </form>
@@ -28069,27 +28072,27 @@ App.registerPage({
 
     <!-- Modal 2: Flyt lager -->
     <div class="modal-bg" id="modalLagerFlyt">
-      <div class="modal" role="dialog" aria-labelledby="flytTitle">
+      <div class="modal" role="dialog" aria-labelledby="flytTitle" style="width:min(720px,100%)">
         <header>
           <h2 id="flytTitle">Flyt til andet lager</h2>
           <button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button>
         </header>
         <div class="body">
-          <form class="form-grid" id="formLagerFlyt" onsubmit="return false">
+          <form class="form-grid" id="formLagerFlyt" style="grid-template-columns:repeat(2,minmax(0,1fr))" onsubmit="return false">
             <label class="field">Fra lager *
               <select id="flytFraLager" required></select>
             </label>
             <label class="field">Til lager (fx teknikerbil) *
               <select id="flytTilLager" required></select>
             </label>
-            <label class="field">Vare på fra-lageret *
+            <label class="field" style="grid-column:1 / -1">Vare på fra-lageret *
               <select id="flytVarenr" required></select>
             </label>
             <label class="field">Antal der flyttes *
               <input type="number" id="flytAntal" min="1" step="1" value="1" required>
             </label>
             <label class="field">Note (valgfri)
-              <input type="text" id="flytNote" placeholder="F.eks. Oppyldning af servicebil">
+              <input type="text" id="flytNote" placeholder="F.eks. Opfyldning af servicebil">
             </label>
           </form>
         </div>
@@ -28102,20 +28105,20 @@ App.registerPage({
 
     <!-- Modal 3: Optælling -->
     <div class="modal-bg" id="modalLagerOptael">
-      <div class="modal" role="dialog" aria-labelledby="optaelTitle">
+      <div class="modal" role="dialog" aria-labelledby="optaelTitle" style="width:min(720px,100%)">
         <header>
           <h2 id="optaelTitle">Optælling af lager</h2>
           <button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button>
         </header>
         <div class="body">
-          <form class="form-grid" id="formLagerOptael" onsubmit="return false">
+          <form class="form-grid" id="formLagerOptael" style="grid-template-columns:repeat(2,minmax(0,1fr))" onsubmit="return false">
             <label class="field">Lager der optælles *
               <select id="optaelLager" required></select>
             </label>
             <label class="field">Vare *
               <select id="optaelVarenr" required></select>
             </label>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-3); padding:var(--space-3); background:var(--surface-subtle); border-radius:var(--radius-overlay); margin:var(--space-2) 0">
+            <div style="grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:var(--space-3); padding:var(--space-3); background:var(--surface-subtle); border-radius:var(--radius-overlay); margin:var(--space-1) 0">
               <div>
                 <small class="muted" style="display:block">Nuværende bogført beholdning</small>
                 <b id="optaelNuvBeholdning" style="font-size:18px">0</b>
@@ -28148,8 +28151,8 @@ App.registerPage({
           <button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button>
         </header>
         <div class="body">
-          <form class="form-grid" id="formEgenVare" onsubmit="return false">
-            <div style="display:grid; grid-template-columns:1fr 2fr; gap:var(--space-3)">
+          <form id="formEgenVare" onsubmit="return false">
+            <div class="form-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr); margin-bottom:var(--space-3)">
               <label class="field">Varenummer / Kit-ID *
                 <input type="text" id="kitFormVarenr" placeholder="fx ADK-02" required>
               </label>
@@ -28157,7 +28160,7 @@ App.registerPage({
                 <input type="text" id="kitFormNavn" placeholder="fx Komplet overfaldsalarm-kit" required>
               </label>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--space-3)">
+            <div class="form-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
               <label class="field">Enhed
                 <input type="text" id="kitFormEnhed" value="sæt">
               </label>
@@ -28189,11 +28192,11 @@ App.registerPage({
 
             <div style="background:var(--surface-subtle); padding:var(--space-3); border-radius:var(--radius-overlay); margin-top:var(--space-3)">
               <b style="display:block; margin-bottom:var(--space-2); font-size:12px">Tilføj vare fra prisliste</b>
-              <div style="display:grid; grid-template-columns: 2fr 90px auto; gap:var(--space-2); align-items:end">
-                <label class="field" style="margin:0">Vare
+              <div style="display:grid; grid-template-columns: minmax(0,2fr) 90px auto; gap:var(--space-2); align-items:end">
+                <label class="field" style="margin:0; min-width:0">Vare
                   <select id="kitAddVareSelect"></select>
                 </label>
-                <label class="field" style="margin:0">Antal
+                <label class="field" style="margin:0; min-width:0">Antal
                   <input type="number" id="kitAddVareAntal" min="1" step="0.5" value="1">
                 </label>
                 <button type="button" class="btn" id="btnKitAddVare">Tilføj til pakke</button>
@@ -28216,13 +28219,15 @@ App.registerPage({
           <button class="btn icobtn" data-close aria-label="Luk"><svg class="ico s"><use href="#i-close"/></svg></button>
         </header>
         <div class="body">
-          <form class="form-grid" id="formFavoritliste" onsubmit="return false">
-            <label class="field">Pakkenavn *
-              <input type="text" id="favFormNavn" placeholder="fx Standard NOX PIR pakke" required>
-            </label>
-            <label class="field">Beskrivelse
-              <input type="text" id="favFormBeskrivelse" placeholder="fx Typisk forbrug ved udvidelse">
-            </label>
+          <form id="formFavoritliste" onsubmit="return false">
+            <div class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+              <label class="field">Pakkenavn *
+                <input type="text" id="favFormNavn" placeholder="fx Standard NOX PIR pakke" required>
+              </label>
+              <label class="field">Beskrivelse
+                <input type="text" id="favFormBeskrivelse" placeholder="fx Typisk forbrug ved udvidelse">
+              </label>
+            </div>
 
             <h4 style="margin:var(--space-4) 0 var(--space-2)">Varelinjer i favoritlisten</h4>
             <div class="table-wrap">
@@ -28243,11 +28248,11 @@ App.registerPage({
 
             <div style="background:var(--surface-subtle); padding:var(--space-3); border-radius:var(--radius-overlay); margin-top:var(--space-3)">
               <b style="display:block; margin-bottom:var(--space-2); font-size:12px">Tilføj vare fra prisliste</b>
-              <div style="display:grid; grid-template-columns: 2fr 90px auto; gap:var(--space-2); align-items:end">
-                <label class="field" style="margin:0">Vare
+              <div style="display:grid; grid-template-columns: minmax(0,2fr) 90px auto; gap:var(--space-2); align-items:end">
+                <label class="field" style="margin:0; min-width:0">Vare
                   <select id="favAddVareSelect"></select>
                 </label>
-                <label class="field" style="margin:0">Antal
+                <label class="field" style="margin:0; min-width:0">Antal
                   <input type="number" id="favAddVareAntal" min="1" step="0.5" value="1">
                 </label>
                 <button type="button" class="btn" id="btnFavAddVare">Tilføj til liste</button>
