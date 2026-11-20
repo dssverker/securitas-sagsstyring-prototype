@@ -659,6 +659,11 @@
       background: var(--surface-framework); border-radius: var(--radius-overlay); box-shadow: var(--shadow-overlay);
       padding: var(--space-2);
     }
+    /* Usynlig bro over mellemrummet (--space-2) mellem skinne og udslag, så musen ikke taber hover på vejen ind */
+    body.menu-skinne .nav-sub:not([hidden])::before {
+      content: ""; position: absolute; top: 0; bottom: 0;
+      left: calc(-1 * var(--space-2) - 4px); width: calc(var(--space-2) + 4px);
+    }
   }
 
   /* Kompakt skinne på lave skærme (fx en 1366×768-bærbar med ca. 650 px indvendig højde). I fuld
@@ -5789,10 +5794,44 @@ window.DEMO = {
     }
   }
 
+  const RAIL_OPEN_MS = 150;
+  const RAIL_AIM_MS = 1000;
+  const RAIL_DWELL_MS = 220;
+  const RAIL_CLOSE_MS = 120;
+  let railAim = null;
+  const railControllers = new WeakMap();
+  let railItems = [];
+
+  function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
+    const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
+    const d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
+    const d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
+    const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(hasNeg && hasPos);
+  }
+
+  function clearRailAim() {
+    if (!railAim) return;
+    clearTimeout(railAim.timer);
+    clearTimeout(railAim.dwellTimer);
+    if (railAim.moveHandler) document.removeEventListener('mousemove', railAim.moveHandler);
+    railAim = null;
+  }
+
+  function findHoveredSibling(excludeItem) {
+    return railItems.find(c => c.item !== excludeItem && c.isPointerInside()) || null;
+  }
+
   // Åbner/lukker én gruppes udslag. forceOpen bruges af hover/fokus i rail-visningen; uden det skifter den.
   function toggleNavGroup(g, btn, sub, forceOpen) {
     const next = forceOpen != null ? forceOpen : !!sub.hidden;
-    if (!next && sub.contains(document.activeElement)) btn.focus(); // fokus må ikke forsvinde, når undermenuen lukkes
+    if (!next && typeof sub.contains === 'function' && sub.contains(document.activeElement)) btn.focus(); // fokus må ikke forsvinde, når undermenuen lukkes
+    if (!next) {
+      const ctrl = railControllers.get(sub);
+      if (ctrl) ctrl.cancelTimers();
+      if (railAim && railAim.sub === sub) clearRailAim();
+    }
     if (next && railWidth()) closeRailFlyouts(sub);
     sub.hidden = !next;
     btn.setAttribute('aria-expanded', String(next));
@@ -5802,22 +5841,187 @@ window.DEMO = {
   }
   // Skinnen: højst ét udslag ad gangen. Lukker alle andre end det angivne.
   function closeRailFlyouts(except) {
+    if (railAim && (!except || railAim.sub !== except)) clearRailAim();
     $$('#nav .nav-sub').forEach(s => {
-      if (s === except || s.hidden) return;
+      if (s === except) return;
+      const ctrl = railControllers.get(s);
+      if (ctrl) ctrl.cancelTimers();
+      if (s.hidden) return;
       s.hidden = true;
       const b = s.previousElementSibling; if (b) b.setAttribute('aria-expanded', 'false');
     });
   }
   // Skinnen: udslaget åbnes ved klik/Enter/mellemrum/fokus med det samme og ved museover efter
-  // 150 ms (F1), og lukkes igen ved museud, fokus ud, Escape, klik uden for menuen og når en side vælges.
+  // 150 ms. Ved museud mod udslagets Safe Triangle holdes det åbent i op til 1000 ms (skifter dog
+  // hvis musen stopper 220 ms på en nabogruppe eller kører uden for trekanten); udenfor lukkes efter 120 ms.
   function bindRailHover(item, g, btn, sub) {
-    let t = null;
-    const open = () => { if (sub.hidden) { closeRailFlyouts(sub); sub.hidden = false; btn.setAttribute('aria-expanded', 'true'); } };
-    const close = () => { sub.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
-    item.addEventListener('mouseenter', () => { if (!railWidth()) return; clearTimeout(t); t = setTimeout(open, 150); });
-    item.addEventListener('mouseleave', () => { clearTimeout(t); if (railWidth()) close(); });
-    item.addEventListener('focusin', () => { if (railWidth()) open(); });
-    item.addEventListener('focusout', e => { if (!railWidth() || item.contains(e.relatedTarget)) return; close(); });
+    let openTimer = null, closeTimer = null, lastBtnPos = null, lastInSub = false, pointerInside = false;
+    const cancelTimers = () => {
+      clearTimeout(openTimer); openTimer = null;
+      clearTimeout(closeTimer); closeTimer = null;
+    };
+    const openNow = () => {
+      cancelTimers();
+      if (railAim && railAim.item !== item) clearRailAim();
+      if (sub.hidden) {
+        closeRailFlyouts(sub);
+        sub.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    };
+    const closeNow = () => {
+      cancelTimers();
+      if (railAim && railAim.item === item) clearRailAim();
+      lastInSub = false;
+      sub.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    };
+    const scheduleOpen = ms => {
+      clearTimeout(closeTimer); closeTimer = null;
+      clearTimeout(openTimer);
+      openTimer = setTimeout(() => {
+        openTimer = null;
+        if (railWidth() && (!railAim || railAim.item === item)) openNow();
+      }, ms);
+    };
+    const scheduleClose = ms => {
+      clearTimeout(openTimer); openTimer = null;
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => {
+        closeTimer = null;
+        if (!pointerInside) closeNow();
+      }, ms);
+    };
+    const ctrl = { item, sub, openNow, closeNow, scheduleOpen, scheduleClose, cancelTimers, isPointerInside: () => pointerInside };
+    railControllers.set(sub, ctrl);
+    railItems.push(ctrl);
+
+    btn.addEventListener('mouseenter', e => {
+      lastInSub = false;
+      if (e && typeof e.clientX === 'number') lastBtnPos = { x: e.clientX, y: e.clientY };
+    });
+    btn.addEventListener('mousemove', e => {
+      lastInSub = false;
+      if (e && typeof e.clientX === 'number') lastBtnPos = { x: e.clientX, y: e.clientY };
+    });
+    sub.addEventListener('mouseenter', () => {
+      lastInSub = true;
+      pointerInside = true;
+      clearTimeout(closeTimer); closeTimer = null;
+      if (railAim && railAim.item === item) clearRailAim();
+    });
+
+    item.addEventListener('mouseenter', e => {
+      pointerInside = true;
+      if (!railWidth()) return;
+      clearTimeout(closeTimer); closeTimer = null;
+      if (railAim && railAim.item === item) {
+        clearRailAim();
+        return;
+      }
+      if (railAim && railAim.item !== item) {
+        if (e && typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+          const tri = railAim.tri;
+          const inTri = e.clientX <= tri.bx + 4 && pointInTriangle(e.clientX, e.clientY, tri.ax, tri.ay, tri.bx, tri.by, tri.cx, tri.cy);
+          if (!inTri) {
+            const prev = railAim;
+            clearRailAim();
+            prev.close();
+            scheduleOpen(80);
+            return;
+          }
+          railAim.lastX = e.clientX;
+          railAim.lastY = e.clientY;
+          clearTimeout(railAim.dwellTimer);
+          railAim.dwellTimer = setTimeout(() => {
+            const prev = railAim;
+            clearRailAim();
+            if (prev) prev.close();
+            if (pointerInside && railWidth()) openNow();
+          }, RAIL_DWELL_MS);
+        }
+        return;
+      }
+      scheduleOpen(RAIL_OPEN_MS);
+    });
+
+    item.addEventListener('mouseleave', e => {
+      pointerInside = false;
+      clearTimeout(openTimer); openTimer = null;
+      if (!railWidth() || sub.hidden) return;
+      if (!lastInSub && e && typeof e.clientX === 'number' && typeof e.clientY === 'number' && typeof sub.getBoundingClientRect === 'function') {
+        const sr = sub.getBoundingClientRect();
+        if (sr && sr.width > 0 && sr.height > 0) {
+          const br = typeof btn.getBoundingClientRect === 'function' ? btn.getBoundingClientRect() : { left: 0, top: sr.top, width: 70, height: 60 };
+          const origin = lastBtnPos || { x: br.left + br.width / 2, y: br.top + br.height / 2 };
+          const tri = { ax: origin.x - 10, ay: origin.y, bx: sr.left + 2, by: sr.top - 10, cx: sr.left + 2, cy: sr.bottom + 10 };
+          if (e.clientX <= tri.bx + 4 && pointInTriangle(e.clientX, e.clientY, tri.ax, tri.ay, tri.bx, tri.by, tri.cx, tri.cy)) {
+            clearRailAim();
+            const aim = {
+              item,
+              sub,
+              tri,
+              close: closeNow,
+              lastX: e.clientX,
+              lastY: e.clientY,
+              dwellTimer: null,
+              timer: null,
+              moveHandler: null,
+            };
+            aim.timer = setTimeout(() => {
+              const sib = findHoveredSibling(item);
+              clearRailAim();
+              if (!pointerInside) closeNow();
+              if (sib && railWidth()) sib.openNow();
+            }, RAIL_AIM_MS);
+            aim.moveHandler = ev => {
+              if (!railWidth() || sub.hidden || pointerInside) {
+                clearRailAim();
+                return;
+              }
+              if (!ev || typeof ev.clientX !== 'number' || typeof ev.clientY !== 'number') return;
+              const mx = ev.clientX, my = ev.clientY;
+              const stillInTri = mx <= tri.bx + 4 && pointInTriangle(mx, my, tri.ax, tri.ay, tri.bx, tri.by, tri.cx, tri.cy);
+              const tItem = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('.nav-item') : null;
+              const sib = (tItem && tItem !== item ? railItems.find(c => c.item === tItem) : null) || findHoveredSibling(item);
+              if (stillInTri) {
+                if (Math.hypot(mx - aim.lastX, my - aim.lastY) >= 2) {
+                  aim.lastX = mx;
+                  aim.lastY = my;
+                  clearTimeout(aim.dwellTimer);
+                  aim.dwellTimer = null;
+                }
+                if (sib && !aim.dwellTimer) {
+                  aim.dwellTimer = setTimeout(() => {
+                    clearRailAim();
+                    if (!pointerInside) closeNow();
+                    if (sib.isPointerInside() && railWidth()) sib.openNow();
+                  }, RAIL_DWELL_MS);
+                } else if (!sib && aim.dwellTimer) {
+                  clearTimeout(aim.dwellTimer);
+                  aim.dwellTimer = null;
+                }
+              } else {
+                clearRailAim();
+                if (sib) {
+                  closeNow();
+                  sib.scheduleOpen(80);
+                } else {
+                  scheduleClose(RAIL_CLOSE_MS);
+                }
+              }
+            };
+            railAim = aim;
+            document.addEventListener('mousemove', aim.moveHandler);
+            return;
+          }
+        }
+      }
+      scheduleClose(RAIL_CLOSE_MS);
+    });
+
+    item.addEventListener('focusin', () => { if (railWidth()) openNow(); });
+    item.addEventListener('focusout', e => { if (!railWidth() || (typeof item.contains === 'function' && item.contains(e.relatedTarget))) return; closeNow(); });
   }
   function buildNavGroup(g, items, activeP) {
     const item = document.createElement('div'); item.className = 'nav-item';
@@ -5923,6 +6127,9 @@ window.DEMO = {
 
   function renderNav() {
     const nav = $('#nav'); if (!nav) return;
+    clearRailAim();
+    railItems.forEach(c => c.cancelTimers());
+    railItems = [];
     nav.innerHTML = '';
     const vis = visiblePages();
     S.navOpen = S.navOpen || {};
