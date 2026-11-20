@@ -2562,6 +2562,13 @@ window.DEMO = {
   const D = window.DEMO;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  // Vis eller skjul et element uden at efterlade en tom style-attribut i DOM'en (browser-QA'en advarer om synlige
+  // elementer med style-attribut; element.style.display = '' efterlader style="").
+  const vis = (el, synlig) => {
+    if (!el) return;
+    el.style.display = synlig ? '' : 'none';
+    if (synlig && el.getAttribute && el.removeAttribute && el.getAttribute('style') === '') el.removeAttribute('style');
+  };
   const kr = v => (Math.round(v || 0)).toLocaleString('da-DK') + ' kr.';
   const krDec = (v, kunHvisOere) => {
     const num = +(v || 0);
@@ -9749,7 +9756,7 @@ window.DEMO = {
   };
 
   const App = window.App = {
-    D, S, save, $, $$, kr, krDec, parseTal, n, pct, h, today, now, icon, st, stKort, dgCell, site, bc, emp, proj, calc, role,
+    D, S, save, $, $$, vis, kr, krDec, parseTal, n, pct, h, today, now, icon, st, stKort, dgCell, site, bc, emp, proj, calc, role,
     toast, openModal, closeModal, confirmDialog, trapFocus, go, goBack, pushSubView, openProject, registerPage, getPage,
     navHistory: () => navStack.slice(),
     siteLabel, siteAddress, INTERN_KATEGORIER, isIntern, pris, workdays, expectedHours, subtasks, nextSubtaskId, csvDownload, downloadMode, printSection,
@@ -16074,7 +16081,7 @@ App.registerPage({
       $('#kFlere').textContent = S.kunderVisFlere ? 'Vis færre felter' : 'Vis flere felter';
       // F2: "Ny kunde" er ikke bare væk for dem, der ikke må oprette – der står hvorfor, og hvem der må.
       const maaKunde = App.maaRette('kunde');
-      $('#btnNewKunde').style.display = maaKunde ? '' : 'none';
+      App.vis($('#btnNewKunde'), maaKunde);
       $('#kunNyKundeLaas').hidden = maaKunde;
       $('#kunNyKundeLaas').textContent = maaKunde ? '' : App.retteForklaring('kunde');
       const sikSel = $('#kSikringFilter');
@@ -19537,8 +19544,8 @@ App.registerPage({
       }
     } catch (e) {}
     const isTekniker = role() === 'Tekniker';
-    $('#svcNy').style.display = isTekniker ? 'none' : '';
-    $('#svcTeknikerField').style.display = isTekniker ? 'none' : '';
+    App.vis($('#svcNy'), !isTekniker);
+    App.vis($('#svcTeknikerField'), !isTekniker);
     const all = (S.serviceopgaver || []).filter(c => !isTekniker || App.erTildeltOpgave(c, S.user));
 
     const timerFor = id => (S.tid || []).filter(t => t.sag === id).reduce((a, t) => a + (+t.timer || 0) + (+t.ot1 || 0) + (+t.ot2 || 0), 0);
@@ -21698,7 +21705,7 @@ App.registerPage({
     const list = S.underleverandoerer || [];
     // F2: "Ny underleverandør" er ikke bare væk for dem, der ikke må – der står hvorfor.
     const maaNy = App.maaRette('underleverandoer');
-    $('#btnNewUl').style.display = maaNy ? '' : 'none';
+    App.vis($('#btnNewUl'), maaNy);
     $('#ulNyLaas').hidden = maaNy;
     $('#ulNyLaas').textContent = maaNy ? '' : App.retteForklaring('underleverandoer');
     const areas = ['', ...Array.from(new Set(list.map(u => u.omraade).filter(Boolean)))];
