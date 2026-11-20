@@ -1230,6 +1230,54 @@
   .rolig details.rolig-fold.rolig-sek { margin-top: var(--space-5); }
   /* Tekstlinks i tabelrækker på de rolige sider: 44 px trykflade (ikke i den tætte visning, hvor rækkerne skal være lave) */
   .rolig table:not(.vis-alle) td > .tlink { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* ---------- v13.2 bundmenu til teknikere (PLAN-v13 beslutning 5, forslag A) ----------
+     Kun under 900 px og kun når kernen har sat body.har-bundmenu (rollen tekniker). #nav løftes ud af
+     topstriben og lægges fast i bunden; topstriben beholder brugerskifteren. Hvid flade, blå tekst,
+     ingen skygge. Arket "Mere" (#bundMere) ligger lige over menuen, sløret (#bundSlor) dækker indholdet. */
+  .bund-slor, .bund-ark { display: none; }
+  @media (max-width: 900px) {
+    body.har-bundmenu .main { padding-bottom: calc(66px + var(--space-6) + env(safe-area-inset-bottom, 0px)); }
+    body.har-bundmenu .sidebar .user { margin-left: 0; padding-left: 0; border-left: 0; }
+    body.har-bundmenu #nav {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 46;
+      display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0;
+      background: var(--sec-white); border-top: var(--stroke) solid var(--ui-grey-300);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    body.har-bundmenu #nav .nav-btn {
+      min-height: 66px; width: auto; margin-top: -1px; padding: 0 var(--space-1);
+      flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      border-top: 3px solid transparent; color: var(--ui-blue-800); text-align: center; white-space: nowrap;
+    }
+    body.har-bundmenu #nav .nav-btn .ico { width: 24px; height: 24px; }
+    body.har-bundmenu #nav .nav-btn span.lbl { font-size: 12px; line-height: 18px; border-bottom: 0; padding-bottom: 0; }
+    body.har-bundmenu #nav .nav-btn:hover { color: var(--ui-blue-600); }
+    body.har-bundmenu #nav .nav-btn.active, body.har-bundmenu #nav .nav-btn[aria-expanded="true"] { border-top-color: var(--ui-blue-800); font-weight: 700; }
+    body.har-bundmenu #nav .nav-btn:focus-visible { outline-offset: -3px; }
+    /* Feedback-knappen og toasten må ikke ligge oven på menuen */
+    body.har-bundmenu .fb-btn { bottom: calc(66px + var(--space-4) + env(safe-area-inset-bottom, 0px)); }
+    body.har-bundmenu .toast { bottom: calc(66px + var(--space-4) + env(safe-area-inset-bottom, 0px)); }
+
+    .bund-slor:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 44; background: rgba(3,31,48,.4); }
+    .bund-ark:not([hidden]) {
+      display: block; position: fixed; left: 0; right: 0; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); z-index: 45;
+      max-height: calc(100vh - 132px); overflow-y: auto;
+      background: var(--sec-white); color: var(--ui-blue-800); border-top: var(--stroke) solid var(--ui-grey-300);
+      border-radius: 12px 12px 0 0; padding: var(--space-4) var(--space-4) var(--space-2);
+    }
+    .bund-ark-hoved { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
+    .bund-ark-hoved h2 { margin: 0; font-size: 18px; line-height: 24px; }
+    .bund-ark-luk { width: 48px; height: 48px; margin-right: calc(-1 * var(--space-3)); display: flex; align-items: center; justify-content: center; background: none; border: 0; color: inherit; cursor: pointer; }
+    .bund-ark-punkt {
+      width: 100%; min-height: 54px; display: flex; align-items: center; gap: 15px; text-align: left;
+      background: none; border: 0; border-bottom: var(--stroke) solid var(--ui-grey-300); color: inherit; font: inherit; cursor: pointer; padding: 0;
+    }
+    .bund-ark-punkt:last-child { border-bottom: 0; }
+    .bund-ark-punkt .lbl { flex: 1; }
+    .bund-ark-punkt.active { font-weight: 700; }
+    .bund-ark .ico { width: 24px; height: 24px; flex: none; fill: currentColor; }
+  }
 </style>
 </head>
 <body>
@@ -1257,7 +1305,9 @@
   <symbol id="i-shield-check" viewBox="0 0 32 32"><path d="M16,3L5,7v8c0,7.55,4.69,14.34,11,17c6.31-2.66,11-9.45,11-17V7L16,3z M25,15c0,6.43-3.87,12.23-9,14.78C10.87,27.23,7,21.43,7,15V8.4l9-3.27l9,3.27V15z"/><path d="M14.5,18.59l-2.79-2.8c-0.39-0.39-1.02-0.39-1.41,0s-0.39,1.02,0,1.41l3.5,3.5c0.39,0.39,1.02,0.39,1.41,0l6.5-6.5c0.39-0.39,0.39-1.02,0-1.41s-1.02-0.39-1.41,0L14.5,18.59z"/></symbol>
   <symbol id="i-location" viewBox="0 0 32 32"><path d="M16,4c-5.52,0-10,4.48-10,10c0,7.2,9.1,13.4,9.48,13.66C15.64,27.77,15.82,27.83,16,27.83s0.36-0.06,0.52-0.17C16.9,27.4,26,21.2,26,14C26,8.48,21.52,4,16,4z M16,25.56C13.68,23.82,8,19.04,8,14c0-4.41,3.59-8,8-8s8,3.59,8,8C24,19.04,18.32,23.82,16,25.56z"/><circle cx="16" cy="14" r="3"/></symbol>
   <symbol id="i-arrow-right" viewBox="0 0 32 32"><path d="M23.33,13.34c-0.26,0-0.51-0.1-0.71-0.29l-5.34-5.34c-0.39-0.39-0.39-1.02,0-1.41s1.02-0.39,1.41,0 l5.34,5.34c0.39,0.39,0.39,1.02,0,1.41C23.85,13.24,23.59,13.34,23.33,13.34z"/><path d="M18,26c-0.26,0-0.51-0.1-0.71-0.29c-0.39-0.39-0.39-1.02,0-1.41L24.59,17H5c-0.55,0-1-0.45-1-1s0.45-1,1-1 l22,0c0.4,0,0.77,0.24,0.92,0.62c0.15,0.37,0.07,0.8-0.22,1.09l-9,9C18.52,25.9,18.26,26,18,26z"/></symbol>
-  <symbol id="logo-white" viewBox="0 0 304 164"><circle cx="257.9" cy="46.4" r="44.1" fill="#FC273F"/><circle cx="152" cy="46.4" r="44.1" fill="#FC273F"/><circle cx="46.1" cy="46.4" r="44.1" fill="#FC273F"/><g fill="currentColor"><path d="M7.5,145.5h8.1c0.5,6.1,5.2,9.3,11.2,9.3c5,0,9.4-2.1,9.4-7c0-3.1-1.9-5.2-7.2-6.3l-6.6-1.4 c-7.9-1.6-13.9-4.5-13.9-13.3c0-8.4,7.7-14.2,17.2-14.2c10.2,0,17.6,5.8,17.9,15h-8.1c-0.5-5.2-4.7-8.1-10.1-8.1 c-4.8,0-8.7,2.7-8.7,6.7c0,2.8,1.6,4.8,6.3,5.9l8.9,2c9.5,2,12.5,6.8,12.5,12.9c0,9.4-8.1,14.9-17.8,14.9 C15.9,161.7,7.7,155.5,7.5,145.5z"/><path d="M83.3,145.5H56.8c0.6,5.4,3.9,9.5,9.8,9.5c4.6,0,7.2-2.2,8-5.2H83c-1,6.8-7.3,12-16.4,12 c-10.9,0-17.8-7.9-17.8-18.3s7-18.1,17.8-18.1c10.2,0,16.8,7.3,16.8,16.9C83.4,143.5,83.4,144.8,83.3,145.5z M57.2,139.5h18.1 c-1.2-5.3-4.4-7.5-8.8-7.5C61.5,132.1,58.3,135.1,57.2,139.5L57.2,139.5z"/><path d="M87.7,143.4c0-10.3,7-18.1,18.1-18.1c9.1,0,16,5.5,16.7,13.4h-8.2c-0.8-3.8-3.8-6.5-8.5-6.5 c-6.3,0-10,5-10,11.2s3.7,11.4,10,11.4c4.7,0,7.8-2.8,8.5-6.7h8.2c-1.2,8-7.6,13.6-16.7,13.6C94.7,161.7,87.7,153.6,87.7,143.4z"/><path d="M126.8,145.5V126h7.8v18.7c0,6.3,2.4,10.2,7.8,10.2c5.9,0,8.7-4.9,8.7-11.2V126h7.8v35h-7.7v-4 c-2.6,3.1-6.6,4.8-10.6,4.6C131.1,161.7,126.8,155.6,126.8,145.5z"/><path d="M165.2,161v-35h7.8v5c2.5-4.3,6.6-5,10.9-5h1.1v7.4h-0.8c-6.7,0-11.2,2.1-11.2,10.4V161H165.2z"/><path d="M189,116.8c0-2.7,2.2-4.8,4.8-4.8c2.7,0,4.8,2.2,4.8,4.8c0,2.7-2.2,4.8-4.8,4.8 C191.2,121.6,189,119.5,189,116.8C189,116.8,189,116.8,189,116.8z M190,161v-35h7.8v35H190z"/><path d="M220.5,161c-7.1,0-12.1-3.6-12.1-11.7v-16.6h-6.1V126h6.1v-9.7h7.8v9.7h8.7v6.7h-8.7v16.1 c0,2.3,1.1,5.4,4.8,5.4h4.4v6.8H220.5z"/><path d="M229,151.2c0-7.9,6.3-11.1,14.9-11.1h8.6v-1.8c0-4-3-6.8-7.4-6.8c-3.8,0-6.8,2-7.4,5h-7.9 c0.8-7.4,7.4-11.2,15.7-11.2c8.9,0,14.6,5.2,14.6,13.9v12.2c0,1.9,1,3,2.8,3h0.8v6.6h-3.2c-3.3,0-6.3-0.8-6.9-4.7 c-2.9,4-7.2,5.4-11.8,5.4C234.5,161.7,229,158.3,229,151.2z M252.5,147.1v-1.4h-9.4c-3.1,0-6.2,1.4-6.2,5c0,3.5,2.9,5,6.3,5 C249,155.8,252.5,152.4,252.5,147.1L252.5,147.1z"/><path d="M266.4,149.6l7.5-0.1c0.6,3.8,3.7,6,8.2,6c3,0,6.6-1,6.6-4.6c0-2.4-1.7-3.4-5.5-4.1l-6.1-1.1 c-4.3-0.8-10-2.5-10-9.3c0-6.1,5.5-11.2,14.2-11.2c10.2,0,14.5,6.7,14.5,11.5h-7.5c-0.7-3.3-3.5-5.2-7.3-5.2c-4,0-6.3,2.1-6.3,4.4 c0,2,1.5,2.8,3.9,3.2l7.7,1.4c6.6,1.2,10.1,4.4,10.1,9.7c0,8-7.1,11.4-14.6,11.4C274.3,161.7,267.2,158,266.4,149.6z"/></g></symbol>
+  <symbol id="i-more" viewBox="0 0 32 32"><path d="M5,9h22a1,1,0,0,0,0-2H5a1,1,0,0,0,0,2z M27,15H5a1,1,0,0,0,0,2h22a1,1,0,0,0,0-2z M27,23H5a1,1,0,0,0,0,2h22a1,1,0,0,0,0-2z"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 32 32"><path d="M26,6h-4V5c0-0.55-0.45-1-1-1s-1,0.45-1,1v4c0,0.55,0.45,1,1,1s1-0.45,1-1V8h4v18H6V8h4v1c0,0.55,0.45,1,1,1 s1-0.45,1-1V5c0-0.55-0.45-1-1-1s-1,0.45-1,1v1H6C4.9,6,4,6.9,4,8v18c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V8C28,6.9,27.1,6,26,6z"/><path d="M15,8h2.01c0.55,0,1-0.45,1-1s-0.45-1-1-1H15c-0.55,0-1,0.45-1,1S14.45,8,15,8z"/><path d="M10,15h12a1,1,0,0,0,0-2H10a1,1,0,0,0,0,2z M10,21h8a1,1,0,0,0,0-2h-8a1,1,0,0,0,0,2z"/></symbol>
+  <symbol id="logo-white"viewBox="0 0 304 164"><circle cx="257.9" cy="46.4" r="44.1" fill="#FC273F"/><circle cx="152" cy="46.4" r="44.1" fill="#FC273F"/><circle cx="46.1" cy="46.4" r="44.1" fill="#FC273F"/><g fill="currentColor"><path d="M7.5,145.5h8.1c0.5,6.1,5.2,9.3,11.2,9.3c5,0,9.4-2.1,9.4-7c0-3.1-1.9-5.2-7.2-6.3l-6.6-1.4 c-7.9-1.6-13.9-4.5-13.9-13.3c0-8.4,7.7-14.2,17.2-14.2c10.2,0,17.6,5.8,17.9,15h-8.1c-0.5-5.2-4.7-8.1-10.1-8.1 c-4.8,0-8.7,2.7-8.7,6.7c0,2.8,1.6,4.8,6.3,5.9l8.9,2c9.5,2,12.5,6.8,12.5,12.9c0,9.4-8.1,14.9-17.8,14.9 C15.9,161.7,7.7,155.5,7.5,145.5z"/><path d="M83.3,145.5H56.8c0.6,5.4,3.9,9.5,9.8,9.5c4.6,0,7.2-2.2,8-5.2H83c-1,6.8-7.3,12-16.4,12 c-10.9,0-17.8-7.9-17.8-18.3s7-18.1,17.8-18.1c10.2,0,16.8,7.3,16.8,16.9C83.4,143.5,83.4,144.8,83.3,145.5z M57.2,139.5h18.1 c-1.2-5.3-4.4-7.5-8.8-7.5C61.5,132.1,58.3,135.1,57.2,139.5L57.2,139.5z"/><path d="M87.7,143.4c0-10.3,7-18.1,18.1-18.1c9.1,0,16,5.5,16.7,13.4h-8.2c-0.8-3.8-3.8-6.5-8.5-6.5 c-6.3,0-10,5-10,11.2s3.7,11.4,10,11.4c4.7,0,7.8-2.8,8.5-6.7h8.2c-1.2,8-7.6,13.6-16.7,13.6C94.7,161.7,87.7,153.6,87.7,143.4z"/><path d="M126.8,145.5V126h7.8v18.7c0,6.3,2.4,10.2,7.8,10.2c5.9,0,8.7-4.9,8.7-11.2V126h7.8v35h-7.7v-4 c-2.6,3.1-6.6,4.8-10.6,4.6C131.1,161.7,126.8,155.6,126.8,145.5z"/><path d="M165.2,161v-35h7.8v5c2.5-4.3,6.6-5,10.9-5h1.1v7.4h-0.8c-6.7,0-11.2,2.1-11.2,10.4V161H165.2z"/><path d="M189,116.8c0-2.7,2.2-4.8,4.8-4.8c2.7,0,4.8,2.2,4.8,4.8c0,2.7-2.2,4.8-4.8,4.8 C191.2,121.6,189,119.5,189,116.8C189,116.8,189,116.8,189,116.8z M190,161v-35h7.8v35H190z"/><path d="M220.5,161c-7.1,0-12.1-3.6-12.1-11.7v-16.6h-6.1V126h6.1v-9.7h7.8v9.7h8.7v6.7h-8.7v16.1 c0,2.3,1.1,5.4,4.8,5.4h4.4v6.8H220.5z"/><path d="M229,151.2c0-7.9,6.3-11.1,14.9-11.1h8.6v-1.8c0-4-3-6.8-7.4-6.8c-3.8,0-6.8,2-7.4,5h-7.9 c0.8-7.4,7.4-11.2,15.7-11.2c8.9,0,14.6,5.2,14.6,13.9v12.2c0,1.9,1,3,2.8,3h0.8v6.6h-3.2c-3.3,0-6.3-0.8-6.9-4.7 c-2.9,4-7.2,5.4-11.8,5.4C234.5,161.7,229,158.3,229,151.2z M252.5,147.1v-1.4h-9.4c-3.1,0-6.2,1.4-6.2,5c0,3.5,2.9,5,6.3,5 C249,155.8,252.5,152.4,252.5,147.1L252.5,147.1z"/><path d="M266.4,149.6l7.5-0.1c0.6,3.8,3.7,6,8.2,6c3,0,6.6-1,6.6-4.6c0-2.4-1.7-3.4-5.5-4.1l-6.1-1.1 c-4.3-0.8-10-2.5-10-9.3c0-6.1,5.5-11.2,14.2-11.2c10.2,0,14.5,6.7,14.5,11.5h-7.5c-0.7-3.3-3.5-5.2-7.3-5.2c-4,0-6.3,2.1-6.3,4.4 c0,2,1.5,2.8,3.9,3.2l7.7,1.4c6.6,1.2,10.1,4.4,10.1,9.7c0,8-7.1,11.4-14.6,11.4C274.3,161.7,267.2,158,266.4,149.6z"/></g></symbol>
 </svg>
 
 <aside class="sidebar">
@@ -5794,6 +5844,78 @@ window.DEMO = {
     }
   }
 
+  // v13.2 (PLAN-v13 beslutning 5, forslag A): bundmenu for rollen tekniker under 900 px. Fire faste
+  // sider og "Mere", der åbner et ark med resten – ingen af teknikerens sider forsvinder (afsnit 9.8).
+  // Øvrige roller beholder den flade stribe. Knapperne er .nav-btn, så go() og markerAktivSide()
+  // markerer dem som resten af menuen; "Mere" markeres af markerBundMere().
+  const BUND_FASTE = ['forside', 'service', 'tid', 'kalender'];
+  const BUND_NAVN = { service: 'Opgaver', tid: 'Tid' };      // korte navne; arket viser de fulde
+  const BUND_IKON = { kalender: 'calendar' };                 // Kalender deler ellers ikon med Serviceopgaver
+  const harBundmenu = () => isMobile() && emp(S.user).rolle === 'Tekniker';
+  const bundArkAaben = () => { const a = $('#bundMere'); return !!a && !a.hidden; };
+  function fjernBundMere() { ['#bundSlor', '#bundMere'].forEach(s => { const e = $(s); if (e) e.remove(); }); }
+  function lukBundMere(fokus) {
+    const a = $('#bundMere'), s = $('#bundSlor'), k = $('#bundMereKnap');
+    if (a) a.hidden = true; if (s) s.hidden = true;
+    if (k) { k.setAttribute('aria-expanded', 'false'); if (fokus) k.focus(); }
+  }
+  function aabnBundMere() {
+    const a = $('#bundMere'), s = $('#bundSlor'), k = $('#bundMereKnap'); if (!a) return;
+    a.hidden = false; if (s) s.hidden = false;
+    if (k) k.setAttribute('aria-expanded', 'true');
+    const forste = a.querySelector('.bund-ark-punkt'); if (forste) forste.focus();
+  }
+  function markerBundMere(pageId) {
+    const k = $('#bundMereKnap');
+    if (k) k.classList.toggle('active', String(k.dataset.sider || '').split(',').includes(pageId));
+    $$('.bund-ark-punkt').forEach(b => {
+      const her = b.dataset.page === pageId;
+      b.classList.toggle('active', her); b.setAttribute('aria-current', her ? 'page' : 'false');
+    });
+  }
+  function renderNavBund(nav, vis) {
+    const synlige = vis.filter(p => !p.hidden);
+    const faste = BUND_FASTE.map(id => synlige.find(p => p.id === id)).filter(Boolean);
+    const rest = synlige.filter(p => !BUND_FASTE.includes(p.id));
+    faste.forEach(p => nav.appendChild(buildLeafBtn(
+      Object.assign({}, p, { label: BUND_NAVN[p.id] || p.label, icon: BUND_IKON[p.id] || p.icon }), 'bund-punkt')));
+    if (!rest.length || !document.body) return;
+
+    const mere = document.createElement('button'); mere.type = 'button'; mere.className = 'nav-btn bund-punkt bund-mere'; mere.id = 'bundMereKnap';
+    mere.setAttribute('aria-haspopup', 'dialog'); mere.setAttribute('aria-expanded', 'false'); mere.setAttribute('aria-controls', 'bundMere');
+    mere.dataset.sider = rest.map(p => p.id).join(',');
+    mere.innerHTML = `${icon('more', 'ico')}<span class="lbl">Mere</span>`;
+    mere.addEventListener('click', () => { if (bundArkAaben()) lukBundMere(true); else aabnBundMere(); });
+    nav.appendChild(mere);
+
+    const slor = document.createElement('div'); slor.id = 'bundSlor'; slor.className = 'bund-slor'; slor.hidden = true;
+    slor.addEventListener('click', () => lukBundMere(true));
+    const ark = document.createElement('div'); ark.id = 'bundMere'; ark.className = 'bund-ark'; ark.hidden = true;
+    ark.setAttribute('role', 'dialog'); ark.setAttribute('aria-modal', 'true'); ark.setAttribute('aria-labelledby', 'bundMereTitel');
+    const hoved = document.createElement('div'); hoved.className = 'bund-ark-hoved';
+    const titel = document.createElement('h2'); titel.id = 'bundMereTitel'; titel.textContent = 'Mere';
+    const luk = document.createElement('button'); luk.type = 'button'; luk.className = 'bund-ark-luk'; luk.setAttribute('aria-label', 'Luk');
+    luk.innerHTML = icon('close', 'ico');
+    luk.addEventListener('click', () => lukBundMere(true));
+    hoved.appendChild(titel); hoved.appendChild(luk); ark.appendChild(hoved);
+    rest.forEach(p => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'bund-ark-punkt'; b.dataset.page = p.id;
+      b.innerHTML = `${icon(p.icon || 'screen', 'ico')}<span class="lbl">${h(p.label)}</span>${icon('arrow-right', 'ico pil')}`;
+      b.addEventListener('click', () => { lukBundMere(true); go(p.id); });
+      ark.appendChild(b);
+    });
+    // Escape lukker arket, og Tab bliver inde i det, så længe det er åbent.
+    ark.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); lukBundMere(true); return; }
+      if (e.key !== 'Tab') return;
+      const felter = $$('button', ark); if (!felter.length) return;
+      const forste = felter[0], sidste = felter[felter.length - 1];
+      if (e.shiftKey && document.activeElement === forste) { e.preventDefault(); sidste.focus(); }
+      else if (!e.shiftKey && document.activeElement === sidste) { e.preventDefault(); forste.focus(); }
+    });
+    document.body.appendChild(slor); document.body.appendChild(ark);
+  }
+
   const RAIL_OPEN_MS = 150;
   const RAIL_AIM_MS = 1000;
   const RAIL_DWELL_MS = 220;
@@ -6121,6 +6243,7 @@ window.DEMO = {
   function markerAktivSide() {
     const id = S.lastPage; if (!id) return;
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === id));
+    markerBundMere(id);
     const p = getPage(id);
     revealNavGroup(id, (p && p.group) || 'Projekter');
   }
@@ -6133,7 +6256,10 @@ window.DEMO = {
     nav.innerHTML = '';
     const vis = visiblePages();
     S.navOpen = S.navOpen || {};
-    if (isMobile()) renderNavFlat(nav, vis); else renderNavGrouped(nav, vis);
+    const bund = harBundmenu();
+    fjernBundMere();
+    if (document.body && document.body.classList) document.body.classList.toggle('har-bundmenu', bund);
+    if (bund) renderNavBund(nav, vis); else if (isMobile()) renderNavFlat(nav, vis); else renderNavGrouped(nav, vis);
     markerAktivSide();
     save();
   }
@@ -6245,6 +6371,7 @@ window.DEMO = {
     }
     $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + pageId));
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
+    markerBundMere(pageId);
     revealNavGroup(pageId, p.group || 'Projekter');
     if (p.render) p.render();
     ensureBackButton(pageId);
